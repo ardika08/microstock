@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 
 import { db } from "~/server/db"
 import { activationCodes } from "~/server/db/schema"
@@ -68,10 +68,7 @@ export async function validateActivationCode(
 
   // Mark code as USED dalam transaksi untuk mencegah concurrent reuse
   db.transaction(() => {
-    db.update(activationCodes)
-      .set({ status: "USED" })
-      .where(eq(activationCodes.code, code))
-      .run()
+    db.run(sql`UPDATE activation_codes SET status = 'USED' WHERE code = ${code}`)
   })
 
   return {

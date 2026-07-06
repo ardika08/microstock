@@ -1,0 +1,33 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "pages/**/*.ts",
+    "pages/**/*.tsx",
+    "server/**/*.ts",
+    "next.config.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "background.ts",
+    "contents/**/*",
+    "popup.tsx",
+    "build/**/*",
+    ".plasmo/**/*",
+    ".next/**/*"
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "~/*": [
+        "./*"
+      ]
+    },
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ES2020"
+    ],
+    "jsx": "preserve"
+  }
+}
