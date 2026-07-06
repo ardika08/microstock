@@ -1,0 +1,9 @@
+node_modules/
+build/
+.plasmo/
+.next/
+data/
+*.log
+.env
+.env.*
+!.env.example

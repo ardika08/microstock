@@ -1,0 +1,100 @@
+import type { MetadataResult } from "~/lib/types"
+
+const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
+
+function normalizeMetadata(value: unknown): MetadataResult {
+  const data = value as Partial<MetadataResult>
+
+  if (
+    !data ||
+    typeof data.title !== "string" ||
+    typeof data.description !== "string" ||
+    !Array.isArray(data.keywords) ||
+    typeof data.category !== "string"
+  ) {
+    throw new Error("Respons AI tidak sesuai format metadata.")
+  }
+
+  const cleanText = (text: string) => text.replace(/\s+/g, " ").trim()
+  const clampText = (text: string, maxLength: number) => {
+    const cleaned = cleanText(text)
+
+    if (cleaned.length <= maxLength) {
+      return cleaned
+    }
+
+    const sliced = cleaned.slice(0, maxLength)
+    const lastSpace = sliced.lastIndexOf(" ")
+    return `${sliced.slice(0, lastSpace > 80 ? lastSpace : maxLength).trim()}`
+  }
+
+  return {
+    title: clampText(data.title, 180),
+    description: clampText(data.description, 190),
+    keywords: data.keywords
+      .map((keyword) => String(keyword).trim())
+      .filter(Boolean)
+      .slice(0, 49),
+    category: data.category.trim()
+  }
+}
+
+function extractJson(content: string) {
+  const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/)
+  const raw = fenced?.[1] ?? content
+  const start = raw.indexOf("{")
+  const end = raw.lastIndexOf("}")
+
+  if (start === -1 || end === -1) {
+    throw new Error("Respons AI tidak berisi JSON.")
+  }
+
+  return JSON.parse(raw.slice(start, end + 1))
+}
+
+export async function generateMetadata(apiKey: string, assetBrief: string) {
+  const prompt = [
+    "Generate microstock contributor metadata for a digital asset.",
+    "Return strict JSON only with this shape:",
+    '{"title":"...","description":"...","keywords":["..."],"category":"..."}',
+    "Rules: description is the primary contributor text that will be pasted into the microstock description field and it must be 120 to 190 characters, one sentence, no line breaks. Title can be a short fallback summary under 180 characters. Keywords must contain 45 to 49 unique, relevant microstock search terms, ordered from most important to supporting terms. Avoid duplicates, filler, brand names, and irrelevant words. Category must match the user's supplied category when one is present. When available categories are supplied, choose only one category from that list. Strongly prioritize the original file name over generic keyword suggestions.",
+    `Asset brief: ${assetBrief || "A general commercial stock asset; infer broadly useful metadata."}`
+  ].join("\n")
+
+  const response = await fetch(OPENAI_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      temperature: 0.4,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a metadata assistant for microstock contributors. Output only valid JSON."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ]
+    })
+  })
+
+  const body = await response.json()
+
+  if (!response.ok) {
+    throw new Error(body?.error?.message || "Gagal menghubungi OpenAI API.")
+  }
+
+  const content = body?.choices?.[0]?.message?.content
+  if (typeof content !== "string") {
+    throw new Error("OpenAI tidak mengembalikan konten metadata.")
+  }
+
+  return normalizeMetadata(extractJson(content))
+}
