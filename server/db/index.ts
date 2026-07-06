@@ -13,11 +13,27 @@ const resolvedDbPath = path.isAbsolute(dbPath)
   ? dbPath
   : path.join(process.cwd(), dbPath)
 
-fs.mkdirSync(path.dirname(resolvedDbPath), { recursive: true })
+// Ensure the DB directory exists
+try {
+  fs.mkdirSync(path.dirname(resolvedDbPath), { recursive: true })
+} catch (err) {
+  console.error("[db] Gagal membuat direktori database:", err)
+  process.exit(1)
+}
 
-const sqlite = new Database(resolvedDbPath)
+let sqlite: Database.Database
+try {
+  sqlite = new Database(resolvedDbPath)
+} catch (err) {
+  console.error("[db] Gagal membuka database:", resolvedDbPath, err)
+  process.exit(1)
+}
+
 sqlite.pragma("journal_mode = WAL")
 
+// Schema bootstrap — single source of truth is schema.ts (Drizzle)
+// This CREATE TABLE IF NOT EXISTS stays in sync with schema.ts manually.
+// TODO: migrate to drizzle-kit when schema changes are needed.
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS activation_codes (
     code TEXT PRIMARY KEY NOT NULL,

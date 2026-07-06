@@ -2,7 +2,7 @@ import type { Config } from "tailwindcss"
 
 const config: Config = {
   darkMode: ["class"],
-  content: ["./popup.tsx", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
+  content: ["./popup.tsx", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}", "./contents/**/*.{ts,tsx}", "./background.ts"],
   theme: {
     extend: {
       colors: {
