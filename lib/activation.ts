@@ -4,14 +4,22 @@ type ActivationResponse = {
   message?: string
 }
 
-const activationApiUrl = process.env.PLASMO_PUBLIC_ACTIVATION_API_URL
+// Plasmo menggunakan import.meta.env untuk env vars di extension bundle
+// process.env.PLASMO_PUBLIC_* hanya bekerja di Next.js backend
+const activationApiUrl =
+  typeof process !== "undefined"
+    ? process.env.PLASMO_PUBLIC_ACTIVATION_API_URL
+    : undefined
 
 export async function validateActivationCode(code: string) {
-  if (!activationApiUrl) {
+  // Coba baca dari import.meta.env sebagai fallback (Plasmo/Parcel bundler)
+  const url = activationApiUrl || (import.meta as any).env?.PLASMO_PUBLIC_ACTIVATION_API_URL
+
+  if (!url) {
     throw new Error("Endpoint validasi belum dikonfigurasi.")
   }
 
-  const response = await fetch(activationApiUrl, {
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
