@@ -66,6 +66,14 @@ export async function validateActivationCode(
     }
   }
 
+  // Mark code as USED dalam transaksi untuk mencegah concurrent reuse
+  db.transaction(() => {
+    db.update(activationCodes)
+      .set({ status: "USED" })
+      .where(eq(activationCodes.code, code))
+      .run()
+  })
+
   return {
     valid: true,
     status: "ACTIVE",

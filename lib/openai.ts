@@ -61,34 +61,49 @@ export async function generateMetadata(apiKey: string, assetBrief: string) {
     `Asset brief: ${assetBrief || "A general commercial stock asset; infer broadly useful metadata."}`
   ].join("\n")
 
-  const response = await fetch(OPENAI_ENDPOINT, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      temperature: 0.4,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a metadata assistant for microstock contributors. Output only valid JSON."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ]
+  let response: Response
+  try {
+    response = await fetch(OPENAI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.4,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a metadata assistant for microstock contributors. Output only valid JSON."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      })
     })
-  })
+  } catch (networkError) {
+    throw new Error(
+      "Tidak dapat menghubungi OpenAI. Periksa koneksi internet dan coba lagi."
+    )
+  }
 
-  const body = await response.json()
+  let body: Record<string, unknown>
+  try {
+    body = await response.json()
+  } catch {
+    throw new Error("OpenAI mengembalikan respons yang tidak valid.")
+  }
 
   if (!response.ok) {
-    throw new Error(body?.error?.message || "Gagal menghubungi OpenAI API.")
+    throw new Error(
+      (body?.error as { message?: string })?.message ||
+        "Gagal menghubungi OpenAI API."
+    )
   }
 
   const content = body?.choices?.[0]?.message?.content
