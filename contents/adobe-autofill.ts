@@ -1318,17 +1318,29 @@ function setLoadingPreview(root: ShadowRoot, assetIndex: number, totalAssets: nu
   }
 
   if (categoryPreview) {
-    categoryPreview.innerHTML = `<span class="asaf-spinner"></span> Memproses kategori...`
+    const spinner = document.createElement("span")
+    spinner.className = "asaf-spinner"
+    categoryPreview.textContent = ""
+    categoryPreview.appendChild(spinner)
+    categoryPreview.appendChild(document.createTextNode(" Memproses kategori..."))
     categoryPreview.dataset.loading = "true"
   }
 
   if (titlePreview) {
-    titlePreview.innerHTML = `<span class="asaf-spinner"></span> Memproses judul...`
+    const spinner = document.createElement("span")
+    spinner.className = "asaf-spinner"
+    titlePreview.textContent = ""
+    titlePreview.appendChild(spinner)
+    titlePreview.appendChild(document.createTextNode(" Memproses judul..."))
     titlePreview.dataset.loading = "true"
   }
 
   if (keywordPreview) {
-    keywordPreview.innerHTML = `<span class="asaf-spinner"></span> Memproses keyword...`
+    const spinner = document.createElement("span")
+    spinner.className = "asaf-spinner"
+    keywordPreview.textContent = ""
+    keywordPreview.appendChild(spinner)
+    keywordPreview.appendChild(document.createTextNode(" Memproses keyword..."))
     keywordPreview.dataset.loading = "true"
   }
 

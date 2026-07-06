@@ -68,22 +68,33 @@ async function syncActiveTabPanel() {
 
   try {
     await chrome.tabs.sendMessage(tab.id, message)
-  } catch {
-    // Content script may not be injected yet; refreshing the Adobe page will sync it.
+  } catch (error) {
+    // Content script may not be injected yet — this is expected on first load.
+    // Log unexpected errors so they're visible in extension devtools.
+    const isExpectedDisconnect =
+      error instanceof Error &&
+      (error.message.includes("Could not establish connection") ||
+        error.message.includes("Receiving end does not exist"))
+    if (!isExpectedDisconnect) {
+      console.error("[syncActiveTabPanel] Unexpected error:", error)
+    }
   }
 }
 
 function ToggleSwitch({
   checked,
   disabled,
-  onChange
+  onChange,
+  label
 }: {
   checked: boolean
   disabled?: boolean
   onChange: (checked: boolean) => void
+  label: string
 }) {
   return (
     <button
+      aria-label={label}
       aria-pressed={checked}
       className={[
         "relative h-8 w-14 rounded-full transition-colors",
@@ -162,8 +173,9 @@ export default function Popup() {
 
     try {
       const trimmedKey = apiKey.trim()
-      if (!trimmedKey.startsWith("sk-")) {
-        throw new Error("Format OpenAI API key tidak dikenali.")
+      // OpenAI keys: sk-... atau sk-proj-... diikuti minimal 20 karakter alphanumeric
+      if (!trimmedKey.startsWith("sk-") || trimmedKey.length < 20) {
+        throw new Error("Format OpenAI API key tidak valid. Key harus dimulai dengan 'sk-' dan minimal 20 karakter.")
       }
 
       await updateSettings({ openai_api_key: trimmedKey })
@@ -331,6 +343,7 @@ export default function Popup() {
                 <ToggleSwitch
                   checked={settings.panel_enabled}
                   disabled={busy === "syncing-panel"}
+                  label="Aktifkan panel autofill"
                   onChange={handlePanelToggle}
                 />
                 <span
@@ -343,12 +356,17 @@ export default function Popup() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 border-t pt-4">
+              <div
+                className="grid grid-cols-2 gap-2 border-t pt-4"
+                role="tablist"
+                aria-label="Pilih platform microstock">
                 {MICROSTOCKS.map((platform) => {
                   const selected = settings.selected_microstock === platform.id
 
                   return (
                     <button
+                      aria-selected={selected}
+                      aria-disabled={!platform.enabled}
                       className={[
                         "inline-flex h-9 items-center justify-center gap-2 rounded-md border px-2 text-xs font-medium transition-colors",
                         selected
@@ -359,6 +377,8 @@ export default function Popup() {
                       disabled={isBusy || !platform.enabled}
                       key={platform.id}
                       onClick={() => handleMicrostockSelect(platform.id)}
+                      role="tab"
+                      tabIndex={!platform.enabled ? -1 : 0}
                       type="button">
                       <Send className="h-3.5 w-3.5" />
                       {platform.label}
