@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useSession } from "next-auth/react"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
@@ -12,6 +12,29 @@ import {
   Infinity,
   Loader2,
 } from "lucide-react"
+
+// ─── Payment helpers ─────────────────────────────────────────────────────────
+
+function productLabel(productType: string | null | undefined): string {
+  switch (productType) {
+    case "topup_500": return "Top Up 500 Kredit"
+    case "starter_monthly": return "Starter Bulanan"
+    case "lifetime": return "One-time Lifetime"
+    default: return productType ?? "—"
+  }
+}
+
+function formatRupiah(amount: number | null | undefined): string {
+  if (amount == null) return "—"
+  return "Rp " + amount.toLocaleString("id-ID")
+}
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—"
+  return new Date(iso).toLocaleDateString("id-ID", {
+    day: "2-digit", month: "short", year: "numeric",
+  })
+}
 
 // ─── Product definitions ────────────────────────────────────────────────────
 
@@ -88,8 +111,19 @@ export default function BillingPage() {
   const { planType, credits, isLoading } = useUser()
   const [loadingKey, setLoadingKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([])
+  const [historyLoading, setHistoryLoading] = useState(true)
 
   const user = session?.user as any
+
+  useEffect(() => {
+    setHistoryLoading(true)
+    fetch("/api/payment/history")
+      .then(r => r.json())
+      .then(d => setPaymentHistory(d.payments ?? []))
+      .catch(() => setPaymentHistory([]))
+      .finally(() => setHistoryLoading(false))
+  }, [])
 
   const handleUpgrade = async (productKey: string) => {
     setLoadingKey(productKey)
@@ -290,14 +324,48 @@ export default function BillingPage() {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-4 py-8 text-center text-gray-500"
-                  >
-                    Belum ada riwayat pembayaran.
-                  </td>
-                </tr>
+                {historyLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <tr key={i} className="border-b border-white/5">
+                      {Array.from({ length: 4 }).map((__, j) => (
+                        <td key={j} className="px-4 py-3">
+                          <div className="h-4 bg-slate-800 rounded animate-pulse" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : paymentHistory.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                      Belum ada riwayat pembayaran.
+                    </td>
+                  </tr>
+                ) : (
+                  paymentHistory.map((p: any) => (
+                    <tr key={p.id} className="border-b border-white/5 hover:bg-white/5 transition-colors duration-150">
+                      <td className="px-4 py-3 text-sm text-gray-400 whitespace-nowrap">
+                        {formatDate(p.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-200">
+                        {productLabel(p.productType)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-200 whitespace-nowrap">
+                        {formatRupiah(p.amount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                          p.status === "success"
+                            ? "bg-emerald-500/10 text-emerald-400"
+                            : p.status === "pending"
+                            ? "bg-yellow-500/10 text-yellow-400"
+                            : "bg-red-500/10 text-red-400"
+                        }`}>
+                          {p.status === "success" ? "Berhasil" : p.status === "pending" ? "Pending" : "Gagal"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
