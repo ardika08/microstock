@@ -44,11 +44,17 @@ function TypewriterHeadline() {
   useEffect(() => {
     if (!isInView) return;
     let i = 0;
-    const timer = setInterval(() => {
+    // Natural typing: variable delay per character for organic feel
+    function typeNext() {
+      if (i >= headlineText.length) return;
       i++;
       setDisplayedChars(i);
-      if (i >= headlineText.length) clearInterval(timer);
-    }, 35);
+      // Pause longer on spaces, faster on regular chars — feels human
+      const char = headlineText[i - 1];
+      const delay = char === ' ' ? 110 : 70 + Math.random() * 45;
+      setTimeout(typeNext, delay);
+    }
+    const timer = setTimeout(typeNext, 400); // pause before typing starts
     return () => clearInterval(timer);
   }, [isInView]);
 
