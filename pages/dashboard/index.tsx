@@ -54,7 +54,7 @@ export default function DashboardPage() {
     },
     {
       title: "Paket Aktif",
-      value: sessionLoading ? "..." : (planType === "free" ? "Free" : planType === "starter" ? "Starter" : planType === "lifetime" ? "Lifetime" : planType ?? "Free"),
+      value: sessionLoading ? "..." : (planType === "free" ? "Free Trial" : planType === "starter" ? "Starter" : planType === "topup" ? "Top Up" : planType === "lifetime" ? "One-time" : planType ?? "Free"),
       icon: Package,
       borderColor: "border-l-amber-500",
       iconBg: "bg-amber-500/10",

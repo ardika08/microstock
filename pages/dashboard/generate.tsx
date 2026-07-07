@@ -13,8 +13,11 @@ import {
   Clipboard,
   Upload,
   Plus,
+  Key,
+  AlertCircle,
 } from "lucide-react"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
+import { useUser } from "~/hooks/useUser"
 
 // Types
 type Relevance = "high" | "medium" | "low"
@@ -25,33 +28,6 @@ interface Keyword {
   text: string
   relevance: Relevance
 }
-
-// Dummy data
-const HIGH_KEYWORDS = [
-  "sunset", "beach", "tropical", "palm trees", "ocean", "golden hour",
-  "seascape", "nature", "paradise", "coastline", "waves", "horizon",
-]
-const MEDIUM_KEYWORDS = [
-  "travel", "vacation", "summer", "relaxation", "scenic", "landscape",
-  "twilight", "dusk", "silhouette", "warm colors", "reflection", "sky",
-  "clouds", "sand", "peaceful", "serene", "tranquil", "beautiful", "outdoor", "tourism",
-]
-const LOW_KEYWORDS = [
-  "wallpaper", "background", "screensaver", "stock photo", "editorial",
-  "commercial", "lifestyle", "wellness", "destination", "island",
-  "getaway", "exotic", "escape", "retreat", "bliss", "wanderlust",
-]
-
-function buildKeywords(): Keyword[] {
-  const all: Keyword[] = []
-  HIGH_KEYWORDS.forEach((t, i) => all.push({ id: `h-${i}`, text: t, relevance: "high" }))
-  MEDIUM_KEYWORDS.forEach((t, i) => all.push({ id: `m-${i}`, text: t, relevance: "medium" }))
-  LOW_KEYWORDS.forEach((t, i) => all.push({ id: `l-${i}`, text: t, relevance: "low" }))
-  return all
-}
-
-const DUMMY_TITLE = "Dramatic Sunset Over Tropical Beach with Silhouetted Palm Trees and Golden Reflections"
-const DUMMY_DESCRIPTION = "A breathtaking tropical sunset captures the golden hour as warm light bathes a pristine beach. Silhouetted palm trees frame the composition while gentle waves reflect the amber and purple hues of the sky. Perfect for travel, nature, and lifestyle content."
 
 // Page states
 type PageState = "upload" | "processing" | "results"
@@ -69,24 +45,19 @@ function CopyButton({ text }: { text: string }) {
   return (
     <motion.button
       whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      whileTap={{ scale: 0.9 }}
       onClick={handleCopy}
-      className={`p-2 rounded-lg border transition-all duration-300 ${
-        copied
-          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
-          : "border-white/10 bg-white/5 text-gray-400 hover:text-white hover:border-white/20"
-      }`}
+      className="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-all"
     >
       <AnimatePresence mode="wait">
         {copied ? (
           <motion.div
             key="check"
-            initial={{ scale: 0, rotate: -90 }}
-            animate={{ scale: 1, rotate: 0 }}
-            exit={{ scale: 0, rotate: 90 }}
-            transition={{ duration: 0.2 }}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
           >
-            <Check className="w-4 h-4" />
+            <Check className="w-3.5 h-3.5 text-emerald-400" />
           </motion.div>
         ) : (
           <motion.div
@@ -94,9 +65,8 @@ function CopyButton({ text }: { text: string }) {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
-            transition={{ duration: 0.2 }}
           >
-            <Copy className="w-4 h-4" />
+            <Copy className="w-3.5 h-3.5" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -104,383 +74,473 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
+function getTagClasses(relevance: Relevance): string {
+  switch (relevance) {
+    case "high":
+      return "bg-blue-500/10 border-blue-500/30 text-blue-300"
+    case "medium":
+      return "bg-purple-500/10 border-purple-500/30 text-purple-300"
+    case "low":
+      return "bg-slate-700/50 border-white/10 text-gray-400"
+  }
+}
+
 export default function GeneratePage() {
   const [pageState, setPageState] = useState<PageState>("upload")
-  const [isDragOver, setIsDragOver] = useState(false)
-  const [keywords, setKeywords] = useState<Keyword[]>(buildKeywords())
-  const [activeFilter, setActiveFilter] = useState<FilterTab>("all")
+  const [keywords, setKeywords] = useState<Keyword[]>([])
+  const [generatedTitle, setGeneratedTitle] = useState("")
+  const [generatedDescription, setGeneratedDescription] = useState("")
+  const [filterTab, setFilterTab] = useState<FilterTab>("all")
   const [newKeyword, setNewKeyword] = useState("")
-  const [copyAllCopied, setCopyAllCopied] = useState(false)
   const [copyMetaCopied, setCopyMetaCopied] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [currentFilename, setCurrentFilename] = useState("asset.jpg")
+  const [creditsLeft, setCreditsLeft] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [userApiKey, setUserApiKey] = useState("")
+  const [showApiKey, setShowApiKey] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const filteredKeywords = keywords.filter((k) => {
-    if (activeFilter === "all") return true
-    return k.relevance === activeFilter
-  })
+  const { planType, credits } = useUser()
 
-  const highCount = keywords.filter((k) => k.relevance === "high").length
-  const mediumCount = keywords.filter((k) => k.relevance === "medium").length
-  const lowCount = keywords.filter((k) => k.relevance === "low").length
+  // Sync credits from session on mount
+  useEffect(() => {
+    if (credits !== undefined) setCreditsLeft(credits)
+  }, [credits])
 
-  const filterTabs: { key: FilterTab; label: string }[] = [
-    { key: "all", label: `Semua (${keywords.length})` },
-    { key: "high", label: `Tinggi (${highCount})` },
-    { key: "medium", label: `Sedang (${mediumCount})` },
-    { key: "low", label: `Rendah (${lowCount})` },
-  ]
-
-  const handleUploadClick = () => {
+  const handleGenerate = async (brief: string, filename: string) => {
     setPageState("processing")
-    setTimeout(() => {
+    setError(null)
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assetBrief: brief,
+          filename,
+          platform: "web",
+          userApiKey: planType !== "starter" ? userApiKey : undefined,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal generate metadata.")
+      }
+
+      // Map API keywords to keyword objects with relevance tiers
+      const kwds: Keyword[] = (data.metadata.keywords ?? []).map(
+        (kw: string, i: number) => ({
+          id: i.toString(),
+          text: kw,
+          relevance: (i < 12 ? "high" : i < 32 ? "medium" : "low") as Relevance,
+        })
+      )
+      setKeywords(kwds)
+      setGeneratedTitle(data.metadata.title ?? "")
+      setGeneratedDescription(data.metadata.description ?? "")
       setPageState("results")
-    }, 2000)
+
+      if (data.creditsRemaining !== null && data.creditsRemaining !== undefined) {
+        setCreditsLeft(data.creditsRemaining)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan.")
+      setPageState("upload")
+    }
   }
 
-  const handleReset = () => {
-    setPageState("upload")
-    setKeywords(buildKeywords())
-    setActiveFilter("all")
+  const handleFileSelected = (file: File) => {
+    const filename = file.name
+    setCurrentFilename(filename)
+    const assetBrief = `File: ${filename}. Generate relevant microstock metadata based on the filename.`
+    void handleGenerate(assetBrief, filename)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFileSelected(file)
+  }
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) handleFileSelected(file)
+  }
+
+  const addKeyword = () => {
+    const trimmed = newKeyword.trim()
+    if (!trimmed) return
+    setKeywords((prev) => [
+      ...prev,
+      { id: Date.now().toString(), text: trimmed, relevance: "medium" },
+    ])
     setNewKeyword("")
+    inputRef.current?.focus()
   }
 
   const removeKeyword = (id: string) => {
     setKeywords((prev) => prev.filter((k) => k.id !== id))
   }
 
-  const addKeyword = () => {
-    if (!newKeyword.trim()) return
-    const newKw: Keyword = {
-      id: `custom-${Date.now()}`,
-      text: newKeyword.trim(),
-      relevance: "medium",
-    }
-    setKeywords((prev) => [...prev, newKw])
-    setNewKeyword("")
-    inputRef.current?.focus()
-  }
+  const filteredKeywords =
+    filterTab === "all" ? keywords : keywords.filter((k) => k.relevance === filterTab)
 
-  const handleCopyAll = () => {
-    const text = keywords.map((k) => k.text).join(", ")
-    navigator.clipboard.writeText(text).catch(() => {})
-    setCopyAllCopied(true)
-    setTimeout(() => setCopyAllCopied(false), 2000)
-  }
-
-  const handleCopyMetadata = () => {
-    const meta = `Title: ${DUMMY_TITLE}\nDescription: ${DUMMY_DESCRIPTION}\nKeywords: ${keywords.map((k) => k.text).join(", ")}`
-    navigator.clipboard.writeText(meta).catch(() => {})
+  const handleCopyAllMeta = () => {
+    const allText = [
+      `Title: ${generatedTitle}`,
+      `\nDescription: ${generatedDescription}`,
+      `\nKeywords: ${keywords.map((k) => k.text).join(", ")}`,
+    ].join("")
+    navigator.clipboard.writeText(allText).catch(() => {})
     setCopyMetaCopied(true)
     setTimeout(() => setCopyMetaCopied(false), 2000)
   }
 
-  const getTagClasses = (relevance: Relevance) => {
-    switch (relevance) {
-      case "high":
-        return "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 hover:border-emerald-400/70 hover:bg-emerald-500/15"
-      case "medium":
-        return "border-blue-500/50 bg-blue-500/10 text-blue-300 hover:border-blue-400/70 hover:bg-blue-500/15"
-      case "low":
-        return "border-gray-500/50 bg-gray-500/10 text-gray-400 hover:border-gray-400/70 hover:bg-gray-500/15"
-    }
+  const resetToUpload = () => {
+    setPageState("upload")
+    setKeywords([])
+    setGeneratedTitle("")
+    setGeneratedDescription("")
+    setFilterTab("all")
+    setError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
   }
+
+  const needsApiKey = planType !== "starter"
 
   return (
     <DashboardLayout title="Generate Metadata">
-      <AnimatePresence mode="wait">
-        {/* STATE 1: Upload */}
-        {pageState === "upload" && (
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-gray-100">Generate Metadata</h1>
+          <p className="text-gray-400 mt-1">
+            Upload aset dan dapatkan metadata siap pakai untuk microstock.
+          </p>
+        </div>
+
+        {/* API Key input — only for non-starter plans */}
+        {needsApiKey && (
           <motion.div
-            key="upload"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
+            className="bg-slate-900 border border-white/10 rounded-xl p-4"
           >
-            {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2">Generate Metadata</h1>
-              <p className="text-gray-400 text-base">
-                Upload gambar dan dapatkan keyword, title &amp; deskripsi yang SEO-optimized
-              </p>
-            </div>
-
-            {/* Upload Zone */}
-            <motion.div
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              onDragOver={(e) => {
-                e.preventDefault()
-                setIsDragOver(true)
-              }}
-              onDragLeave={() => setIsDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault()
-                setIsDragOver(false)
-                handleUploadClick()
-              }}
-              onClick={handleUploadClick}
-              className={`relative cursor-pointer rounded-2xl border-2 border-dashed p-16 flex flex-col items-center justify-center text-center transition-all duration-300 ${
-                isDragOver
-                  ? "border-blue-500 bg-blue-500/5 scale-[1.02]"
-                  : "border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 hover:shadow-[0_0_40px_rgba(59,130,246,0.1)]"
-              }`}
-            >
-              <motion.div
-                animate={{ scale: [1, 1.08, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                className="mb-6"
-              >
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 flex items-center justify-center">
-                  <ImagePlus className="w-10 h-10 text-blue-400" />
-                </div>
-              </motion.div>
-
-              <h3 className="text-xl font-semibold text-white mb-2">
-                Drag &amp; drop gambar di sini
-              </h3>
-              <p className="text-gray-400 mb-4">atau klik untuk memilih file</p>
-
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-                <span className="text-xs text-gray-400">PNG, JPG, WEBP, SVG</span>
-              </div>
-            </motion.div>
-
-            {/* Credits badge */}
-            <div className="mt-6 flex justify-center">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 border border-white/10">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-sm text-gray-300">Credits tersisa: <span className="font-semibold text-white">847</span></span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Processing State */}
-        {pageState === "processing" && (
-          <motion.div
-            key="processing"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col items-center justify-center py-20"
-          >
-            {/* Image placeholder */}
-            <div className="w-64 h-48 rounded-2xl bg-gradient-to-br from-orange-500/30 via-pink-500/20 to-purple-500/30 border border-white/10 mb-8 overflow-hidden">
-              <div className="w-full h-full bg-gradient-to-br from-amber-500/10 to-purple-500/10 animate-pulse" />
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-80 h-2 rounded-full bg-slate-800 border border-white/5 overflow-hidden mb-6">
-              <motion.div
-                initial={{ x: "-100%" }}
-                animate={{ x: "100%" }}
-                transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-                className="h-full w-1/2 bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-full"
-              />
-            </div>
-
-            {/* Text with bouncing dots */}
-            <p className="text-gray-300 text-lg flex items-center gap-1">
-              AI sedang menganalisis gambar
-              <span className="flex gap-0.5 ml-1">
-                <motion.span
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
-                  className="text-blue-400"
-                >.</motion.span>
-                <motion.span
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
-                  className="text-blue-400"
-                >.</motion.span>
-                <motion.span
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
-                  className="text-blue-400"
-                >.</motion.span>
+            <div className="flex items-center gap-2 mb-3">
+              <Key className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-medium text-gray-200">OpenAI API Key</span>
+              <span className="ml-auto text-xs text-gray-500">
+                Diperlukan untuk paket{" "}
+                {planType === "free"
+                  ? "Free Trial"
+                  : planType === "topup"
+                  ? "Top Up"
+                  : "Lifetime"}
               </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type={showApiKey ? "text" : "password"}
+                value={userApiKey}
+                onChange={(e) => setUserApiKey(e.target.value)}
+                placeholder="sk-..."
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white placeholder-gray-600 font-mono focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all"
+              />
+              <button
+                onClick={() => setShowApiKey((v) => !v)}
+                className="px-3 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-xs text-gray-400 hover:text-gray-200 hover:bg-slate-700 transition-all"
+              >
+                {showApiKey ? "Hide" : "Show"}
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 mt-2">
+              Key tidak disimpan di server — hanya digunakan untuk request ini.
             </p>
           </motion.div>
         )}
 
-        {/* STATE 2: Results */}
-        {pageState === "results" && (
-          <motion.div
-            key="results"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            {/* Header */}
+        {/* Credits badge */}
+        {planType !== "starter" && creditsLeft !== null && (
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <span>
+              Kredit tersisa:{" "}
+              <span
+                className={`font-semibold ${
+                  creditsLeft <= 5 ? "text-red-400" : "text-emerald-400"
+                }`}
+              >
+                {creditsLeft}
+              </span>
+            </span>
+          </div>
+        )}
+        {planType === "starter" && (
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <span>
+              Paket <span className="text-blue-400 font-semibold">Starter</span> — API key
+              disediakan sistem (fair use 200/hari)
+            </span>
+          </div>
+        )}
+
+        {/* Error alert */}
+        <AnimatePresence>
+          {error && (
             <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-xl p-4"
+            >
+              <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-300">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-400/60 hover:text-red-400 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence mode="wait">
+          {/* ── UPLOAD STATE ── */}
+          {pageState === "upload" && (
+            <motion.div
+              key="upload"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0 }}
-              className="mb-8"
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
             >
-              <h1 className="text-3xl font-bold text-white mb-2">Generate Metadata</h1>
-              <p className="text-gray-400 text-base">
-                Upload gambar dan dapatkan keyword, title &amp; deskripsi yang SEO-optimized
-              </p>
-            </motion.div>
-
-            {/* Two column grid */}
-            <div className="grid lg:grid-cols-5 gap-6">
-              {/* Left column - Image */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="lg:col-span-2"
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*,.eps,.ai,.svg"
+                className="hidden"
+                onChange={handleFileInput}
+              />
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setIsDragOver(true)
+                }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`relative flex flex-col items-center justify-center gap-5 rounded-2xl border-2 border-dashed p-16 cursor-pointer transition-all duration-300 ${
+                  isDragOver
+                    ? "border-blue-500/70 bg-blue-500/5 scale-[1.01]"
+                    : "border-white/10 bg-slate-900 hover:border-white/20 hover:bg-slate-900/80"
+                }`}
               >
-                <div className="rounded-2xl bg-slate-900 border border-white/10 overflow-hidden">
-                  {/* Image placeholder */}
-                  <div className="aspect-[4/3] bg-gradient-to-br from-orange-400/40 via-pink-500/30 to-purple-600/40 relative">
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <div className="w-12 h-1 bg-white/30 rounded mb-2" />
-                      <div className="w-20 h-1 bg-white/20 rounded" />
-                    </div>
-                  </div>
-
-                  {/* File info */}
-                  <div className="p-4 space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-400">Filename</span>
-                      <span className="text-gray-200 font-mono text-xs">tropical_sunset_beach.jpg</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-400">Dimensi</span>
-                      <span className="text-gray-200 font-mono text-xs">5472 × 3648</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-400">Format</span>
-                      <span className="text-gray-200 font-mono text-xs">JPEG</span>
-                    </div>
-                  </div>
-
-                  {/* Reset button */}
-                  <div className="px-4 pb-4">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleReset}
-                      className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white transition-all flex items-center justify-center gap-2 text-sm font-medium"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Upload Gambar Baru
-                    </motion.button>
-                  </div>
+                <div
+                  className={`w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                    isDragOver ? "bg-blue-500/20" : "bg-slate-800"
+                  }`}
+                >
+                  <ImagePlus
+                    className={`w-10 h-10 transition-colors duration-300 ${
+                      isDragOver ? "text-blue-400" : "text-gray-500"
+                    }`}
+                  />
                 </div>
-              </motion.div>
+                <div className="text-center">
+                  <p className="text-lg font-medium text-gray-200">
+                    {isDragOver ? "Lepas file di sini" : "Drop file atau klik untuk upload"}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    JPG, PNG, SVG, EPS, AI, MP4 — maks 50 MB
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-gray-600">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>File tidak disimpan di server</span>
+                </div>
+              </div>
 
-              {/* Right column - Metadata */}
-              <div className="lg:col-span-3 space-y-6">
-                {/* Section 1: Title */}
+              {/* Quick test — manual brief */}
+              <div className="mt-4 flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Atau ketik deskripsi aset secara manual..."
+                  className="flex-1 px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const val = (e.target as HTMLInputElement).value.trim()
+                      if (val) {
+                        setCurrentFilename("manual-input.jpg")
+                        void handleGenerate(val, "manual-input.jpg")
+                      }
+                    }
+                  }}
+                />
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm font-semibold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all flex items-center gap-2"
+                  onClick={(e) => {
+                    const input = (e.currentTarget.previousSibling as HTMLInputElement)
+                    const val = input?.value?.trim()
+                    if (val) {
+                      setCurrentFilename("manual-input.jpg")
+                      void handleGenerate(val, "manual-input.jpg")
+                    }
+                  }}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Generate
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── PROCESSING STATE ── */}
+          {pageState === "processing" && (
+            <motion.div
+              key="processing"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col items-center justify-center gap-6 py-24 rounded-2xl bg-slate-900 border border-white/10"
+            >
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full border-2 border-blue-500/20 flex items-center justify-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="w-16 h-16 rounded-full border-t-2 border-blue-500"
+                  />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-blue-400" />
+                </div>
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-lg font-semibold text-gray-100">Generating metadata…</p>
+                <p className="text-sm text-gray-500">
+                  AI sedang menganalisis{" "}
+                  <span className="text-gray-300 font-medium">{currentFilename}</span>
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-600">
+                {["Title", "Description", "Keywords"].map((step, i) => (
+                  <React.Fragment key={step}>
+                    <motion.span
+                      animate={{ opacity: [0.3, 1, 0.3] }}
+                      transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.4 }}
+                      className="text-gray-400"
+                    >
+                      {step}
+                    </motion.span>
+                    {i < 2 && <span className="text-gray-700">→</span>}
+                  </React.Fragment>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── RESULTS STATE ── */}
+          {pageState === "results" && (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="space-y-4">
+                {/* File name strip */}
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <FileText className="w-4 h-4" />
+                    <span className="font-medium text-gray-200">{currentFilename}</span>
+                  </div>
+                  <button
+                    onClick={resetToUpload}
+                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Generate Baru
+                  </button>
+                </div>
+
+                {/* Title card */}
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="bg-slate-900 border border-white/10 rounded-2xl p-5"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-blue-400" />
+                      <span className="text-sm font-semibold text-gray-200">Title</span>
+                    </div>
+                    <CopyButton text={generatedTitle} />
+                  </div>
+                  <p className="text-gray-100 text-sm leading-relaxed">{generatedTitle}</p>
+                  <p className="text-xs text-gray-600 mt-2">{generatedTitle.length} karakter</p>
+                </motion.div>
+
+                {/* Description card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="rounded-2xl bg-slate-900 border border-white/10 p-5"
+                  className="bg-slate-900 border border-white/10 rounded-2xl p-5"
                 >
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span className="text-sm font-semibold text-white">Title</span>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 rounded-xl bg-slate-950 border border-white/5 p-4">
-                      <p className="text-gray-200 text-sm leading-relaxed">{DUMMY_TITLE}</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-purple-400" />
+                      <span className="text-sm font-semibold text-gray-200">Description</span>
                     </div>
-                    <CopyButton text={DUMMY_TITLE} />
+                    <CopyButton text={generatedDescription} />
                   </div>
-
-                  <div className="mt-3 flex justify-end">
-                    <span className="text-xs px-2 py-1 rounded-md bg-white/5 border border-white/10 text-gray-400">
-                      {DUMMY_TITLE.length}/200
-                    </span>
-                  </div>
+                  <p className="text-gray-100 text-sm leading-relaxed">{generatedDescription}</p>
+                  <p className="text-xs text-gray-600 mt-2">
+                    {generatedDescription.length} karakter
+                  </p>
                 </motion.div>
 
-                {/* Section 2: Description */}
+                {/* Keywords card */}
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="rounded-2xl bg-slate-900 border border-white/10 p-5"
+                  className="bg-slate-900 border border-white/10 rounded-2xl p-5"
                 >
-                  <div className="flex items-center gap-2 mb-3">
-                    <FileText className="w-4 h-4 text-blue-400" />
-                    <span className="text-sm font-semibold text-white">Deskripsi</span>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 rounded-xl bg-slate-950 border border-white/5 p-4">
-                      <p className="text-gray-200 text-sm leading-relaxed">{DUMMY_DESCRIPTION}</p>
-                    </div>
-                    <CopyButton text={DUMMY_DESCRIPTION} />
-                  </div>
-
-                  <div className="mt-3 flex justify-end">
-                    <span className="text-xs px-2 py-1 rounded-md bg-white/5 border border-white/10 text-gray-400">
-                      {DUMMY_DESCRIPTION.length}/500
-                    </span>
-                  </div>
-                </motion.div>
-
-                {/* Section 3: Keywords */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="rounded-2xl bg-slate-900 border border-white/10 p-5"
-                >
-                  {/* Header row */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <Tags className="w-4 h-4 text-purple-400" />
-                      <span className="text-sm font-semibold text-white">Keywords</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300">
-                        {keywords.length} keywords
+                      <Tags className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm font-semibold text-gray-200">
+                        Keywords{" "}
+                        <span className="text-gray-500 font-normal">({keywords.length})</span>
                       </span>
                     </div>
-
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleCopyAll}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                        copyAllCopied
-                          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
-                          : "border-white/10 bg-white/5 text-gray-400 hover:text-white hover:border-white/20"
-                      }`}
-                    >
-                      {copyAllCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      {copyAllCopied ? "Copied!" : "Copy All"}
-                    </motion.button>
+                    <CopyButton text={keywords.map((k) => k.text).join(", ")} />
                   </div>
 
                   {/* Filter tabs */}
-                  <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-950 border border-white/5 mb-4">
-                    {filterTabs.map((tab) => (
+                  <div className="flex items-center gap-1 mb-4">
+                    {(["all", "high", "medium", "low"] as FilterTab[]).map((tab) => (
                       <button
-                        key={tab.key}
-                        onClick={() => setActiveFilter(tab.key)}
-                        className={`relative flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                          activeFilter === tab.key ? "text-white" : "text-gray-400 hover:text-gray-200"
+                        key={tab}
+                        onClick={() => setFilterTab(tab)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${
+                          filterTab === tab
+                            ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                            : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
                         }`}
                       >
-                        {activeFilter === tab.key && (
-                          <motion.div
-                            layoutId="activeFilterTab"
-                            className="absolute inset-0 bg-blue-500/15 border border-blue-500/30 rounded-lg"
-                            transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                          />
-                        )}
-                        <span className="relative z-10">{tab.label}</span>
+                        {tab === "all" ? `Semua (${keywords.length})` : tab}
                       </button>
                     ))}
                   </div>
@@ -547,10 +607,11 @@ export default function GeneratePage() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
-                      setPageState("processing")
-                      setTimeout(() => setPageState("results"), 2000)
+                      const filename2 = currentFilename
+                      const brief = `File: ${filename2}. Generate relevant microstock metadata based on the filename.`
+                      void handleGenerate(brief, filename2)
                     }}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white transition-all text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-sm text-gray-300 font-medium hover:bg-slate-700 transition-all"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Regenerate
@@ -559,16 +620,7 @@ export default function GeneratePage() {
                   <motion.button
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white transition-all text-sm font-medium"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export CSV
-                  </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleCopyMetadata}
+                    onClick={handleCopyAllMeta}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ml-auto ${
                       copyMetaCopied
                         ? "bg-emerald-500/20 border border-emerald-500/50 text-emerald-300"
@@ -580,14 +632,20 @@ export default function GeneratePage() {
                   </motion.button>
 
                   <div className="w-full mt-2 flex justify-end">
-                    <span className="text-xs text-gray-500">1 kredit digunakan</span>
+                    <span className="text-xs text-gray-500">
+                      {planType === "starter"
+                        ? "Unlimited (fair use)"
+                        : creditsLeft !== null
+                        ? `${creditsLeft} kredit tersisa`
+                        : "1 kredit digunakan"}
+                    </span>
                   </div>
                 </motion.div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </DashboardLayout>
   )
 }
