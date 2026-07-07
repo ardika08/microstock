@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '~/components/ui/button';
-import { Check, Zap, TrendingUp, Crown } from 'lucide-react';
+import { Check, Zap, TrendingUp, Crown, Infinity } from 'lucide-react';
 
 export function Pricing() {
   const plans = [
@@ -14,10 +14,10 @@ export function Pricing() {
       description: 'Coba fitur lengkap tanpa kartu kredit',
       features: [
         '20 kredit gratis',
-        'AI metadata generation',
+        'Model AI: GPT-4o Mini',
         'Export CSV',
-        'Platform support lengkap',
-        'Email support',
+        'Support semua platform',
+        'Kredit tidak expire',
       ],
       icon: Zap,
       color: 'from-blue-500 to-blue-600',
@@ -32,41 +32,41 @@ export function Pricing() {
       price: 'Rp99.000',
       originalPrice: 'Rp149.000',
       period: '/bulan',
-      credits: '1.000 kredit/bulan',
-      description: 'Untuk contributor yang konsisten',
+      credits: 'Unlimited generate',
+      description: 'Untuk contributor aktif yang butuh unlimited',
       features: [
-        '1.000 kredit per bulan',
-        'Rollover kredit tidak terpakai',
+        'Unlimited generate (fair use)',
+        'Model AI: GPT-4o (premium)',
+        'API key disediakan',
         'Batch processing (50 gambar)',
         'Priority support',
         'Analisis performa',
-        'API access',
       ],
-      icon: TrendingUp,
+      icon: Infinity,
       color: 'from-blue-500 to-cyan-400',
       iconColor: 'text-blue-400',
       buttonClass: 'bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0',
-      buttonText: 'Mulai Sekarang',
+      buttonText: 'Langganan Sekarang',
       popular: true,
       promo: true,
     },
     {
-      name: 'Pay as You Go',
+      name: 'Top Up Kredit',
       price: 'Rp50.000',
       originalPrice: '',
       period: '',
       credits: '500 kredit',
-      description: 'Beli kredit sesuai kebutuhan',
+      description: 'Beli kredit, pakai kapanpun tanpa expire',
       features: [
-        '500 kredit one-time',
-        'Kredit tidak expire',
+        '500 kredit (tidak expire)',
+        'Model AI: GPT-4o (premium)',
         'Top-up kapan saja',
-        'Hemat untuk usage rendah',
-        'Semua fitur premium',
+        'Cocok untuk pemula',
+        'Tanpa komitmen bulanan',
       ],
-      icon: Crown,
-      color: 'from-purple-500 to-purple-600',
-      iconColor: 'text-purple-400',
+      icon: TrendingUp,
+      color: 'from-emerald-500 to-emerald-600',
+      iconColor: 'text-emerald-400',
       buttonClass: 'border border-white/10 text-gray-300 hover:bg-white/5 hover:text-white',
       buttonText: 'Beli Kredit',
       popular: false,
@@ -91,7 +91,7 @@ export function Pricing() {
             Pilih Paket yang Sesuai
           </h2>
           <p className="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">
-            Mulai gratis, upgrade kapan saja. Tanpa kontrak, cancel kapan saja.
+            Mulai gratis, upgrade kapan saja. Kredit tidak pernah hangus.
           </p>
         </motion.div>
 
@@ -179,12 +179,6 @@ export function Pricing() {
             {/* Background glow */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
 
-            <div className="absolute -top-2 -right-2">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-lg shadow-emerald-500/25">
-                Harga Promo
-              </span>
-            </div>
-
             <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-3">
@@ -195,18 +189,23 @@ export function Pricing() {
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold text-gray-100">One-time Purchase</h3>
-                    <p className="text-sm text-purple-400 font-medium">3.000 kredit</p>
+                    <p className="text-sm text-purple-400 font-medium">Unlimited selamanya</p>
                   </div>
                 </div>
-                <p className="text-gray-400">Hemat lebih dengan paket besar</p>
+                <p className="text-gray-400">Bayar sekali, generate unlimited selamanya. Pakai API key OpenAI sendiri.</p>
                 <div className="mt-4 flex items-center gap-4">
                   <div className="flex items-baseline gap-2">
                     <span className="text-lg text-gray-500 line-through">Rp349.000</span>
                     <span className="text-3xl font-bold text-gray-100">Rp249.000</span>
                   </div>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Hemat 17%
+                    Harga Promo
                   </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="text-xs text-gray-500 bg-white/5 px-2 py-1 rounded-full">Pakai API key sendiri</span>
+                  <span className="text-xs text-gray-500 bg-white/5 px-2 py-1 rounded-full">Tidak ada biaya bulanan</span>
+                  <span className="text-xs text-gray-500 bg-white/5 px-2 py-1 rounded-full">Update gratis selamanya</span>
                 </div>
               </div>
               <Button size="lg" className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg shadow-purple-500/25 whitespace-nowrap">
@@ -217,7 +216,7 @@ export function Pricing() {
         </motion.div>
 
         <p className="text-center text-sm text-gray-500 mt-8">
-          Semua paket termasuk update gratis dan tanpa biaya tersembunyi
+          Semua paket termasuk update gratis. Kredit tidak pernah expire.
         </p>
       </div>
     </section>
