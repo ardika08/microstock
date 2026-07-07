@@ -2,10 +2,11 @@ import React, { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/router"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X } from "lucide-react"
+import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X, Sparkles } from "lucide-react"
 import AvatarMenu from "./AvatarMenu"
 
 const navItems = [
+  { href: "/dashboard/generate", icon: Sparkles, label: "Generate" },
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard/history", icon: History, label: "History" },
   { href: "/dashboard/usage", icon: BarChart3, label: "Usage" },
