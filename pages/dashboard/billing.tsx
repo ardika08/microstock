@@ -42,7 +42,7 @@ const PRODUCTS = [
   {
     key: "topup_500",
     name: "Top Up Kredit",
-    price: "Rp 25.000",
+    price: "Rp 50.000",
     priceNote: "sekali beli",
     badge: null,
     icon: <Zap className="w-5 h-5 text-yellow-400" />,
