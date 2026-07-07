@@ -1,18 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Gunakan tsconfig.server.json agar Next.js tidak compile
-  // file Plasmo/Chrome extension (background.ts, contents/*, popup.tsx)
   typescript: {
     tsconfigPath: "./tsconfig.server.json"
   },
-  // Trust reverse proxy headers (Nginx) untuk HTTPS detection
+  // Allow Google profile images
+  images: {
+    domains: ['lh3.googleusercontent.com', 'lh4.googleusercontent.com', 'lh5.googleusercontent.com', 'lh6.googleusercontent.com'],
+  },
   async headers() {
     return []
   },
 }
 
-// Tell Next.js to trust X-Forwarded-Proto from Nginx
 process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL || 'https://autofillstock.my.id'
 
 module.exports = nextConfig
