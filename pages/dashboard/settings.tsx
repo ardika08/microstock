@@ -1,10 +1,7 @@
 import React, { useState, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Camera, Eye, EyeOff, Bell, Mail, MessageSquare, ShieldAlert, Check } from "lucide-react"
+import { Camera, Eye, EyeOff, Bell, Mail, MessageSquare, ShieldAlert, Check, Loader2 } from "lucide-react"
 
 function PasswordStrengthMeter({ password }: { password: string }) {
   const getStrength = (pw: string) => {
@@ -18,8 +15,7 @@ function PasswordStrengthMeter({ password }: { password: string }) {
 
   const strength = getStrength(password)
   const labels = ["", "Lemah", "Cukup", "Baik", "Kuat"]
-  const colors = ["", "bg-red-500", "bg-yellow-500", "bg-blue-500", "bg-green-500"]
-  const textColors = ["", "text-red-600", "text-yellow-600", "text-blue-600", "text-green-600"]
+  const textColors = ["", "text-red-400", "text-amber-400", "text-blue-400", "text-emerald-400"]
 
   if (!password) return null
 
@@ -29,8 +25,16 @@ function PasswordStrengthMeter({ password }: { password: string }) {
         {[1, 2, 3, 4].map((level) => (
           <div
             key={level}
-            className={`h-1.5 flex-1 rounded-full transition-all ${
-              level <= strength ? colors[strength] : "bg-gray-200"
+            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+              level <= strength
+                ? strength === 1
+                  ? "bg-red-500"
+                  : strength === 2
+                  ? "bg-amber-500"
+                  : strength === 3
+                  ? "bg-blue-500"
+                  : "bg-emerald-500"
+                : "bg-slate-700"
             }`}
           />
         ))}
@@ -54,28 +58,30 @@ interface ToggleProps {
 function NotificationToggle({ label, description, icon: Icon, defaultChecked = false }: ToggleProps) {
   const [enabled, setEnabled] = useState(defaultChecked)
   return (
-    <div className="flex items-start justify-between py-4 border-b last:border-b-0">
+    <div className="flex items-start justify-between py-4 border-b border-white/5 last:border-b-0">
       <div className="flex items-start gap-3">
-        <div className="bg-gray-100 p-2 rounded-lg mt-0.5">
-          <Icon className="w-4 h-4 text-gray-600" />
+        <div className="bg-slate-800 p-2 rounded-lg mt-0.5">
+          <Icon className="w-4 h-4 text-gray-400" />
         </div>
         <div>
-          <p className="text-sm font-medium text-gray-900">{label}</p>
+          <p className="text-sm font-medium text-gray-200">{label}</p>
           <p className="text-xs text-gray-500 mt-0.5">{description}</p>
         </div>
       </div>
       <button
         onClick={() => setEnabled(!enabled)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${
-          enabled ? "bg-blue-600" : "bg-gray-300"
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 flex-shrink-0 mt-0.5 ${
+          enabled
+            ? "bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.4)]"
+            : "bg-slate-700"
         }`}
         role="switch"
         aria-checked={enabled}
       >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-            enabled ? "translate-x-6" : "translate-x-1"
-          }`}
+        <motion.span
+          animate={{ x: enabled ? 22 : 4 }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          className="inline-block h-4 w-4 rounded-full bg-white shadow-sm"
         />
       </button>
     </div>
@@ -88,8 +94,11 @@ export default function SettingsPage() {
   const [showNewPw, setShowNewPw] = useState(false)
   const [showConfirmPw, setShowConfirmPw] = useState(false)
   const [newPassword, setNewPassword] = useState("")
+  const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
+  const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordSaved, setPasswordSaved] = useState(false)
+  const [avatarHover, setAvatarHover] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [profileForm, setProfileForm] = useState({
@@ -108,48 +117,74 @@ export default function SettingsPage() {
   }
 
   const handleSaveProfile = () => {
-    setProfileSaved(true)
-    setTimeout(() => setProfileSaved(false), 3000)
+    setProfileSaving(true)
+    setTimeout(() => {
+      setProfileSaving(false)
+      setProfileSaved(true)
+      setTimeout(() => setProfileSaved(false), 3000)
+    }, 1000)
   }
 
   const handleSavePassword = () => {
-    setPasswordSaved(true)
-    setTimeout(() => setPasswordSaved(false), 3000)
+    setPasswordSaving(true)
+    setTimeout(() => {
+      setPasswordSaving(false)
+      setPasswordSaved(true)
+      setTimeout(() => setPasswordSaved(false), 3000)
+    }, 1000)
   }
+
+  const inputClasses = "w-full px-4 py-2.5 bg-slate-800 border border-white/10 rounded-lg text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
 
   return (
     <DashboardLayout title="Settings" userName="Budi Santoso" userEmail="budi@example.com">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Pengaturan</h1>
-          <p className="text-gray-500 mt-1">Kelola profil, keamanan, dan preferensi notifikasi Anda</p>
+          <h1 className="text-3xl font-bold text-gray-100">Pengaturan</h1>
+          <p className="text-gray-400 mt-1">Kelola profil, keamanan, dan preferensi notifikasi Anda</p>
         </div>
 
         {/* Profile Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Profil</CardTitle>
-            <CardDescription>Update informasi profil Anda</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-slate-900 border border-white/10 rounded-xl p-6"
+        >
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-100">Profil</h2>
+            <p className="text-sm text-gray-400">Update informasi profil Anda</p>
+          </div>
+
+          <div className="space-y-6">
             {/* Avatar Upload */}
             <div className="flex items-center gap-6">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+              <div
+                className="relative cursor-pointer"
+                onMouseEnter={() => setAvatarHover(true)}
+                onMouseLeave={() => setAvatarHover(false)}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-2xl font-bold overflow-hidden ring-2 ring-blue-500/20">
                   {avatarPreview ? (
                     <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
                     "B"
                   )}
                 </div>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 bg-white border border-gray-200 rounded-full p-1.5 shadow-sm hover:bg-gray-50 transition-colors"
-                  title="Upload foto"
-                >
-                  <Camera className="w-3.5 h-3.5 text-gray-600" />
-                </button>
+                {/* Hover overlay */}
+                <AnimatePresence>
+                  {avatarHover && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center"
+                    >
+                      <Camera className="w-6 h-6 text-white" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -159,81 +194,103 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">Foto Profil</p>
+                <p className="text-sm font-medium text-gray-200">Foto Profil</p>
                 <p className="text-xs text-gray-500 mt-1">PNG, JPG, atau GIF (maks. 2MB)</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
+                <button
                   onClick={() => fileInputRef.current?.click()}
+                  className="mt-2 px-3 py-1.5 bg-slate-800 border border-white/10 rounded-lg text-xs text-gray-300 hover:bg-slate-700 transition-colors"
                 >
                   Ganti Foto
-                </Button>
+                </button>
               </div>
             </div>
 
             {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="nama">Nama Lengkap</Label>
-                <Input
+                <label htmlFor="nama" className="text-sm font-medium text-gray-300">Nama Lengkap</label>
+                <input
                   id="nama"
                   value={profileForm.nama}
                   onChange={(e) => setProfileForm({ ...profileForm, nama: e.target.value })}
+                  className={inputClasses}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
+                <label htmlFor="email" className="text-sm font-medium text-gray-300">Email</label>
+                <input
                   id="email"
                   type="email"
                   value={profileForm.email}
                   readOnly
-                  className="bg-gray-50 text-gray-500 cursor-not-allowed"
+                  className={`${inputClasses} opacity-50 cursor-not-allowed`}
                 />
                 <p className="text-xs text-gray-500">Email tidak dapat diubah</p>
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="telepon">Nomor Telepon</Label>
-                <Input
+                <label htmlFor="telepon" className="text-sm font-medium text-gray-300">Nomor Telepon</label>
+                <input
                   id="telepon"
                   value={profileForm.telepon}
                   onChange={(e) => setProfileForm({ ...profileForm, telepon: e.target.value })}
+                  className={inputClasses}
                 />
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <Button onClick={handleSaveProfile} className="gap-2">
-                {profileSaved && <Check className="w-4 h-4" />}
-                {profileSaved ? "Tersimpan!" : "Simpan Perubahan"}
-              </Button>
-              {profileSaved && <p className="text-sm text-green-600">Profil berhasil diperbarui</p>}
+              <button
+                onClick={handleSaveProfile}
+                disabled={profileSaving}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-lg text-sm font-medium transition-all duration-200"
+              >
+                {profileSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : profileSaved ? (
+                  <Check className="w-4 h-4" />
+                ) : null}
+                {profileSaving ? "Menyimpan..." : profileSaved ? "Tersimpan!" : "Simpan Perubahan"}
+              </button>
+              {profileSaved && (
+                <motion.p
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-sm text-emerald-400"
+                >
+                  Profil berhasil diperbarui
+                </motion.p>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </motion.div>
 
         {/* Change Password Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ubah Password</CardTitle>
-            <CardDescription>Pastikan akun Anda menggunakan password yang kuat</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-slate-900 border border-white/10 rounded-xl p-6"
+        >
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-100">Ubah Password</h2>
+            <p className="text-sm text-gray-400">Pastikan akun Anda menggunakan password yang kuat</p>
+          </div>
+
+          <div className="space-y-4">
             {/* Current Password */}
             <div className="space-y-2">
-              <Label htmlFor="current-pw">Password Saat Ini</Label>
+              <label htmlFor="current-pw" className="text-sm font-medium text-gray-300">Password Saat Ini</label>
               <div className="relative">
-                <Input
+                <input
                   id="current-pw"
                   type={showCurrentPw ? "text" : "password"}
                   placeholder="Masukkan password saat ini"
-                  className="pr-10"
+                  className={`${inputClasses} pr-10`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrentPw(!showCurrentPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
                 >
                   {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -242,20 +299,20 @@ export default function SettingsPage() {
 
             {/* New Password */}
             <div className="space-y-2">
-              <Label htmlFor="new-pw">Password Baru</Label>
+              <label htmlFor="new-pw" className="text-sm font-medium text-gray-300">Password Baru</label>
               <div className="relative">
-                <Input
+                <input
                   id="new-pw"
                   type={showNewPw ? "text" : "password"}
                   placeholder="Masukkan password baru"
-                  className="pr-10"
+                  className={`${inputClasses} pr-10`}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPw(!showNewPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
                 >
                   {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -265,18 +322,18 @@ export default function SettingsPage() {
 
             {/* Confirm Password */}
             <div className="space-y-2">
-              <Label htmlFor="confirm-pw">Konfirmasi Password Baru</Label>
+              <label htmlFor="confirm-pw" className="text-sm font-medium text-gray-300">Konfirmasi Password Baru</label>
               <div className="relative">
-                <Input
+                <input
                   id="confirm-pw"
                   type={showConfirmPw ? "text" : "password"}
                   placeholder="Ulangi password baru"
-                  className="pr-10"
+                  className={`${inputClasses} pr-10`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPw(!showConfirmPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
                 >
                   {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -284,22 +341,44 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex items-center gap-3 pt-2">
-              <Button onClick={handleSavePassword} className="gap-2">
-                {passwordSaved && <Check className="w-4 h-4" />}
-                {passwordSaved ? "Password Diperbarui!" : "Ubah Password"}
-              </Button>
-              {passwordSaved && <p className="text-sm text-green-600">Password berhasil diubah</p>}
+              <button
+                onClick={handleSavePassword}
+                disabled={passwordSaving}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-lg text-sm font-medium transition-all duration-200"
+              >
+                {passwordSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : passwordSaved ? (
+                  <Check className="w-4 h-4" />
+                ) : null}
+                {passwordSaving ? "Menyimpan..." : passwordSaved ? "Password Diperbarui!" : "Ubah Password"}
+              </button>
+              {passwordSaved && (
+                <motion.p
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-sm text-emerald-400"
+                >
+                  Password berhasil diubah
+                </motion.p>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </motion.div>
 
         {/* Notification Preferences */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Preferensi Notifikasi</CardTitle>
-            <CardDescription>Atur jenis notifikasi yang ingin Anda terima</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-slate-900 border border-white/10 rounded-xl p-6"
+        >
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-100">Preferensi Notifikasi</h2>
+            <p className="text-sm text-gray-400">Atur jenis notifikasi yang ingin Anda terima</p>
+          </div>
+
+          <div>
             <NotificationToggle
               label="Notifikasi Email"
               description="Terima ringkasan aktivitas via email setiap hari"
@@ -324,8 +403,8 @@ export default function SettingsPage() {
               icon={ShieldAlert}
               defaultChecked={true}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </motion.div>
       </div>
     </DashboardLayout>
   )

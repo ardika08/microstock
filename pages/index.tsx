@@ -23,7 +23,7 @@ const Home: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-slate-950 text-gray-100">
         <Navbar />
         <main>
           <Hero />

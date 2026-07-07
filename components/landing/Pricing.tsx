@@ -1,7 +1,6 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Button } from '~/components/ui/button';
-import { Card, CardHeader, CardContent, CardFooter } from '~/components/ui/card';
-import { Badge } from '~/components/ui/badge';
 import { Check, Zap, TrendingUp, Crown } from 'lucide-react';
 
 export function Pricing() {
@@ -9,6 +8,7 @@ export function Pricing() {
     {
       name: 'Free Trial',
       price: 'Gratis',
+      originalPrice: '',
       period: '',
       credits: '20 kredit',
       description: 'Coba fitur lengkap tanpa kartu kredit',
@@ -20,14 +20,17 @@ export function Pricing() {
         'Email support',
       ],
       icon: Zap,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      buttonVariant: 'outline' as const,
+      color: 'from-blue-500 to-blue-600',
+      iconColor: 'text-blue-400',
+      buttonClass: 'border border-white/10 text-gray-300 hover:bg-white/5 hover:text-white',
       buttonText: 'Mulai Gratis',
+      popular: false,
+      promo: false,
     },
     {
       name: 'Starter',
       price: 'Rp99.000',
+      originalPrice: 'Rp149.000',
       period: '/bulan',
       credits: '1.000 kredit/bulan',
       description: 'Untuk contributor yang konsisten',
@@ -40,16 +43,17 @@ export function Pricing() {
         'API access',
       ],
       icon: TrendingUp,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      buttonVariant: 'default' as const,
+      color: 'from-blue-500 to-cyan-400',
+      iconColor: 'text-blue-400',
+      buttonClass: 'bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0',
       buttonText: 'Mulai Sekarang',
-      badge: 'Most Popular',
-      promo: 'Harga Promo',
+      popular: true,
+      promo: true,
     },
     {
       name: 'Pay as You Go',
       price: 'Rp50.000',
+      originalPrice: '',
       period: '',
       credits: '500 kredit',
       description: 'Beli kredit sesuai kebutuhan',
@@ -61,131 +65,157 @@ export function Pricing() {
         'Semua fitur premium',
       ],
       icon: Crown,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      buttonVariant: 'outline' as const,
+      color: 'from-purple-500 to-purple-600',
+      iconColor: 'text-purple-400',
+      buttonClass: 'border border-white/10 text-gray-300 hover:bg-white/5 hover:text-white',
       buttonText: 'Beli Kredit',
+      popular: false,
+      promo: false,
     },
   ];
 
-  const enterprise = {
-    name: 'One-time Purchase',
-    price: 'Rp249.000',
-    credits: '3.000 kredit',
-    description: 'Hemat lebih dengan paket besar',
-    promo: 'Harga Promo',
-  };
-
   return (
-    <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
+    <section className="py-20 bg-gradient-to-b from-slate-950 via-slate-900/50 to-slate-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <Badge className="mb-4 bg-blue-100 text-blue-700">Harga</Badge>
-          <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+        <motion.div
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <span className="inline-block mb-4 px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
+            Harga
+          </span>
+          <h2 className="text-3xl font-bold text-gray-100 sm:text-4xl">
             Pilih Paket yang Sesuai
           </h2>
-          <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">
             Mulai gratis, upgrade kapan saja. Tanpa kontrak, cancel kapan saja.
           </p>
-        </div>
-        
+        </motion.div>
+
         <div className="grid gap-8 lg:grid-cols-3 max-w-7xl mx-auto mb-12">
           {plans.map((plan, index) => (
-            <Card 
+            <motion.div
               key={index}
-              className={`relative ${plan.badge ? 'border-2 border-blue-600 shadow-xl scale-105' : 'border-gray-200'}`}
+              className={`relative group rounded-2xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-500/10 ${
+                plan.popular
+                  ? 'bg-slate-900/80 backdrop-blur-xl border-2 border-blue-500/50 shadow-lg shadow-blue-500/10'
+                  : 'bg-slate-900/50 backdrop-blur-sm border border-white/10 hover:border-white/20'
+              }`}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              {plan.badge && (
+              {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-blue-600 text-white px-4 py-1">
-                    {plan.badge}
-                  </Badge>
+                  <span className="inline-flex items-center px-4 py-1 rounded-full text-sm font-bold bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/25 animate-pulse">
+                    Most Popular
+                  </span>
                 </div>
               )}
-              
+
               {plan.promo && (
                 <div className="absolute -top-2 -right-2">
-                  <Badge className="bg-red-500 text-white px-3 py-1 shadow-md">
-                    {plan.promo}
-                  </Badge>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-lg shadow-emerald-500/25">
+                    Harga Promo
+                  </span>
                 </div>
               )}
-              
-              <CardHeader>
-                <div className={`w-12 h-12 rounded-lg ${plan.bgColor} flex items-center justify-center mb-4`}>
-                  <plan.icon className={`w-6 h-6 ${plan.color}`} />
+
+              <div className="p-8">
+                {/* Icon */}
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.color} p-[1px] mb-4`}>
+                  <div className="w-full h-full rounded-xl bg-slate-900 flex items-center justify-center">
+                    <plan.icon className={`w-6 h-6 ${plan.iconColor}`} />
+                  </div>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                  {plan.period && <span className="text-gray-600">{plan.period}</span>}
+
+                <h3 className="text-2xl font-bold text-gray-100">{plan.name}</h3>
+
+                <div className="mt-4 flex items-baseline gap-2">
+                  {plan.originalPrice && (
+                    <span className="text-lg text-gray-500 line-through">{plan.originalPrice}</span>
+                  )}
+                  <span className="text-4xl font-bold text-gray-100">{plan.price}</span>
+                  {plan.period && <span className="text-gray-400">{plan.period}</span>}
                 </div>
-                <p className="text-sm font-medium text-blue-600 mt-2">{plan.credits}</p>
-                <p className="text-sm text-gray-600 mt-2">{plan.description}</p>
-              </CardHeader>
-              
-              <CardContent>
-                <ul className="space-y-3">
+
+                <p className="text-sm font-medium text-blue-400 mt-2">{plan.credits}</p>
+                <p className="text-sm text-gray-400 mt-2">{plan.description}</p>
+
+                {/* Features */}
+                <ul className="mt-8 space-y-3">
                   {plan.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">{feature}</span>
+                      <Check className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-300">{feature}</span>
                     </li>
                   ))}
                 </ul>
-              </CardContent>
-              
-              <CardFooter>
-                <Button 
-                  className="w-full"
-                  variant={plan.buttonVariant}
+
+                <Button
+                  className={`w-full mt-8 ${plan.buttonClass}`}
                   size="lg"
                 >
                   {plan.buttonText}
                 </Button>
-              </CardFooter>
-            </Card>
+              </div>
+            </motion.div>
           ))}
         </div>
-        
+
         {/* One-time Purchase Banner */}
-        <div className="max-w-4xl mx-auto">
-          <Card className="border-2 border-purple-600 bg-gradient-to-r from-purple-50 to-blue-50 relative overflow-hidden">
+        <motion.div
+          className="max-w-4xl mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <div className="rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-purple-500/30 p-8 relative overflow-hidden">
+            {/* Background glow */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
+
             <div className="absolute -top-2 -right-2">
-              <Badge className="bg-red-500 text-white px-3 py-1 shadow-md">
-                {enterprise.promo}
-              </Badge>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-lg shadow-emerald-500/25">
+                Harga Promo
+              </span>
             </div>
-            <CardContent className="p-8">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                      <Crown className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900">{enterprise.name}</h3>
-                      <p className="text-sm text-purple-600 font-medium">{enterprise.credits}</p>
+
+            <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-[1px]">
+                    <div className="w-full h-full rounded-xl bg-slate-900 flex items-center justify-center">
+                      <Crown className="w-6 h-6 text-purple-400" />
                     </div>
                   </div>
-                  <p className="text-gray-600">{enterprise.description}</p>
-                  <div className="mt-4 flex items-center gap-4">
-                    <div>
-                      <span className="text-3xl font-bold text-gray-900">{enterprise.price}</span>
-                    </div>
-                    <Badge className="bg-green-100 text-green-700">
-                      Hemat 17%
-                    </Badge>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-100">One-time Purchase</h3>
+                    <p className="text-sm text-purple-400 font-medium">3.000 kredit</p>
                   </div>
                 </div>
-                <Button size="lg" className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap">
-                  Beli Sekarang
-                </Button>
+                <p className="text-gray-400">Hemat lebih dengan paket besar</p>
+                <div className="mt-4 flex items-center gap-4">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-lg text-gray-500 line-through">Rp349.000</span>
+                    <span className="text-3xl font-bold text-gray-100">Rp249.000</span>
+                  </div>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Hemat 17%
+                  </span>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-        
+              <Button size="lg" className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg shadow-purple-500/25 whitespace-nowrap">
+                Beli Sekarang
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+
         <p className="text-center text-sm text-gray-500 mt-8">
           Semua paket termasuk update gratis dan tanpa biaya tersembunyi
         </p>

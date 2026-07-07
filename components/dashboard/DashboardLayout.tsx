@@ -1,5 +1,7 @@
 import React from "react"
 import Head from "next/head"
+import { motion, AnimatePresence } from "framer-motion"
+import { useRouter } from "next/router"
 import Sidebar from "./Sidebar"
 
 interface DashboardLayoutProps {
@@ -15,6 +17,8 @@ export default function DashboardLayout({
   userName,
   userEmail,
 }: DashboardLayoutProps) {
+  const router = useRouter()
+
   return (
     <>
       <Head>
@@ -22,14 +26,23 @@ export default function DashboardLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <div className="flex h-screen overflow-hidden bg-gray-50">
+      <div className="flex h-screen overflow-hidden bg-slate-950">
         <Sidebar userName={userName} userEmail={userEmail} />
-        
-        {/* Main content - flex-1 with proper overflow */}
+
+        {/* Main content with page transition */}
         <main className="flex-1 overflow-auto lg:ml-0">
-          <div className="px-4 sm:px-6 lg:px-8 py-8">
-            {children}
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={router.pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="px-4 sm:px-6 lg:px-8 py-8"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </>

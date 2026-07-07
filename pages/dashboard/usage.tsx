@@ -1,8 +1,7 @@
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
+import { motion } from "framer-motion"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Button } from "~/components/ui/button"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts"
 import { TrendingUp, CreditCard, Calendar, BarChart2 } from "lucide-react"
 
 // Dummy chart data
@@ -35,9 +34,28 @@ const recentActivity = Array.from({ length: 10 }, (_, i) => ({
   date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toLocaleDateString("id-ID"),
 }))
 
+const periods = [
+  { key: "day" as const, label: "Hari" },
+  { key: "week" as const, label: "Minggu" },
+  { key: "month" as const, label: "Bulan" },
+]
+
+// Custom dark tooltip
+function CustomTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 shadow-xl">
+        <p className="text-xs text-gray-400">{label}</p>
+        <p className="text-sm font-semibold text-gray-100">{payload[0].value} generate</p>
+      </div>
+    )
+  }
+  return null
+}
+
 export default function UsagePage() {
   const [chartPeriod, setChartPeriod] = useState<"day" | "week" | "month">("day")
-  const chartData = generateChartData(chartPeriod)
+  const chartData = useMemo(() => generateChartData(chartPeriod), [chartPeriod])
 
   const stats = [
     {
@@ -45,8 +63,8 @@ export default function UsagePage() {
       value: "1,234",
       subtitle: "Generate",
       icon: TrendingUp,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      iconBg: "bg-blue-500/10",
+      iconColor: "text-blue-400",
     },
     {
       title: "Kredit Tersisa",
@@ -54,159 +72,180 @@ export default function UsagePage() {
       subtitle: "dari 2,000",
       progress: 42.35,
       icon: CreditCard,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      iconBg: "bg-emerald-500/10",
+      iconColor: "text-emerald-400",
     },
     {
       title: "Periode Aktif",
       value: "23 Hari",
       subtitle: "tersisa",
       icon: Calendar,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      iconBg: "bg-purple-500/10",
+      iconColor: "text-purple-400",
     },
     {
       title: "Rata-rata Harian",
       value: "12",
       subtitle: "generate/hari",
       icon: BarChart2,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
+      iconBg: "bg-amber-500/10",
+      iconColor: "text-amber-400",
     },
   ]
+
+  const activeIndex = periods.findIndex((p) => p.key === chartPeriod)
 
   return (
     <DashboardLayout title="Usage" userName="Budi Santoso" userEmail="budi@example.com">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Usage Analytics</h1>
-          <p className="text-gray-500 mt-1">Monitor penggunaan kredit dan aktivitas Anda</p>
+          <h1 className="text-3xl font-bold text-gray-100">Usage Analytics</h1>
+          <p className="text-gray-400 mt-1">Monitor penggunaan kredit dan aktivitas Anda</p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat) => {
+          {stats.map((stat, i) => {
             const Icon = stat.icon
             return (
-              <Card key={stat.title} className="hover:shadow-md transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
-                      <p className="text-xs text-gray-500 mt-1">{stat.subtitle}</p>
-                    </div>
-                    <div className={`${stat.bgColor} p-3 rounded-lg`}>
-                      <Icon className={`w-6 h-6 ${stat.color}`} />
-                    </div>
+              <motion.div
+                key={stat.title}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+                className="bg-slate-900 border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-200"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-400">{stat.title}</p>
+                    <p className="text-2xl font-bold text-gray-100 mt-2">{stat.value}</p>
+                    <p className="text-xs text-gray-500 mt-1">{stat.subtitle}</p>
                   </div>
-                  {stat.progress !== undefined && (
-                    <div className="mt-3">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-green-600 h-2 rounded-full transition-all"
-                          style={{ width: `${stat.progress}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">{stat.progress.toFixed(1)}% terpakai</p>
+                  <div className={`${stat.iconBg} p-3 rounded-lg`}>
+                    <Icon className={`w-6 h-6 ${stat.iconColor}`} />
+                  </div>
+                </div>
+                {stat.progress !== undefined && (
+                  <div className="mt-3">
+                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${stat.progress}%` }}
+                        transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
+                        className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                      />
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                    <p className="text-xs text-gray-500 mt-1">{stat.progress.toFixed(1)}% terpakai</p>
+                  </div>
+                )}
+              </motion.div>
             )
           })}
         </div>
 
         {/* Chart */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Grafik Penggunaan</CardTitle>
-                <CardDescription>Tren penggunaan kredit Anda</CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={chartPeriod === "day" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setChartPeriod("day")}
-                >
-                  Hari
-                </Button>
-                <Button
-                  variant={chartPeriod === "week" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setChartPeriod("week")}
-                >
-                  Minggu
-                </Button>
-                <Button
-                  variant={chartPeriod === "month" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setChartPeriod("month")}
-                >
-                  Bulan
-                </Button>
-              </div>
+        <div className="bg-slate-900 border border-white/10 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-100">Grafik Penggunaan</h2>
+              <p className="text-sm text-gray-400">Tren penggunaan kredit Anda</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="usage"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    dot={{ fill: "#2563eb" }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            {/* Tab toggle with sliding indicator */}
+            <div className="relative flex bg-slate-800 border border-white/10 rounded-lg p-1">
+              <motion.div
+                className="absolute top-1 bottom-1 bg-blue-500/20 border border-blue-500/30 rounded-md"
+                initial={false}
+                animate={{
+                  left: `${activeIndex * 33.33 + 0.5}%`,
+                  width: "32.33%",
+                }}
+                transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                style={{ position: "absolute" }}
+              />
+              {periods.map((period) => (
+                <button
+                  key={period.key}
+                  onClick={() => setChartPeriod(period.key)}
+                  className={`relative z-10 px-4 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 ${
+                    chartPeriod === period.key ? "text-blue-400" : "text-gray-400 hover:text-gray-200"
+                  }`}
+                >
+                  {period.label}
+                </button>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="usageGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis
+                  dataKey="name"
+                  stroke="rgba(255,255,255,0.3)"
+                  tick={{ fill: "#9ca3af", fontSize: 12 }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                />
+                <YAxis
+                  stroke="rgba(255,255,255,0.3)"
+                  tick={{ fill: "#9ca3af", fontSize: 12 }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="usage"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  fill="url(#usageGradient)"
+                  dot={{ fill: "#3b82f6", strokeWidth: 0, r: 4 }}
+                  activeDot={{ fill: "#60a5fa", strokeWidth: 0, r: 6 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
         {/* Recent Activity Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Aktivitas Terkini</CardTitle>
-            <CardDescription>10 aktivitas terakhir Anda</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">No</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Tanggal</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Aksi</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">File</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kredit</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Waktu</th>
+        <div className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/10">
+            <h2 className="text-lg font-semibold text-gray-100">Aktivitas Terkini</h2>
+            <p className="text-sm text-gray-400">10 aktivitas terakhir Anda</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-900 border-b border-white/10">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">No</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Tanggal</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Aksi</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">File</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Kredit</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Waktu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentActivity.map((item, idx) => (
+                  <tr key={item.id} className="bg-slate-950 border-b border-white/5 hover:bg-white/5 transition-colors duration-150">
+                    <td className="px-4 py-3 text-sm text-gray-300">{idx + 1}</td>
+                    <td className="px-4 py-3 text-sm text-gray-400">{item.date}</td>
+                    <td className="px-4 py-3 text-sm text-gray-200">{item.action}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-200">{item.file}</td>
+                    <td className="px-4 py-3 text-sm text-gray-400">-{item.credits} kredit</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{item.time}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {recentActivity.map((item, idx) => (
-                    <tr key={item.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-900">{idx + 1}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{item.date}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{item.action}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.file}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">-{item.credits} kredit</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{item.time}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   )

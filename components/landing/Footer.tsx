@@ -52,19 +52,24 @@ export function Footer() {
   ];
 
   return (
-    <footer className="bg-gray-900 text-gray-300">
+    <footer className="bg-slate-950 text-gray-300">
+      {/* Top border gradient */}
+      <div className="h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Top section */}
         <div className="py-16 grid gap-12 sm:grid-cols-2 lg:grid-cols-5">
           {/* Brand */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400">
                 <Zap className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-white">Autofillstock</span>
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                Autofillstock
+              </span>
             </div>
-            <p className="text-sm text-gray-400 leading-relaxed mb-6">
+            <p className="text-sm text-gray-500 leading-relaxed mb-6">
               Otomasi metadata microstock dengan kecerdasan buatan. Hemat waktu, tingkatkan kualitas.
             </p>
             <div className="flex items-center gap-3">
@@ -73,7 +78,7 @@ export function Footer() {
                   key={label}
                   href={href}
                   aria-label={label}
-                  className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-blue-600 flex items-center justify-center transition-colors"
+                  className="w-9 h-9 rounded-lg bg-slate-800/50 border border-white/5 hover:bg-blue-500/20 hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/10 flex items-center justify-center transition-all duration-300"
                 >
                   <Icon className="w-4 h-4" />
                 </a>
@@ -84,7 +89,7 @@ export function Footer() {
           {/* Sitemap columns */}
           {sitemap.map((col) => (
             <div key={col.heading}>
-              <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
+              <h4 className="text-sm font-semibold text-gray-200 uppercase tracking-wider mb-4">
                 {col.heading}
               </h4>
               <ul className="space-y-2">
@@ -92,7 +97,7 @@ export function Footer() {
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-sm text-gray-400 hover:text-white transition-colors"
+                      className="text-sm text-gray-500 hover:text-blue-400 transition-colors"
                     >
                       {link.label}
                     </a>
@@ -104,11 +109,11 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-gray-800 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-500">
+        <div className="border-t border-white/5 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-gray-600">
             © {currentYear} Autofillstock. Hak cipta dilindungi undang-undang.
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-600">
             Dibuat dengan ❤️ untuk para contributor microstock Indonesia
           </p>
         </div>
