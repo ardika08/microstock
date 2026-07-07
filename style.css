@@ -43,11 +43,15 @@
   --ring: 221 83% 60%;
 }
 
-html,
-body,
+/* Plasmo extension popup only — DO NOT apply to Next.js pages */
 #plasmo-shadow-container {
   width: 420px;
   min-height: 560px;
+  margin: 0;
+}
+
+html,
+body {
   margin: 0;
 }
 
