@@ -2,24 +2,24 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '../auth/[...nextauth]'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-// Real Mayar payment links (grafista.myr.id subdomain)
-// Top Up 50 Kredit: existing product ff92f2d2 — Rp 25.000 → 500 credits
-// Autofillstock Starter: 66ed609e — Rp 99.000/bulan → unlimited
-// Autofillstock One-time: 40516d6c — Rp 249.000 → lifetime
+// Autofillstock Mayar products — created 2026-07-07
+// topup:    ba1ed3c5 → https://grafista.myr.id/pl/x5ccueante/   Rp 50.000
+// starter:  1c00b12d → https://grafista.myr.id/pl/5xeynu09am/   Rp 99.000/bln
+// lifetime: cc3f4f43 → https://grafista.myr.id/pl/wwmv0zc76q/   Rp 249.000
 const PRODUCT_LINKS: Record<string, { url: string; name: string; price: number }> = {
   topup_500: {
-    url: 'https://grafista.myr.id/pl/top-up-50-kredit',
-    name: 'Top Up 500 Kredit',
-    price: 25000,
+    url: 'https://grafista.myr.id/pl/x5ccueante/',
+    name: 'Autofillstock - Top Up 500 Kredit',
+    price: 50000,
   },
   starter_monthly: {
-    url: 'https://grafista.myr.id/pl/h9fo5uxzz9/',
-    name: 'Autofillstock Starter (Bulanan)',
+    url: 'https://grafista.myr.id/pl/5xeynu09am/',
+    name: 'Autofillstock - Starter Bulanan',
     price: 99000,
   },
   lifetime: {
-    url: 'https://grafista.myr.id/pl/7uxwf9mqd9/',
-    name: 'Autofillstock One-time (Lifetime)',
+    url: 'https://grafista.myr.id/pl/wwmv0zc76q/',
+    name: 'Autofillstock - One-time Lifetime',
     price: 249000,
   },
 }
@@ -37,7 +37,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const product = PRODUCT_LINKS[productType]
 
-  // Mayar handles the full checkout page — we just return the URL to redirect the user
   return res.status(200).json({
     checkoutUrl: product.url,
     productName: product.name,
