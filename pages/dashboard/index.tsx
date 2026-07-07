@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
+import { useUser } from "~/hooks/useUser"
 import { Copy, Check, TrendingUp, CreditCard, Package, BarChart2, Download, Chrome, Monitor, Plus, Zap, ArrowRight } from "lucide-react"
 
 function SkeletonCard() {
@@ -20,6 +21,7 @@ function SkeletonCard() {
 export default function DashboardPage() {
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
+  const { credits, planType, creditsUsed, isLoading: sessionLoading } = useUser()
   const activationCode = "ACTV-2024-XXXX-YYYY-ZZZZ"
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export default function DashboardPage() {
     },
     {
       title: "Kredit Tersisa",
-      value: "847",
+      value: sessionLoading ? "..." : String(credits),
       icon: CreditCard,
       borderColor: "border-l-emerald-500",
       iconBg: "bg-emerald-500/10",
@@ -52,7 +54,7 @@ export default function DashboardPage() {
     },
     {
       title: "Paket Aktif",
-      value: "Starter",
+      value: sessionLoading ? "..." : (planType === "free" ? "Free" : planType === "starter" ? "Starter" : planType === "lifetime" ? "Lifetime" : planType ?? "Free"),
       icon: Package,
       borderColor: "border-l-amber-500",
       iconBg: "bg-amber-500/10",

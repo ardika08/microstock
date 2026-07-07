@@ -1,7 +1,9 @@
 import React, { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/router"
 import { motion, AnimatePresence } from "framer-motion"
+import { signOut } from "next-auth/react"
 import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X, Sparkles } from "lucide-react"
 import AvatarMenu from "./AvatarMenu"
 
@@ -17,16 +19,24 @@ const navItems = [
 interface SidebarProps {
   userName?: string
   userEmail?: string
+  userImage?: string
 }
 
-export default function Sidebar({ userName = "John Doe", userEmail = "john@example.com" }: SidebarProps) {
+export default function Sidebar({
+  userName = "User",
+  userEmail = "",
+  userImage,
+}: SidebarProps) {
   const router = useRouter()
   const [showAvatarMenu, setShowAvatarMenu] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
-  const handleLogout = () => {
-    router.push("/")
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/auth/login" })
   }
+
+  // First letter fallback avatar
+  const initials = (userName ?? "U").charAt(0).toUpperCase()
 
   const sidebarContent = (
     <>
@@ -74,9 +84,20 @@ export default function Sidebar({ userName = "John Doe", userEmail = "john@examp
           onClick={() => setShowAvatarMenu(!showAvatarMenu)}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 transition-all duration-200"
         >
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 ring-2 ring-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.3)]">
-            {userName.charAt(0).toUpperCase()}
-          </div>
+          {/* Avatar: real image or gradient initial */}
+          {userImage ? (
+            <Image
+              src={userImage}
+              alt={userName ?? "avatar"}
+              width={36}
+              height={36}
+              className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.3)] flex-shrink-0"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 ring-2 ring-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.3)]">
+              {initials}
+            </div>
+          )}
           <div className="flex-1 text-left min-w-0">
             <p className="text-sm font-medium text-gray-100 truncate">{userName}</p>
             <p className="text-xs text-gray-500 truncate">{userEmail}</p>
@@ -87,8 +108,8 @@ export default function Sidebar({ userName = "John Doe", userEmail = "john@examp
         <AnimatePresence>
           {showAvatarMenu && (
             <AvatarMenu
-              name={userName}
-              email={userEmail}
+              name={userName ?? "User"}
+              email={userEmail ?? ""}
               onClose={() => setShowAvatarMenu(false)}
               onLogout={handleLogout}
             />

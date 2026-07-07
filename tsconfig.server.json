@@ -3,6 +3,9 @@
   "include": [
     "pages/**/*.ts",
     "pages/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "hooks/**/*.ts",
     "server/**/*.ts",
     "next.config.js"
   ],
