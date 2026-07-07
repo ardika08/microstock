@@ -1,7 +1,8 @@
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useSession } from "next-auth/react"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
-import { Camera, Eye, EyeOff, Bell, Mail, MessageSquare, ShieldAlert, Check, Loader2 } from "lucide-react"
+import { Camera, Eye, EyeOff, Bell, Mail, MessageSquare, ShieldAlert, Check, Loader2, Key } from "lucide-react"
 
 function PasswordStrengthMeter({ password }: { password: string }) {
   const getStrength = (pw: string) => {
@@ -98,6 +99,10 @@ export default function SettingsPage() {
   const [profileSaved, setProfileSaved] = useState(false)
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordSaved, setPasswordSaved] = useState(false)
+  const [apiKey, setApiKey] = useState("")
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [apiKeySaving, setApiKeySaving] = useState(false)
+  const [apiKeySaved, setApiKeySaved] = useState(false)
   const [avatarHover, setAvatarHover] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -123,6 +128,19 @@ export default function SettingsPage() {
       setProfileSaved(true)
       setTimeout(() => setProfileSaved(false), 3000)
     }, 1000)
+  }
+
+  const handleSaveApiKey = () => {
+    setApiKeySaving(true)
+    // Save to localStorage (accessible by extension via chrome.storage or web dashboard)
+    try {
+      localStorage.setItem('autofillstock_openai_key', apiKey.trim())
+    } catch {}
+    setTimeout(() => {
+      setApiKeySaving(false)
+      setApiKeySaved(true)
+      setTimeout(() => setApiKeySaved(false), 3000)
+    }, 800)
   }
 
   const handleSavePassword = () => {
@@ -261,6 +279,82 @@ export default function SettingsPage() {
                 </motion.p>
               )}
             </div>
+          </div>
+        </motion.div>
+
+        {/* OpenAI API Key Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-slate-900 border border-white/10 rounded-xl p-6"
+        >
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Key className="w-5 h-5 text-blue-400" />
+              <h2 className="text-lg font-semibold text-gray-100">OpenAI API Key</h2>
+            </div>
+            <p className="text-sm text-gray-400">
+              Diperlukan untuk paket Free Trial dan One-time. Paket Starter menggunakan API key dari server.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                API Key
+              </label>
+              <div className="relative">
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className={inputClasses + " pr-10"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                >
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1.5">
+                Dapatkan API key di <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">platform.openai.com/api-keys</a>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSaveApiKey}
+                disabled={apiKeySaving || !apiKey.startsWith('sk-')}
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-all duration-200"
+              >
+                {apiKeySaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : apiKeySaved ? (
+                  <Check className="w-4 h-4 text-emerald-300" />
+                ) : (
+                  <Key className="w-4 h-4" />
+                )}
+                {apiKeySaving ? "Menyimpan..." : apiKeySaved ? "Tersimpan!" : "Simpan API Key"}
+              </button>
+              {apiKey && (
+                <button
+                  onClick={() => { setApiKey(''); setApiKeySaved(false) }}
+                  className="px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all duration-200"
+                >
+                  Hapus
+                </button>
+              )}
+            </div>
+
+            {apiKeySaved && (
+              <p className="text-xs text-emerald-400 flex items-center gap-1">
+                <Check className="w-3 h-3" /> API key tersimpan di browser lokal
+              </p>
+            )}
           </div>
         </motion.div>
 
