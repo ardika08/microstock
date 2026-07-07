@@ -15,23 +15,25 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-  // Fix for reverse proxy (Nginx) — Next.js receives HTTP but cookies need Secure flag
+  // useSecureCookies: true tells NextAuth cookies are Secure even though
+  // Next.js receives plain HTTP from Nginx (Nginx terminates SSL)
+  useSecureCookies: true,
   cookies: {
     sessionToken: {
-      name: `next-auth.session-token`,
+      name: `__Secure-next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: true,
       },
     },
     callbackUrl: {
-      name: `next-auth.callback-url`,
+      name: `__Secure-next-auth.callback-url`,
       options: {
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: true,
       },
     },
     csrfToken: {
@@ -40,26 +42,26 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: true,
       },
     },
     state: {
-      name: `next-auth.state`,
+      name: `__Secure-next-auth.state`,
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 900, // 15 minutes
+        secure: true,
+        maxAge: 900,
       },
     },
     pkceCodeVerifier: {
-      name: `next-auth.pkce.code_verifier`,
+      name: `__Secure-next-auth.pkce.code_verifier`,
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: true,
         maxAge: 900,
       },
     },
@@ -68,12 +70,10 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       if (!user.email) return false
 
-      // Check if user exists, create if not
       const existing = await db.select().from(schema.users)
         .where(eq(schema.users.email, user.email)).limit(1)
 
       if (existing.length === 0) {
-        // New user — give free trial credits
         await db.insert(schema.users).values({
           email: user.email as string,
           name: user.name ?? null,
