@@ -32,7 +32,7 @@ const nextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https://*.googleusercontent.com",
+              "img-src 'self' data: blob: https://*.googleusercontent.com",
               "connect-src 'self' https://api.openai.com https://api.mayar.id",
               "font-src 'self'",
               "frame-ancestors 'none'",
