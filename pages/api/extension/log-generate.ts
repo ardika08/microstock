@@ -1,0 +1,101 @@
+import { neon } from '@neondatabase/serverless'
+import { drizzle } from 'drizzle-orm/neon-http'
+import * as schema from '~/server/db/schema-pg'
+import { eq } from 'drizzle-orm'
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+function getDb() {
+  const sql = neon(process.env.DATABASE_URL!)
+  return drizzle(sql, { schema })
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // CORS for Chrome extension
+  const origin = req.headers.origin || ''
+  const allowedOrigin = process.env.ACTIVATION_ALLOWED_ORIGIN || ''
+
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin || '*')
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    return res.status(200).end()
+  }
+
+  if (origin && allowedOrigin && origin !== allowedOrigin) {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin || '*')
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  const { activationCode, platform, filename, title } = req.body
+
+  if (!activationCode) {
+    return res.status(400).json({ error: 'Activation code required' })
+  }
+
+  try {
+    const db = getDb()
+
+    // Find activation code in PostgreSQL
+    const codes = await db.select().from(schema.activationCodes)
+      .where(eq(schema.activationCodes.code, activationCode)).limit(1)
+
+    if (!codes[0] || !codes[0].userId) {
+      return res.status(401).json({ error: 'Kode aktivasi tidak valid' })
+    }
+
+    const userId = codes[0].userId
+
+    // Get user
+    const users = await db.select().from(schema.users)
+      .where(eq(schema.users.id, userId)).limit(1)
+
+    if (!users[0]) {
+      return res.status(404).json({ error: 'User tidak ditemukan' })
+    }
+
+    const user = users[0]
+
+    // Deduct credit for free/topup plans
+    if (user.planType !== 'starter' && user.planType !== 'lifetime') {
+      if ((user.credits ?? 0) <= 0) {
+        return res.status(402).json({ error: 'Kredit habis. Silakan top up.' })
+      }
+      await db.update(schema.users)
+        .set({
+          credits: (user.credits ?? 1) - 1,
+          creditsUsed: (user.creditsUsed ?? 0) + 1,
+        } as any)
+        .where(eq(schema.users.id, userId))
+    } else {
+      // Starter/lifetime: just increment creditsUsed for tracking
+      await db.update(schema.users)
+        .set({ creditsUsed: (user.creditsUsed ?? 0) + 1 } as any)
+        .where(eq(schema.users.id, userId))
+    }
+
+    // Save to generate_history
+    await db.insert(schema.generateHistory).values({
+      userId,
+      platform: platform || 'extension',
+      filename: filename || 'unknown',
+      title: title || '',
+      creditsUsed: 1,
+    } as any)
+
+    const creditsRemaining = user.planType === 'starter' || user.planType === 'lifetime'
+      ? null
+      : (user.credits ?? 1) - 1
+
+    return res.status(200).json({
+      success: true,
+      creditsRemaining
+    })
+
+  } catch (err) {
+    console.error('[log-generate] Error:', err)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+}

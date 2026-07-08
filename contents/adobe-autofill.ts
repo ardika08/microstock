@@ -1839,6 +1839,32 @@ function createFloatingPanel(settings: AppSettings) {
     }
   }
 
+  async function logGenerateToServer(
+    result: { title?: string; description?: string },
+    filename: string,
+    platform: string
+  ) {
+    try {
+      const stored = await chrome.storage.local.get(["activation_code"])
+      const activationCode = stored.activation_code
+      if (!activationCode) return
+
+      await fetch("https://autofillstock.my.id/api/extension/log-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activationCode,
+          platform,
+          filename,
+          title: result.title || result.description || "",
+        })
+      })
+    } catch (err) {
+      // Silent fail — don't break the extension
+      console.log("[autofillstock] Failed to log generate:", err)
+    }
+  }
+
   async function processCurrentAsset(settings: Awaited<ReturnType<typeof getSettings>>) {
     const brief = readPageBrief()
     let metadata = await generateMetadata(settings.openai_api_key || "", brief)
@@ -1871,6 +1897,13 @@ function createFloatingPanel(settings: AppSettings) {
     })
     settings.usage_count = usageCount
     await autofill(metadata)
+
+    // Non-blocking: log usage to server for dashboard history + credit sync
+    const platform = getCurrentPlatform(settings)
+    const filename = isShutterstockUploadPage()
+      ? getShutterstockActiveFileName()
+      : (document.title || "unknown")
+    logGenerateToServer(metadata, filename, platform)
 
     return metadata
   }
