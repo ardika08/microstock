@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from '~/server/db/schema-pg'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 function getDb() {
@@ -68,17 +68,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const user = users[0]
 
-    // Deduct credit for free/topup plans
+    // ✅ Atomic credit deduction — cegah double-spend pada concurrent requests
+    // Gunakan SQL-level decrement dengan guard credits > 0
     if (user.planType !== 'starter' && user.planType !== 'lifetime') {
       if ((user.credits ?? 0) <= 0) {
         return res.status(402).json({ error: 'Kredit habis. Silakan top up.' })
       }
-      await db.update(schema.users)
-        .set({
-          credits: (user.credits ?? 1) - 1,
-          creditsUsed: (user.creditsUsed ?? 0) + 1,
-        } as any)
-        .where(eq(schema.users.id, userId))
+      // Atomic: decrement hanya jika credits > 0, cek di level DB
+      const result = await db.execute(
+        sql`UPDATE users SET credits = credits - 1, credits_used = COALESCE(credits_used, 0) + 1 WHERE id = ${userId} AND credits > 0 RETURNING credits`
+      )
+      // Jika 0 rows ter-update berarti kredit sudah habis (concurrent request)
+      if (!result.rows || result.rows.length === 0) {
+        return res.status(402).json({ error: 'Kredit habis. Silakan top up.' })
+      }
     } else {
       // Starter/lifetime: just increment creditsUsed for tracking
       await db.update(schema.users)

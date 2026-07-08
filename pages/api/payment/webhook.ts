@@ -40,8 +40,8 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Pr
 }
 
 async function generateActivationCode(): Promise<string> {
-  const chars = '0123456789ABCDEF'
-  const seg = () => Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * 16)]).join('')
+  const { randomBytes } = await import('crypto')
+  const seg = () => randomBytes(3).toString('hex').toUpperCase()
   return `ASAF-${seg()}-${seg()}`
 }
 

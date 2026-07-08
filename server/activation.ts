@@ -28,53 +28,58 @@ export async function validateActivationCode(
     }
   }
 
-  const record = db
-    .select()
-    .from(activationCodes)
-    .where(eq(activationCodes.code, code))
-    .get()
+  // ✅ Atomic UPDATE — cegah race condition TOCTOU
+  // Hanya update jika status masih ACTIVE, cek expiry sekaligus
+  // Jika 0 rows ter-update berarti kode sudah USED/REVOKED/EXPIRED/NOT_FOUND
+  try {
+    const updated = db.transaction(() => {
+      // Cek dulu apakah kode ada dan statusnya
+      const record = db
+        .select()
+        .from(activationCodes)
+        .where(eq(activationCodes.code, code))
+        .get()
 
-  if (!record) {
-    return {
-      valid: false,
-      status: "NOT_FOUND",
-      message: "Kode aktivasi tidak ditemukan."
+      if (!record) return { result: 'NOT_FOUND' as const, record: null }
+      if (record.status === 'REVOKED') return { result: 'REVOKED' as const, record }
+      if (record.status === 'USED') return { result: 'USED' as const, record }
+      if (record.expiresAt && Date.parse(record.expiresAt) < Date.now()) {
+        return { result: 'EXPIRED' as const, record }
+      }
+
+      // ✅ Atomic: UPDATE hanya jika status masih ACTIVE
+      // Gunakan WHERE code = ? AND status = 'ACTIVE' untuk mencegah double-use
+      const stmt = db.run(
+        sql`UPDATE activation_codes SET status = 'USED' WHERE code = ${code} AND status = 'ACTIVE'`
+      )
+
+      // Jika 0 rows berubah berarti concurrent request sudah mark USED duluan
+      if (stmt.changes === 0) return { result: 'USED' as const, record }
+
+      return { result: 'SUCCESS' as const, record }
+    })
+
+    if (updated.result === 'NOT_FOUND') {
+      return { valid: false, status: 'NOT_FOUND', message: 'Kode aktivasi tidak ditemukan.' }
     }
-  }
-
-  if (record.status === "REVOKED") {
-    return {
-      valid: false,
-      status: "REVOKED",
-      message: "Kode aktivasi sudah dicabut."
+    if (updated.result === 'REVOKED') {
+      return { valid: false, status: 'REVOKED', message: 'Kode aktivasi sudah dicabut.' }
     }
-  }
-
-  if (record.status === "USED") {
-    return {
-      valid: false,
-      status: "USED",
-      message: "Kode aktivasi sudah digunakan."
+    if (updated.result === 'USED') {
+      return { valid: false, status: 'USED', message: 'Kode aktivasi sudah digunakan.' }
     }
-  }
-
-  if (record.expiresAt && Date.parse(record.expiresAt) < Date.now()) {
-    return {
-      valid: false,
-      status: "EXPIRED",
-      message: "Kode aktivasi sudah kedaluwarsa."
+    if (updated.result === 'EXPIRED') {
+      return { valid: false, status: 'EXPIRED', message: 'Kode aktivasi sudah kedaluwarsa.' }
     }
-  }
 
-  // Mark code as USED dalam transaksi untuk mencegah concurrent reuse
-  db.transaction(() => {
-    db.run(sql`UPDATE activation_codes SET status = 'USED' WHERE code = ${code}`)
-  })
-
-  return {
-    valid: true,
-    status: "ACTIVE",
-    code: record.code,
-    expires_at: record.expiresAt
+    return {
+      valid: true,
+      status: 'ACTIVE',
+      code: updated.record!.code,
+      expires_at: updated.record!.expiresAt
+    }
+  } catch (err) {
+    console.error('[activation] Error validating code:', err)
+    return { valid: false, message: 'Kode tidak dapat diproses. Coba lagi.' }
   }
 }
