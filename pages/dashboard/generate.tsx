@@ -437,13 +437,15 @@ export default function GeneratePage() {
                     className="bg-slate-900 border border-white/10 rounded-2xl overflow-hidden"
                   >
                     {imagePreview ? (
-                      <img
-                        src={imagePreview}
-                        alt={currentFilename}
-                        className="w-full h-64 object-cover"
-                      />
+                      <div className="w-full aspect-video overflow-hidden">
+                        <img
+                          src={imagePreview}
+                          alt={currentFilename}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     ) : (
-                      <div className="w-full h-64 flex items-center justify-center bg-slate-800">
+                      <div className="w-full aspect-video flex items-center justify-center bg-slate-800">
                         <div className="text-center">
                           <FileText className="w-12 h-12 text-gray-600 mx-auto mb-2" />
                           <p className="text-sm text-gray-500">Preview tidak tersedia</p>
