@@ -10,22 +10,27 @@ function getDb() {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // CORS for Chrome extension
+  // ✅ CORS — wajib ada ACTIVATION_ALLOWED_ORIGIN, tidak ada fallback ke wildcard
   const origin = req.headers.origin || ''
   const allowedOrigin = process.env.ACTIVATION_ALLOWED_ORIGIN || ''
 
+  if (!allowedOrigin) {
+    console.error('[log-generate] ACTIVATION_ALLOWED_ORIGIN env var not set')
+    return res.status(500).json({ error: 'Server misconfiguration' })
+  }
+
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin || '*')
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin)
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
     return res.status(200).end()
   }
 
-  if (origin && allowedOrigin && origin !== allowedOrigin) {
+  if (origin && origin !== allowedOrigin) {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
-  res.setHeader('Access-Control-Allow-Origin', allowedOrigin || '*')
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin)
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
@@ -34,6 +39,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!activationCode) {
     return res.status(400).json({ error: 'Activation code required' })
   }
+
+  // ✅ Sanitasi input — batasi panjang dan karakter
+  const safePlatform = String(platform || 'extension').slice(0, 50)
+  const safeFilename = String(filename || 'unknown').slice(0, 255)
+  const safeTitle = String(title || '').slice(0, 500)
 
   try {
     const db = getDb()
@@ -76,12 +86,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .where(eq(schema.users.id, userId))
     }
 
-    // Save to generate_history
+    // Save to generate_history — gunakan variabel safe yang sudah disanitasi
     await db.insert(schema.generateHistory).values({
       userId,
-      platform: platform || 'extension',
-      filename: filename || 'unknown',
-      title: title || '',
+      platform: safePlatform,
+      filename: safeFilename,
+      title: safeTitle,
       creditsUsed: 1,
     } as any)
 

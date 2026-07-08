@@ -5,15 +5,16 @@ import { eq } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import Database from 'better-sqlite3'
 import path from 'path'
+import crypto from 'crypto'
 
 // Disable body parser so we can read the raw body
 export const config = { api: { bodyParser: false } }
 
-async function getRawBody(req: NextApiRequest): Promise<string> {
+async function getRawBody(req: NextApiRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    let body = ''
-    req.on('data', (chunk: Buffer) => { body += chunk.toString() })
-    req.on('end', () => resolve(body))
+    const chunks: Buffer[] = []
+    req.on('data', (chunk: Buffer) => chunks.push(chunk))
+    req.on('end', () => resolve(Buffer.concat(chunks)))
     req.on('error', reject)
   })
 }
@@ -63,14 +64,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const rawBody = await getRawBody(req)
 
+  // ✅ Verifikasi HMAC signature dari Mayar
+  const webhookSecret = process.env.MAYAR_WEBHOOK_SECRET
+  if (webhookSecret) {
+    const signature = req.headers['x-mayar-signature'] as string | undefined
+    if (!signature) {
+      console.warn('[webhook] Missing x-mayar-signature header')
+      return res.status(401).json({ error: 'Missing signature' })
+    }
+    const expected = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('hex')
+    try {
+      const sigBuf = Buffer.from(signature, 'hex')
+      const expBuf = Buffer.from(expected, 'hex')
+      if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+        console.warn('[webhook] Invalid signature')
+        return res.status(401).json({ error: 'Invalid signature' })
+      }
+    } catch {
+      return res.status(401).json({ error: 'Invalid signature' })
+    }
+  } else {
+    console.warn('[webhook] MAYAR_WEBHOOK_SECRET not set — skipping signature check')
+  }
+
   let payload: any
   try {
-    payload = JSON.parse(rawBody)
+    payload = JSON.parse(rawBody.toString())
   } catch {
     return res.status(400).json({ error: 'Invalid JSON' })
   }
 
-  console.log('[webhook] Mayar payload:', JSON.stringify(payload, null, 2))
+  // ✅ Log hanya field yang relevan, bukan full payload (hindari PII di log)
+  const logEvent = payload?.event || payload?.type
+  const logOrderId = payload?.data?.id || payload?.id
+  console.log('[webhook] Mayar event:', logEvent, '| orderId:', logOrderId)
 
   // Mayar webhook payload normalisation — covers both flat and nested shapes
   const event = payload?.event || payload?.type
