@@ -34,11 +34,11 @@ export function FloatingCTA() {
           >
             <div className="bg-slate-900/90 backdrop-blur-xl border-t border-white/10 px-4 py-3">
               <div className="container mx-auto flex items-center justify-between gap-4">
-                <div className="hidden sm:block">
+                <div className="flex-1 sm:flex-none">
                   <p className="text-sm font-semibold text-gray-100">
-                    Siap menghemat waktu upload Anda?
+                    Mulai gratis — 20 kredit
                   </p>
-                  <p className="text-xs text-gray-400">Mulai gratis — 20 kredit, tanpa kartu kredit</p>
+                  <p className="hidden sm:block text-xs text-gray-400">Tanpa kartu kredit. Upgrade kapan saja.</p>
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   <Button

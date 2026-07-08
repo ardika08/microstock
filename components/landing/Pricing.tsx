@@ -112,7 +112,7 @@ export function Pricing() {
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center px-4 py-1 rounded-full text-sm font-bold bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/25 animate-pulse">
+                  <span className="inline-flex items-center px-4 py-1 rounded-full text-sm font-bold bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/25">
                     Most Popular
                   </span>
                 </div>

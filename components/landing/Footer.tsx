@@ -110,10 +110,10 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-white/5 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-400">
             © {currentYear} Autofillstock. Hak cipta dilindungi undang-undang.
           </p>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-400">
             Dibuat dengan ❤️ untuk para contributor microstock Indonesia
           </p>
         </div>
