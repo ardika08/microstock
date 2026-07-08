@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useSession } from "next-auth/react"
 import { useUser } from "~/hooks/useUser"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
-import { Camera, Eye, EyeOff, Bell, Mail, MessageSquare, ShieldAlert, Check, Loader2, Key } from "lucide-react"
+import { Camera, Eye, EyeOff, Bell, Mail, MessageSquare, ShieldAlert, Check, Loader2, Key, AlertCircle } from "lucide-react"
 
 function PasswordStrengthMeter({ password }: { password: string }) {
   const getStrength = (pw: string) => {
@@ -79,6 +79,7 @@ function NotificationToggle({ label, description, icon: Icon, defaultChecked = f
         }`}
         role="switch"
         aria-checked={enabled}
+        aria-label={label}
       >
         <motion.span
           animate={{ x: enabled ? 22 : 4 }}
@@ -91,43 +92,55 @@ function NotificationToggle({ label, description, icon: Icon, defaultChecked = f
 }
 
 export default function SettingsPage() {
+  const { data: session } = useSession()
   const { planType } = useUser()
+
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [showCurrentPw, setShowCurrentPw] = useState(false)
   const [showNewPw, setShowNewPw] = useState(false)
   const [showConfirmPw, setShowConfirmPw] = useState(false)
   const [newPassword, setNewPassword] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordSaved, setPasswordSaved] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const [apiKey, setApiKey] = useState("")
   const [apiKeyMasked, setApiKeyMasked] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
   const [apiKeySaving, setApiKeySaving] = useState(false)
   const [apiKeySaved, setApiKeySaved] = useState(false)
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null)
   const [avatarHover, setAvatarHover] = useState(false)
+  const [profileLoading, setProfileLoading] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // ✅ Init dari session — bukan hardcoded
   const [profileForm, setProfileForm] = useState({
-    nama: "Budi Santoso",
-    email: "budi@example.com",
-    telepon: "+62 812 3456 7890",
+    nama: "",
+    email: "",
+    telepon: "",
   })
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => setAvatarPreview(reader.result as string)
-      reader.readAsDataURL(file)
+  // ✅ Load profil dari session dan /api/user/me
+  useEffect(() => {
+    if (session?.user) {
+      setProfileForm({
+        nama: session.user.name || "",
+        email: session.user.email || "",
+        telepon: "",
+      })
+      setProfileLoading(false)
     }
-  }
+  }, [session])
 
-  // Load existing API key on mount (show masked version if already saved)
+  // Load existing API key on mount
   useEffect(() => {
     fetch('/api/user/api-key')
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(); return r.json() })
       .then(d => {
         if (d.hasKey) {
           setApiKey(d.maskedKey || '')
@@ -137,51 +150,112 @@ export default function SettingsPage() {
       .catch(() => {})
   }, [])
 
-  const handleSaveProfile = () => {
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2_000_000) {
+      alert('File terlalu besar. Maksimum 2MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onloadend = () => setAvatarPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  // ✅ Profile save — real API call
+  const handleSaveProfile = async () => {
     setProfileSaving(true)
-    setTimeout(() => {
-      setProfileSaving(false)
+    setProfileError(null)
+    try {
+      const res = await fetch('/api/user/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: profileForm.nama }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Gagal menyimpan profil')
+      }
       setProfileSaved(true)
       setTimeout(() => setProfileSaved(false), 3000)
-    }, 1000)
+    } catch (err: any) {
+      setProfileError(err.message || 'Gagal menyimpan profil. Coba lagi.')
+    } finally {
+      setProfileSaving(false)
+    }
   }
 
   const handleSaveApiKey = async () => {
-    // If showing masked key, don't re-save it — user must type a new one
     if (apiKeyMasked) return
     setApiKeySaving(true)
+    setApiKeyError(null)
     try {
       const res = await fetch('/api/user/api-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: apiKey.trim() })
       })
-      if (!res.ok) throw new Error('Gagal menyimpan')
-      // Also save to localStorage for quick access
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Gagal menyimpan')
+      }
       localStorage.setItem('autofillstock_openai_key', apiKey.trim())
       setApiKeySaved(true)
-      setApiKeyMasked(false)
+      setApiKeyMasked(true)
       setTimeout(() => setApiKeySaved(false), 3000)
-    } catch (err) {
-      console.error(err)
+    } catch (err: any) {
+      setApiKeyError(err.message || 'Gagal menyimpan API key. Coba lagi.')
     } finally {
       setApiKeySaving(false)
     }
   }
 
-  const handleSavePassword = () => {
+  // ✅ Password save — validasi + real API call (endpoint PATCH /api/user/me)
+  const handleSavePassword = async () => {
+    setPasswordError(null)
+
+    // Validasi client-side
+    if (!currentPassword) {
+      setPasswordError('Masukkan password saat ini.')
+      return
+    }
+    if (newPassword.length < 8) {
+      setPasswordError('Password baru minimal 8 karakter.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Konfirmasi password tidak cocok.')
+      return
+    }
+
     setPasswordSaving(true)
-    setTimeout(() => {
-      setPasswordSaving(false)
+    try {
+      const res = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Gagal mengubah password')
+      }
       setPasswordSaved(true)
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
       setTimeout(() => setPasswordSaved(false), 3000)
-    }, 1000)
+    } catch (err: any) {
+      setPasswordError(err.message || 'Gagal mengubah password. Coba lagi.')
+    } finally {
+      setPasswordSaving(false)
+    }
   }
 
   const inputClasses = "w-full px-4 py-2.5 bg-slate-800 border border-white/10 rounded-lg text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
 
+  // ✅ DashboardLayout tanpa hardcoded name/email
   return (
-    <DashboardLayout title="Settings" userName="Budi Santoso" userEmail="budi@example.com">
+    <DashboardLayout title="Settings">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div>
@@ -212,11 +286,12 @@ export default function SettingsPage() {
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-2xl font-bold overflow-hidden ring-2 ring-blue-500/20">
                   {avatarPreview ? (
                     <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : session?.user?.image ? (
+                    <img src={session.user.image} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    "B"
+                    <span>{(session?.user?.name || "U").charAt(0).toUpperCase()}</span>
                   )}
                 </div>
-                {/* Hover overlay */}
                 <AnimatePresence>
                   {avatarHover && (
                     <motion.div
@@ -250,42 +325,48 @@ export default function SettingsPage() {
             </div>
 
             {/* Form Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label htmlFor="nama" className="text-sm font-medium text-gray-300">Nama Lengkap</label>
-                <input
-                  id="nama"
-                  value={profileForm.nama}
-                  onChange={(e) => setProfileForm({ ...profileForm, nama: e.target.value })}
-                  className={inputClasses}
-                />
+            {profileLoading ? (
+              <div className="flex items-center gap-2 text-gray-400 text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" /> Memuat profil...
               </div>
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-gray-300">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  value={profileForm.email}
-                  readOnly
-                  className={`${inputClasses} opacity-50 cursor-not-allowed`}
-                />
-                <p className="text-xs text-gray-500">Email tidak dapat diubah</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="nama" className="text-sm font-medium text-gray-300">Nama Lengkap</label>
+                  <input
+                    id="nama"
+                    value={profileForm.nama}
+                    onChange={(e) => setProfileForm({ ...profileForm, nama: e.target.value })}
+                    className={inputClasses}
+                    placeholder="Nama Anda"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-medium text-gray-300">Email</label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={profileForm.email}
+                    readOnly
+                    className={`${inputClasses} opacity-50 cursor-not-allowed`}
+                  />
+                  <p className="text-xs text-gray-500">Email tidak dapat diubah</p>
+                </div>
               </div>
-              <div className="space-y-2 md:col-span-2">
-                <label htmlFor="telepon" className="text-sm font-medium text-gray-300">Nomor Telepon</label>
-                <input
-                  id="telepon"
-                  value={profileForm.telepon}
-                  onChange={(e) => setProfileForm({ ...profileForm, telepon: e.target.value })}
-                  className={inputClasses}
-                />
+            )}
+
+            {/* Error */}
+            {profileError && (
+              <div className="flex items-center gap-2 text-red-400 text-sm">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {profileError}
               </div>
-            </div>
+            )}
 
             <div className="flex items-center gap-3">
               <button
                 onClick={handleSaveProfile}
-                disabled={profileSaving}
+                disabled={profileSaving || profileLoading}
                 className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-lg text-sm font-medium transition-all duration-200"
               >
                 {profileSaving ? (
@@ -308,8 +389,8 @@ export default function SettingsPage() {
           </div>
         </motion.div>
 
-        {/* OpenAI API Key Card — only for lifetime plan */}
-        {planType === "lifetime" && (
+        {/* OpenAI API Key Card — for lifetime and free plan */}
+        {(planType === "lifetime" || planType === "free" || planType === "topup") && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -335,7 +416,7 @@ export default function SettingsPage() {
                 <input
                   type={showApiKey ? "text" : "password"}
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(e) => { setApiKey(e.target.value); setApiKeyMasked(false) }}
                   placeholder="sk-..."
                   className={inputClasses + " pr-10"}
                 />
@@ -343,6 +424,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => setShowApiKey(!showApiKey)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                  aria-label={showApiKey ? "Sembunyikan API key" : "Tampilkan API key"}
                 >
                   {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -352,10 +434,17 @@ export default function SettingsPage() {
               </p>
             </div>
 
+            {apiKeyError && (
+              <div className="flex items-center gap-2 text-red-400 text-sm">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {apiKeyError}
+              </div>
+            )}
+
             <div className="flex items-center gap-3">
               <button
                 onClick={handleSaveApiKey}
-                disabled={apiKeySaving || !apiKey.startsWith('sk-')}
+                disabled={apiKeySaving || apiKeyMasked || !apiKey.startsWith('sk-')}
                 className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-all duration-200"
               >
                 {apiKeySaving ? (
@@ -367,24 +456,32 @@ export default function SettingsPage() {
                 )}
                 {apiKeySaving ? "Menyimpan..." : apiKeySaved ? "Tersimpan!" : "Simpan API Key"}
               </button>
-              {apiKey && (
+              {apiKey && !apiKeyMasked && (
                 <button
-                  onClick={() => { setApiKey(''); setApiKeySaved(false) }}
+                  onClick={() => { setApiKey(''); setApiKeySaved(false); setApiKeyError(null) }}
                   className="px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all duration-200"
                 >
                   Hapus
+                </button>
+              )}
+              {apiKeyMasked && (
+                <button
+                  onClick={() => { setApiKey(''); setApiKeyMasked(false) }}
+                  className="px-4 py-2.5 text-sm text-gray-400 hover:text-gray-200 hover:bg-white/5 rounded-lg transition-all duration-200"
+                >
+                  Ganti Key
                 </button>
               )}
             </div>
 
             {apiKeySaved && (
               <p className="text-xs text-emerald-400 flex items-center gap-1">
-                <Check className="w-3 h-3" /> API key tersimpan di browser lokal
+                <Check className="w-3 h-3" /> API key tersimpan
               </p>
             )}
           </div>
         </motion.div>
-        )}{/* end planType === lifetime */}
+        )}
 
         {/* Change Password Card */}
         <motion.div
@@ -407,12 +504,15 @@ export default function SettingsPage() {
                   id="current-pw"
                   type={showCurrentPw ? "text" : "password"}
                   placeholder="Masukkan password saat ini"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
                   className={`${inputClasses} pr-10`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrentPw(!showCurrentPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                  aria-label={showCurrentPw ? "Sembunyikan" : "Tampilkan"}
                 >
                   {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -435,6 +535,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => setShowNewPw(!showNewPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                  aria-label={showNewPw ? "Sembunyikan" : "Tampilkan"}
                 >
                   {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -450,17 +551,34 @@ export default function SettingsPage() {
                   id="confirm-pw"
                   type={showConfirmPw ? "text" : "password"}
                   placeholder="Ulangi password baru"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   className={`${inputClasses} pr-10`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPw(!showConfirmPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                  aria-label={showConfirmPw ? "Sembunyikan" : "Tampilkan"}
                 >
                   {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {/* Show mismatch warning live */}
+              {confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> Password tidak cocok
+                </p>
+              )}
             </div>
+
+            {/* Error */}
+            {passwordError && (
+              <div className="flex items-center gap-2 text-red-400 text-sm">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {passwordError}
+              </div>
+            )}
 
             <div className="flex items-center gap-3 pt-2">
               <button
