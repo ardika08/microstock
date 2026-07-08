@@ -65,6 +65,8 @@ export function FAQ() {
         <div className="max-w-3xl mx-auto space-y-3">
           {faqs.map((faq, index) => {
             const isOpen = openIndex === index;
+            const panelId = `faq-panel-${index}`;
+            const btnId = `faq-btn-${index}`;
             return (
               <motion.div
                 key={index}
@@ -75,15 +77,18 @@ export function FAQ() {
                 transition={{ duration: 0.4, delay: index * 0.05 }}
               >
                 <button
+                  id={btnId}
                   className="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-white/5 transition-colors"
                   onClick={() => setOpenIndex(isOpen ? null : index)}
                   aria-expanded={isOpen}
+                  aria-controls={panelId}
                 >
                   <span className="font-semibold text-gray-100 pr-4">{faq.question}</span>
                   <motion.div
                     animate={{ rotate: isOpen ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
                     className="flex-shrink-0"
+                    aria-hidden="true"
                   >
                     {isOpen ? (
                       <Minus className="w-5 h-5 text-blue-400" />
@@ -95,6 +100,9 @@ export function FAQ() {
                 <AnimatePresence initial={false}>
                   {isOpen && (
                     <motion.div
+                      id={panelId}
+                      role="region"
+                      aria-labelledby={btnId}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
