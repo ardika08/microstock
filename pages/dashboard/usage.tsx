@@ -158,6 +158,10 @@ export default function UsagePage() {
     {
       title: "Kredit Tersisa",
       value: sessionLoading ? "..." : (planType === "lifetime" || planType === "starter") ? "Unlimited" : String(credits ?? 0),
+      subtitle: "kredit",
+      icon: CreditCard,
+      iconBg: "bg-emerald-500/10",
+      iconColor: "text-emerald-400",
     },
     {
       title: "Bulan Ini",
