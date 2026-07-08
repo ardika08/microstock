@@ -279,7 +279,7 @@ export default function DashboardPage() {
     {
       title: "Tambah API Key",
       description: "Tambahkan OpenAI API Key agar bisa generate metadata.",
-      done: planType === "starter" || hasApiKey,
+      done: planType === "starter" || (planType === "lifetime" && hasApiKey),
     },
     {
       title: "Generate Pertama",

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useSession } from "next-auth/react"
+import { useUser } from "~/hooks/useUser"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
 import { Camera, Eye, EyeOff, Bell, Mail, MessageSquare, ShieldAlert, Check, Loader2, Key } from "lucide-react"
 
@@ -90,6 +91,7 @@ function NotificationToggle({ label, description, icon: Icon, defaultChecked = f
 }
 
 export default function SettingsPage() {
+  const { planType } = useUser()
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [showCurrentPw, setShowCurrentPw] = useState(false)
   const [showNewPw, setShowNewPw] = useState(false)
@@ -306,7 +308,8 @@ export default function SettingsPage() {
           </div>
         </motion.div>
 
-        {/* OpenAI API Key Card */}
+        {/* OpenAI API Key Card — only for lifetime plan */}
+        {planType === "lifetime" && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -381,6 +384,7 @@ export default function SettingsPage() {
             )}
           </div>
         </motion.div>
+        )}{/* end planType === lifetime */}
 
         {/* Change Password Card */}
         <motion.div
