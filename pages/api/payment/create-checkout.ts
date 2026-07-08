@@ -2,25 +2,25 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '../auth/[...nextauth]'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-// Autofillstock Mayar products — created 2026-07-07
-// topup:    ba1ed3c5 → https://grafista.myr.id/pl/x5ccueante/   Rp 50.000
-// starter:  1c00b12d → https://grafista.myr.id/pl/5xeynu09am/   Rp 99.000/bln
-// lifetime: cc3f4f43 → https://grafista.myr.id/pl/wwmv0zc76q/   Rp 249.000
-const PRODUCT_LINKS: Record<string, { url: string; name: string; price: number }> = {
+const MAYAR_API_KEY = process.env.MAYAR_API_KEY!
+const MAYAR_API_URL = 'https://api.mayar.id'
+
+// Product definitions
+const PRODUCTS: Record<string, { name: string; price: number; description: string }> = {
   topup_500: {
-    url: 'https://grafista.myr.id/pl/x5ccueante/',
     name: 'Autofillstock - Top Up 500 Kredit',
     price: 50000,
+    description: 'Top up 500 kredit untuk generate metadata microstock. Kredit tidak expire, pakai kapanpun.',
   },
   starter_monthly: {
-    url: 'https://grafista.myr.id/pl/5xeynu09am/',
     name: 'Autofillstock - Starter Bulanan',
     price: 99000,
+    description: 'Unlimited generate metadata microstock per bulan. AI GPT-4o disediakan. Fair use 200 generate per hari.',
   },
   lifetime: {
-    url: 'https://grafista.myr.id/pl/wwmv0zc76q/',
     name: 'Autofillstock - One-time Lifetime',
     price: 249000,
+    description: 'Bayar sekali generate unlimited selamanya. Pakai API key OpenAI sendiri. Harga promo terbatas.',
   },
 }
 
@@ -31,15 +31,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!session?.user?.email) return res.status(401).json({ error: 'Unauthorized' })
 
   const { productType } = req.body
-  if (!productType || !PRODUCT_LINKS[productType]) {
+  if (!productType || !PRODUCTS[productType]) {
     return res.status(400).json({ error: 'Produk tidak valid' })
   }
 
-  const product = PRODUCT_LINKS[productType]
+  const product = PRODUCTS[productType]
+  const user = session.user as any
 
-  return res.status(200).json({
-    checkoutUrl: product.url,
-    productName: product.name,
-    price: product.price,
-  })
+  try {
+    // Create dynamic invoice via Mayar API with user data pre-filled
+    const invoiceRes = await fetch(`${MAYAR_API_URL}/hl/v1/invoice/create`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${MAYAR_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: user.name || user.email.split('@')[0],
+        email: user.email,
+        mobile: '08000000000', // placeholder — user can update at checkout
+        description: product.name,
+        items: [
+          {
+            quantity: 1,
+            rate: product.price,
+            description: product.description,
+          },
+        ],
+      }),
+    })
+
+    const invoiceData = await invoiceRes.json()
+
+    if (!invoiceRes.ok || invoiceData.statusCode !== 200) {
+      console.error('[checkout] Mayar invoice error:', invoiceData)
+      return res.status(500).json({ error: 'Gagal membuat invoice pembayaran.' })
+    }
+
+    const checkoutUrl = invoiceData.data?.link
+    if (!checkoutUrl) {
+      return res.status(500).json({ error: 'Invoice URL tidak ditemukan.' })
+    }
+
+    return res.status(200).json({
+      checkoutUrl,
+      productName: product.name,
+      price: product.price,
+    })
+
+  } catch (err) {
+    console.error('[checkout] Error:', err)
+    return res.status(500).json({ error: 'Terjadi kesalahan saat membuat invoice.' })
+  }
 }
