@@ -20,7 +20,7 @@ export function PlatformLogos() {
           className="text-center text-sm font-medium text-gray-500 mb-8"
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0 }}
           transition={{ duration: 0.5 }}
         >
           Kompatibel dengan platform microstock terpopuler

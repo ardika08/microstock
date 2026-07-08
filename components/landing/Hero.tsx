@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
+import Link from 'next/link';
 import { Button } from '~/components/ui/button';
 import { Badge } from '~/components/ui/badge';
 import { ArrowRight, Sparkles, FileText, Tags } from 'lucide-react';
 
 function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true });
+  const isInView = useInView(ref, { once: true, amount: 0 });
   const [count, setCount] = useState(0);
+  const [started, setStarted] = useState(false);
+
+  // Fallback: jika IntersectionObserver tidak fire dalam 1.5s, mulai animasi
+  useEffect(() => {
+    const fallback = setTimeout(() => setStarted(true), 1500);
+    return () => clearTimeout(fallback);
+  }, []);
 
   useEffect(() => {
-    if (!isInView) return;
+    if (!isInView && !started) return;
     let start = 0;
     const duration = 2000;
     const increment = target / (duration / 16);
@@ -25,11 +33,11 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
       }
     }, 16);
     return () => clearInterval(timer);
-  }, [isInView, target]);
+  }, [isInView, started, target]);
 
   return (
-    <span ref={ref}>
-      {count.toLocaleString()}{suffix}
+    <span ref={ref} aria-label={`${target.toLocaleString()}${suffix}`}>
+      <span aria-hidden="true">{count.toLocaleString()}{suffix}</span>
     </span>
   );
 }
@@ -41,11 +49,16 @@ function TypewriterHeadline() {
   const isInView = useInView(ref, { once: true });
   const [displayedChars, setDisplayedChars] = useState(0);
 
+  const [done, setDone] = useState(false);
+
   useEffect(() => {
     if (!isInView) return;
     let i = 0;
     function typeNext() {
-      if (i >= headlineText.length) return;
+      if (i >= headlineText.length) {
+        setDone(true);
+        return;
+      }
       i++;
       setDisplayedChars(i);
       const char = headlineText[i - 1];
@@ -75,7 +88,9 @@ function TypewriterHeadline() {
       ) : (
         displayed
       )}
-      <span className="animate-pulse text-blue-400">|</span>
+      {!done && (
+        <span className="animate-pulse text-blue-400" aria-hidden="true">|</span>
+      )}
     </h1>
   );
 }
@@ -103,7 +118,7 @@ export function Hero() {
             className="flex flex-col justify-center"
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0 }}
             transition={{ duration: 0.7 }}
           >
             <Badge className="w-fit mb-6 bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/20">
@@ -118,11 +133,21 @@ export function Hero() {
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
-              <Button size="lg" className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0 shadow-lg shadow-blue-500/25">
-                Mulai Gratis - 20 Kredit
-                <ArrowRight className="ml-2 h-4 w-4" />
+              <Button asChild size="lg" className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0 shadow-lg shadow-blue-500/25">
+                <Link href="/auth/signin">
+                  Mulai Gratis - 20 Kredit
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
-              <Button size="lg" variant="outline" className="border-white/10 text-gray-300 hover:bg-white/5 hover:text-white">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white/10 text-gray-300 hover:bg-white/5 hover:text-white"
+                onClick={() => {
+                  const el = document.getElementById('fitur');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
                 Lihat Demo
               </Button>
             </div>
@@ -142,7 +167,7 @@ export function Hero() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-100">
-                  <AnimatedCounter target={4} suffix=".9/5" />
+                  4.9/5
                 </p>
                 <p className="text-sm text-gray-400">Rating Pengguna</p>
               </div>
@@ -154,7 +179,7 @@ export function Hero() {
             className="relative"
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
           >
             <div className="relative mx-auto w-full max-w-lg">

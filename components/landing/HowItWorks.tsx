@@ -35,13 +35,13 @@ export function HowItWorks() {
   ];
 
   return (
-    <section className="py-20 bg-slate-950">
+    <section id="fitur" className="py-20 bg-slate-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           className="text-center mb-16"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0 }}
           transition={{ duration: 0.5 }}
         >
           <h2 className="text-3xl font-bold text-gray-100 sm:text-4xl">
@@ -64,7 +64,7 @@ export function HowItWorks() {
               className="relative"
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
               <div className="flex flex-col items-center text-center group">

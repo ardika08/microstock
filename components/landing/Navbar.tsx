@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { motion, useScroll, useSpring } from 'framer-motion';
+import Link from 'next/link';
 import { Button } from '~/components/ui/button';
 import { Zap } from 'lucide-react';
+
+function scrollToSection(id: string) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth' });
+}
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -43,14 +49,22 @@ export function Navbar() {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button variant="ghost" className="hidden sm:inline-flex text-gray-300 hover:text-white hover:bg-white/5">
+              <Button
+                variant="ghost"
+                className="hidden sm:inline-flex text-gray-300 hover:text-white hover:bg-white/5"
+                onClick={() => scrollToSection('fitur')}
+              >
                 Fitur
               </Button>
-              <Button variant="ghost" className="hidden sm:inline-flex text-gray-300 hover:text-white hover:bg-white/5">
+              <Button
+                variant="ghost"
+                className="hidden sm:inline-flex text-gray-300 hover:text-white hover:bg-white/5"
+                onClick={() => scrollToSection('harga')}
+              >
                 Harga
               </Button>
-              <Button className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0">
-                Login
+              <Button asChild className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0">
+                <Link href="/auth/signin">Login</Link>
               </Button>
             </div>
           </div>

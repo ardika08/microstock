@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { ArrowUp, Zap } from 'lucide-react';
 import { Button } from '~/components/ui/button';
 
@@ -41,14 +42,30 @@ export function FloatingCTA() {
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   <Button
+                    asChild
                     size="sm"
                     className="flex-1 sm:flex-none bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0 shadow-lg shadow-blue-500/25 gap-2"
                   >
-                    <Zap className="w-4 h-4" />
-                    Mulai Gratis
+                    <Link href="/auth/signin">
+                      <Zap className="w-4 h-4" aria-hidden="true" />
+                      Mulai Gratis
+                    </Link>
                   </Button>
-                  <Button size="sm" className="hidden sm:inline-flex border border-white/10 text-gray-300 hover:bg-white/5 bg-transparent">
-                    Lihat Harga
+                  <Button
+                    asChild
+                    size="sm"
+                    className="hidden sm:inline-flex border border-white/10 text-gray-300 hover:bg-white/5 bg-transparent"
+                  >
+                    <a
+                      href="#harga"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const el = document.getElementById('harga');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                    >
+                      Lihat Harga
+                    </a>
                   </Button>
                 </div>
               </div>

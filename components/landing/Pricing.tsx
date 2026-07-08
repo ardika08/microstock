@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { Button } from '~/components/ui/button';
 import { Check, Zap, TrendingUp, Crown, Infinity } from 'lucide-react';
 
@@ -75,13 +76,13 @@ export function Pricing() {
   ];
 
   return (
-    <section className="py-20 bg-gradient-to-b from-slate-950 via-slate-900/50 to-slate-950">
+    <section id="harga" className="py-20 bg-gradient-to-b from-slate-950 via-slate-900/50 to-slate-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           className="text-center mb-16"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0 }}
           transition={{ duration: 0.5 }}
         >
           <span className="inline-block mb-4 px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
@@ -106,7 +107,7 @@ export function Pricing() {
               }`}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
               {plan.popular && (
@@ -157,10 +158,13 @@ export function Pricing() {
                 </ul>
 
                 <Button
+                  asChild
                   className={`w-full mt-8 ${plan.buttonClass}`}
                   size="lg"
                 >
-                  {plan.buttonText}
+                  <Link href={`/auth/signin?plan=${plan.name === 'Free Trial' ? 'free' : plan.name === 'Starter' ? 'starter' : 'topup'}`}>
+                    {plan.buttonText}
+                  </Link>
                 </Button>
               </div>
             </motion.div>
@@ -172,7 +176,7 @@ export function Pricing() {
           className="max-w-4xl mx-auto"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <div className="rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-purple-500/30 p-8 relative overflow-hidden">
@@ -208,8 +212,8 @@ export function Pricing() {
                   <span className="text-xs text-gray-500 bg-white/5 px-2 py-1 rounded-full">Update gratis selamanya</span>
                 </div>
               </div>
-              <Button size="lg" className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg shadow-purple-500/25 whitespace-nowrap">
-                Beli Sekarang
+              <Button size="lg" asChild className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg shadow-purple-500/25 whitespace-nowrap">
+                <Link href="/auth/signin?plan=onetime">Beli Sekarang</Link>
               </Button>
             </div>
           </div>
