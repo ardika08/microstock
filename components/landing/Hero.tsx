@@ -188,57 +188,21 @@ export function Hero() {
 
               {/* Mockup Container */}
               <div className="relative rounded-2xl bg-slate-900/80 backdrop-blur-xl shadow-2xl border border-white/10 overflow-hidden">
-                {/* Chrome Extension Header */}
-                <div className="bg-slate-800/80 border-b border-white/10 px-4 py-3 flex items-center gap-2">
-                  <div className="flex items-center justify-center w-6 h-6 rounded bg-gradient-to-br from-blue-500 to-cyan-400">
-                    <Sparkles className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-200">Autofillstock</span>
+              {/* Chrome Extension Header */}
+              <div className="bg-slate-800/80 border-b border-white/10 px-4 py-3 flex items-center gap-2">
+                <div className="flex items-center justify-center w-6 h-6 rounded bg-gradient-to-br from-blue-500 to-cyan-400">
+                  <Sparkles className="w-4 h-4 text-white" aria-hidden="true" />
                 </div>
+                <span className="text-sm font-semibold text-gray-200">Autofillstock — Generate Metadata</span>
+              </div>
 
-                {/* Extension Content */}
-                <div className="p-6 space-y-4">
-                  {/* Image Preview */}
-                  <div className="aspect-video bg-gradient-to-br from-blue-900/50 to-purple-900/50 rounded-lg flex items-center justify-center border border-white/5">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-2 rounded-full bg-blue-500/20 flex items-center justify-center">
-                        <FileText className="w-8 h-8 text-blue-400" />
-                      </div>
-                      <p className="text-sm text-gray-400">sunset-beach.jpg</p>
-                    </div>
-                  </div>
-
-                  {/* Generated Metadata */}
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 mb-1 block">Judul</label>
-                      <div className="bg-slate-800/60 border border-white/10 rounded-lg p-3">
-                        <p className="text-sm text-gray-200 font-medium">Beautiful sunset over tropical beach with palm trees</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
-                        <Tags className="w-3 h-3" />
-                        Keywords (30)
-                      </label>
-                      <div className="bg-slate-800/60 border border-white/10 rounded-lg p-3">
-                        <div className="flex flex-wrap gap-1">
-                          {['sunset', 'beach', 'tropical', 'palm trees', 'ocean', 'vacation', 'paradise', 'summer'].map((tag) => (
-                            <span key={tag} className="px-2 py-0.5 bg-blue-500/30 text-blue-200 text-xs rounded-full border border-blue-500/20">
-                              {tag}
-                            </span>
-                          ))}
-                          <span className="px-2 py-0.5 bg-slate-700 text-gray-400 text-xs rounded-full">+22</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0">
-                      Export ke Platform
-                    </Button>
-                  </div>
-                </div>
+              {/* ✅ Screenshot asli dashboard generate */}
+              <img
+                src="/hero-mockup.png"
+                alt="Autofillstock dashboard — hasil generate metadata microstock dengan AI"
+                className="w-full h-auto block"
+                loading="eager"
+              />
               </div>
 
               {/* Floating Badge */}
