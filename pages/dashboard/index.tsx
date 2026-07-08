@@ -354,73 +354,91 @@ export default function DashboardPage() {
         </AnimatePresence>
 
         {/* Activation Code Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="relative group"
-        >
-          <div className="absolute -inset-[1px] bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 rounded-xl opacity-70 group-hover:opacity-100 blur-[2px] transition-opacity duration-300" />
-          <div className="relative bg-slate-900 rounded-xl p-6 border border-white/10">
-            <div className="mb-3">
-              <h2 className="text-lg font-semibold text-gray-100">Kode Aktivasi Anda</h2>
-              <p className="text-sm text-gray-400">Gunakan kode ini untuk mengaktifkan extension Chrome</p>
-            </div>
-            {activationCode ? (
-              <div className="flex items-center gap-3">
-                <code className="flex-1 px-4 py-3 bg-slate-800 border border-white/10 rounded-lg font-mono text-sm font-semibold text-gray-100">
-                  {activationCode}
-                </code>
-                <button
-                  onClick={handleCopy}
-                  className="relative flex items-center gap-2 px-4 py-3 bg-slate-800 border border-white/10 rounded-lg hover:bg-slate-700 transition-all duration-200 text-sm font-medium"
-                >
-                  <AnimatePresence mode="wait">
-                    {copied ? (
-                      <motion.span
-                        key="copied"
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        className="flex items-center gap-1.5 text-emerald-400"
-                      >
-                        <Check className="w-4 h-4" />
-                        Copied!
-                      </motion.span>
-                    ) : (
-                      <motion.span
-                        key="copy"
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        className="flex items-center gap-1.5 text-gray-300"
-                      >
-                        <Copy className="w-4 h-4" />
-                        Salin
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-500 italic">
-                  {sessionLoading
-                    ? "Memuat..."
-                    : "Belum ada kode — kode aktivasi didapat setelah pembelian paket. Jika baru saja membayar, tunggu beberapa menit."}
+        {!sessionLoading && planType === 'free' ? (
+          /* Free users: locked upgrade card */
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-slate-900 border border-amber-500/30 rounded-xl p-6"
+          >
+            <div className="flex items-start gap-4">
+              <span className="text-2xl shrink-0">🔒</span>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-semibold text-gray-100">Aktivasi Extension</h2>
+                <p className="text-sm text-gray-400 mt-1">Fitur ini tersedia untuk pengguna berbayar.</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Beli paket untuk mendapatkan kode aktivasi dan menggunakan extension Chrome.
                 </p>
-                {!sessionLoading && (
-                  <a
-                    href="/dashboard/billing"
-                    className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                  >
-                    Upgrade <ArrowRight className="w-3.5 h-3.5" />
-                  </a>
-                )}
+                <a
+                  href="/dashboard/billing"
+                  className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 rounded-lg text-sm font-medium transition-all duration-200"
+                >
+                  Lihat Paket <ArrowRight className="w-3.5 h-3.5" />
+                </a>
               </div>
-            )}
-          </div>
-        </motion.div>
+            </div>
+          </motion.div>
+        ) : (
+          /* Paid users: show code or processing message */
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="relative group"
+          >
+            <div className="absolute -inset-[1px] bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 rounded-xl opacity-70 group-hover:opacity-100 blur-[2px] transition-opacity duration-300" />
+            <div className="relative bg-slate-900 rounded-xl p-6 border border-white/10">
+              <div className="mb-3">
+                <h2 className="text-lg font-semibold text-gray-100">Kode Aktivasi Anda</h2>
+                <p className="text-sm text-gray-400">Gunakan kode ini untuk mengaktifkan extension Chrome</p>
+              </div>
+              {sessionLoading ? (
+                <p className="text-sm text-gray-500 italic">Memuat...</p>
+              ) : activationCode ? (
+                <div className="flex items-center gap-3">
+                  <code className="flex-1 px-4 py-3 bg-slate-800 border border-white/10 rounded-lg font-mono text-sm font-semibold text-gray-100">
+                    {activationCode}
+                  </code>
+                  <button
+                    onClick={handleCopy}
+                    className="relative flex items-center gap-2 px-4 py-3 bg-slate-800 border border-white/10 rounded-lg hover:bg-slate-700 transition-all duration-200 text-sm font-medium"
+                  >
+                    <AnimatePresence mode="wait">
+                      {copied ? (
+                        <motion.span
+                          key="copied"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className="flex items-center gap-1.5 text-emerald-400"
+                        >
+                          <Check className="w-4 h-4" />
+                          Copied!
+                        </motion.span>
+                      ) : (
+                        <motion.span
+                          key="copy"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className="flex items-center gap-1.5 text-gray-300"
+                        >
+                          <Copy className="w-4 h-4" />
+                          Salin
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 italic">
+                  Kode aktivasi sedang diproses. Jika baru saja membayar, tunggu beberapa menit.
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

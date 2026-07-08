@@ -3,6 +3,8 @@ import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from '~/server/db/schema-pg'
 import { eq } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
+import Database from 'better-sqlite3'
+import path from 'path'
 
 // Disable body parser so we can read the raw body
 export const config = { api: { bodyParser: false } }
@@ -25,6 +27,20 @@ async function generateActivationCode(): Promise<string> {
   const chars = '0123456789ABCDEF'
   const seg = () => Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * 16)]).join('')
   return `ASAF-${seg()}-${seg()}`
+}
+
+function saveCodeToSQLite(code: string) {
+  try {
+    const dbPath = path.join(process.cwd(), 'data', 'activation.sqlite')
+    const sqlite = new Database(dbPath)
+    sqlite.prepare(`
+      INSERT OR IGNORE INTO activation_codes (code, status, created_at) 
+      VALUES (?, 'ACTIVE', datetime('now'))
+    `).run(code)
+    sqlite.close()
+  } catch (err) {
+    console.error('[webhook] Failed to save code to SQLite:', err)
+  }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -143,8 +159,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       paidAt: new Date(),
     } as any)
 
-    // Generate an activation code for credit top-ups and lifetime purchases
-    if (productType === 'topup_500' || productType === 'lifetime') {
+    // Generate an activation code for all paid product types
+    if (productType === 'topup_500' || productType === 'lifetime' || productType === 'starter_monthly') {
       const code = await generateActivationCode()
       await db.insert(schema.activationCodes).values({
         code,
@@ -152,6 +168,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status: 'ACTIVE',
         planType: productType,
       } as any)
+      saveCodeToSQLite(code)
       console.log('[webhook] Generated activation code:', code, 'for', customerEmail)
     }
 
