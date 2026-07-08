@@ -139,6 +139,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const db = getDb()
 
+    // Idempotency check — skip if already processed
+    if (orderId) {
+      const existing_payment = await withRetry(() => db
+        .select()
+        .from(schema.payments)
+        .where(eq(schema.payments.mayarOrderId, orderId))
+        .limit(1)
+      )
+      if (existing_payment.length > 0) {
+        console.log('[webhook] Already processed orderId:', orderId)
+        return res.status(200).json({ received: true, duplicate: true })
+      }
+    }
+
     // Find or create user (with retry for transient Neon errors)
     const existing = await withRetry(() => db
       .select()
