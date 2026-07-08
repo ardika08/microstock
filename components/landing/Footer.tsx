@@ -35,8 +35,8 @@ export function Footer() {
     {
       heading: 'Legal',
       links: [
-        { label: 'Kebijakan Privasi', href: '#' },
-        { label: 'Syarat & Ketentuan', href: '#' },
+        { label: 'Kebijakan Privasi', href: '/privacy-policy' },
+        { label: 'Syarat & Ketentuan', href: '/terms-of-service' },
         { label: 'Kebijakan Refund', href: '#' },
         { label: 'Cookie Policy', href: '#' },
       ],

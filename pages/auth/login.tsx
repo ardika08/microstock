@@ -71,13 +71,13 @@ export default function LoginPage() {
             {/* Terms notice */}
             <p className="text-center text-xs text-gray-500 mt-4 leading-relaxed">
               Dengan masuk, kamu menyetujui{' '}
-              <span className="text-gray-400 underline underline-offset-2 cursor-pointer hover:text-gray-300 transition-colors">
+              <a href="/terms-of-service" className="text-gray-400 underline underline-offset-2 hover:text-gray-300 transition-colors">
                 Syarat &amp; Ketentuan
-              </span>{' '}
+              </a>{' '}
               dan{' '}
-              <span className="text-gray-400 underline underline-offset-2 cursor-pointer hover:text-gray-300 transition-colors">
+              <a href="/privacy-policy" className="text-gray-400 underline underline-offset-2 hover:text-gray-300 transition-colors">
                 Kebijakan Privasi
-              </span>{' '}
+              </a>{' '}
               kami
             </p>
           </div>
