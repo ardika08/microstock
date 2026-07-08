@@ -96,6 +96,7 @@ export default function GeneratePage() {
   const [currentFilename, setCurrentFilename] = useState("asset.jpg")
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -161,6 +162,10 @@ export default function GeneratePage() {
   }
 
   const handleFileSelected = (file: File) => {
+    // Create preview URL for the image
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    const previewUrl = URL.createObjectURL(file)
+    setImagePreview(previewUrl)
     const filename = file.name
     setCurrentFilename(filename)
     const assetBrief = `File: ${filename}. Generate relevant microstock metadata based on the filename.`
@@ -421,21 +426,81 @@ export default function GeneratePage() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="space-y-4">
-                {/* File name strip */}
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <FileText className="w-4 h-4" />
-                    <span className="font-medium text-gray-200">{currentFilename}</span>
-                  </div>
-                  <button
-                    onClick={resetToUpload}
-                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                {/* LEFT — Image Preview (col-span-2) */}
+                <div className="lg:col-span-2 space-y-4">
+                  {/* Image preview card */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 }}
+                    className="bg-slate-900 border border-white/10 rounded-2xl overflow-hidden"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Generate Baru
-                  </button>
+                    {imagePreview ? (
+                      <img
+                        src={imagePreview}
+                        alt={currentFilename}
+                        className="w-full h-64 object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-64 flex items-center justify-center bg-slate-800">
+                        <div className="text-center">
+                          <FileText className="w-12 h-12 text-gray-600 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">Preview tidak tersedia</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="p-4 space-y-2">
+                      <p className="text-sm font-medium text-gray-200 truncate">{currentFilename}</p>
+                      <p className="text-xs text-gray-500">File tidak disimpan di server</p>
+                    </div>
+                  </motion.div>
+
+                  {/* Action buttons */}
+                  <div className="flex flex-col gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleCopyAllMeta}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-sm font-semibold rounded-xl transition-all"
+                    >
+                      <Clipboard className="w-4 h-4" />
+                      {copyMetaCopied ? "Tersalin!" : "Copy Semua Metadata"}
+                    </motion.button>
+                    <div className="flex gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={resetToUpload}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 border border-white/10 hover:bg-slate-700 text-gray-300 text-sm font-medium rounded-xl transition-all"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Generate Baru
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          const csv = `Title,Description,Keywords\n"${generatedTitle}","${generatedDescription}","${keywords.map(k => k.text).join('; ')}"`
+                          const blob = new Blob([csv], { type: 'text/csv' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `${currentFilename.replace(/\.[^/.]+$/, '')}-metadata.csv`
+                          a.click()
+                          URL.revokeObjectURL(url)
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 border border-white/10 hover:bg-slate-700 text-gray-300 text-sm font-medium rounded-xl transition-all"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export CSV
+                      </motion.button>
+                    </div>
+                  </div>
                 </div>
+
+                {/* RIGHT — Metadata Results (col-span-3) */}
+                <div className="lg:col-span-3 space-y-4">
 
                 {/* Title card */}
                 <motion.div
@@ -606,7 +671,8 @@ export default function GeneratePage() {
                     </span>
                   </div>
                 </motion.div>
-              </div>
+              </div>{/* end right col */}
+            </div>{/* end 2-col grid */}
             </motion.div>
           )}
         </AnimatePresence>
