@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ''
   ).toLowerCase()
 
-  // Only act on successful payments
+  // Only act on successful payments — ignore reminders and other non-payment events
   // Mayar sends: event='payment.received', status='SUCCESS' OR event='payment.success', status='paid'
   const isPaid = 
     orderStatus === 'paid' || 
@@ -80,6 +80,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     event === 'payment.success' || 
     event === 'payment.received'
   
+  // Always ignore reminder events
+  if (event === 'payment.reminder' || event === 'invoice.reminder') {
+    return res.status(200).json({ received: true })
+  }
+
   if (!isPaid) {
     console.log('[webhook] Ignoring non-paid event:', event, orderStatus)
     return res.status(200).json({ received: true })
