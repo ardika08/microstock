@@ -120,7 +120,7 @@ const periods = [
 export default function UsagePage() {
   const [chartPeriod, setChartPeriod] = useState<"day" | "week" | "month">("day")
   const [apiData, setApiData] = useState<any>(null)
-  const { credits, isLoading: sessionLoading } = useUser()
+  const { credits, planType, isLoading: sessionLoading } = useUser()
 
   useEffect(() => {
     fetch("/api/user/stats")
@@ -157,11 +157,7 @@ export default function UsagePage() {
     },
     {
       title: "Kredit Tersisa",
-      value: sessionLoading ? "..." : String(credits ?? 0),
-      subtitle: "kredit",
-      icon: CreditCard,
-      iconBg: "bg-emerald-500/10",
-      iconColor: "text-emerald-400",
+      value: sessionLoading ? "..." : (planType === "lifetime" || planType === "starter") ? "Unlimited" : String(credits ?? 0),
     },
     {
       title: "Bulan Ini",

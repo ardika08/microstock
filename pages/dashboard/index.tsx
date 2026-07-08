@@ -87,10 +87,19 @@ function CreditProgressBar({
   planType: string | null | undefined
   dailyAvg: number
 }) {
+  // ✅ lifetime plan pakai API key sendiri — tidak ada kredit
   if (planType === "starter") {
     return (
       <div className="mt-3">
         <span className="text-xs font-semibold text-cyan-400 tracking-wide">Unlimited</span>
+      </div>
+    )
+  }
+
+  if (planType === "lifetime") {
+    return (
+      <div className="mt-3">
+        <span className="text-xs font-semibold text-purple-400 tracking-wide">∞ Unlimited (API Key sendiri)</span>
       </div>
     )
   }
@@ -306,7 +315,7 @@ export default function DashboardPage() {
     },
     {
       title: "Kredit Tersisa",
-      value: sessionLoading ? "..." : String(credits ?? 0),
+      value: sessionLoading ? "..." : (planType === "lifetime" || planType === "starter") ? "Unlimited" : String(credits ?? 0),
       icon: CreditCard,
       borderColor: "border-l-emerald-500",
       iconBg: "bg-emerald-500/10",

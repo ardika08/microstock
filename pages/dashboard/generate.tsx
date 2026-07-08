@@ -236,7 +236,14 @@ export default function GeneratePage() {
         </div>
 
         {/* Credits badge */}
-        {planType !== "starter" && creditsLeft !== null && (
+        {planType === "lifetime" && (
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <span>
+              Paket <span className="text-purple-400 font-semibold">One-time</span> — Unlimited (pakai API key sendiri)
+            </span>
+          </div>
+        )}
+        {planType !== "starter" && planType !== "lifetime" && creditsLeft !== null && (
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <span>
               Kredit tersisa:{" "}
@@ -666,8 +673,8 @@ export default function GeneratePage() {
 
                   <div className="w-full mt-2 flex justify-end">
                     <span className="text-xs text-gray-500">
-                      {planType === "starter"
-                        ? "Unlimited (fair use)"
+                      {planType === "starter" || planType === "lifetime"
+                        ? "Unlimited"
                         : creditsLeft !== null
                         ? `${creditsLeft} kredit tersisa`
                         : "1 kredit digunakan"}
