@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ResponsiveContainer, LineChart, Line } from "recharts"
+import { ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Tooltip, Legend } from "recharts"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
 import { useUser } from "~/hooks/useUser"
 import { Copy, Check, TrendingUp, CreditCard, Package, BarChart2, ArrowRight, CheckCircle2, Circle, ChevronDown, ChevronUp } from "lucide-react"
@@ -332,6 +332,20 @@ export default function DashboardPage() {
   ]
 
   const recentActivity: any[] = statsData?.recentActivity ?? []
+  const platformBreakdown: { name: string; value: number; platform: string | null }[] =
+    statsData?.platformBreakdown ?? []
+  const totalPlatformGenerates = platformBreakdown.reduce((s, r) => s + r.value, 0)
+
+  const PLATFORM_COLORS: Record<string, string> = {
+    adobe_stock: "#ef4444",
+    shutterstock: "#f97316",
+    web: "#3b82f6",
+    extension: "#8b5cf6",
+  }
+
+  function getPlatformColor(platform: string | null) {
+    return platform && PLATFORM_COLORS[platform] ? PLATFORM_COLORS[platform] : "#6b7280"
+  }
 
   return (
     <DashboardLayout title="Dashboard">
@@ -483,56 +497,138 @@ export default function DashboardPage() {
               })}
         </div>
 
-        {/* Recent Activity */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="bg-slate-900 border border-white/10 rounded-xl p-6"
-        >
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-semibold text-gray-100">Aktivitas Terbaru</h3>
-            <a
-              href="/dashboard/history"
-              className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-            >
-              Lihat semua <ArrowRight className="w-3.5 h-3.5" />
-            </a>
-          </div>
+        {/* Platform Breakdown + Recent Activity Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Platform Breakdown */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="bg-slate-900 border border-white/10 rounded-2xl p-6"
+          >
+            <div className="flex items-center gap-2 mb-5">
+              <BarChart2 className="w-5 h-5 text-blue-400" />
+              <h3 className="text-lg font-semibold text-gray-100">Platform Usage</h3>
+            </div>
 
-          {!statsData ? (
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-14 bg-slate-800 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : recentActivity.length === 0 ? (
-            <div className="py-10 text-center text-gray-500 text-sm">
-              Belum ada aktivitas. Mulai generate metadata sekarang!
-            </div>
-          ) : (
-            <div className="divide-y divide-white/5">
-              {recentActivity.map((item: any) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between py-3 hover:bg-white/5 transition-colors duration-150 -mx-2 px-2 rounded-lg"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-200 truncate">
-                      {item.filename ?? item.title ?? "Generate Metadata"}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {platformLabel(item.platform)} · {timeAgo(item.createdAt)}
-                    </p>
-                  </div>
-                  <span className="ml-3 text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.15)] shrink-0">
-                    Berhasil
-                  </span>
+            {!statsData ? (
+              <div className="h-[200px] flex items-center justify-center">
+                <div className="w-32 h-32 bg-slate-800 rounded-full animate-pulse" />
+              </div>
+            ) : platformBreakdown.length === 0 ? (
+              <div className="py-20 text-center text-gray-500 text-sm">
+                Belum ada data generate
+              </div>
+            ) : (
+              <div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={platformBreakdown}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      dataKey="value"
+                      animationBegin={0}
+                      animationDuration={800}
+                    >
+                      {platformBreakdown.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={getPlatformColor(entry.platform)} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1e293b",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+
+                {/* Center label */}
+                <div className="text-center -mt-32 mb-20 pointer-events-none">
+                  <div className="text-2xl font-bold text-gray-100">{totalPlatformGenerates}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">Total</div>
                 </div>
-              ))}
+
+                {/* Legend */}
+                <div className="space-y-2 mt-4">
+                  {platformBreakdown.map((entry, idx) => {
+                    const percentage = ((entry.value / totalPlatformGenerates) * 100).toFixed(1)
+                    return (
+                      <div key={idx} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: getPlatformColor(entry.platform) }}
+                          />
+                          <span className="text-gray-300">{entry.name}</span>
+                        </div>
+                        <div className="text-gray-400">
+                          {entry.value} <span className="text-gray-600">({percentage}%)</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Recent Activity */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-slate-900 border border-white/10 rounded-xl p-6"
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-semibold text-gray-100">Aktivitas Terbaru</h3>
+              <a
+                href="/dashboard/history"
+                className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Lihat semua <ArrowRight className="w-3.5 h-3.5" />
+              </a>
             </div>
-          )}
-        </motion.div>
+
+            {!statsData ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-14 bg-slate-800 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : recentActivity.length === 0 ? (
+              <div className="py-10 text-center text-gray-500 text-sm">
+                Belum ada aktivitas. Mulai generate metadata sekarang!
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {recentActivity.map((item: any) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between py-3 hover:bg-white/5 transition-colors duration-150 -mx-2 px-2 rounded-lg"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-200 truncate">
+                        {item.filename ?? item.title ?? "Generate Metadata"}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {platformLabel(item.platform)} · {timeAgo(item.createdAt)}
+                      </p>
+                    </div>
+                    <span className="ml-3 text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/10 text-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.15)] shrink-0">
+                      Berhasil
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </div>
       </div>
     </DashboardLayout>
   )

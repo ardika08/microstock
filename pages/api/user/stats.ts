@@ -92,6 +92,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   })
   const chartData = Object.entries(dayMap).map(([date, cnt]) => ({ date, count: cnt }))
 
+  // Platform breakdown
+  const platformResult = await db.select({
+    platform: schema.generateHistory.platform,
+    count: count(),
+  })
+    .from(schema.generateHistory)
+    .where(eq(schema.generateHistory.userId, user.id))
+    .groupBy(schema.generateHistory.platform)
+
+  const platformBreakdown = platformResult.map(r => ({
+    name: r.platform === 'adobe_stock' ? 'Adobe Stock'
+      : r.platform === 'shutterstock' ? 'Shutterstock'
+      : r.platform === 'web' ? 'Web Dashboard'
+      : r.platform === 'extension' ? 'Extension'
+      : r.platform || 'Lainnya',
+    value: r.count,
+    platform: r.platform,
+  }))
+
   return res.status(200).json({
     totalGenerates,
     monthGenerates,
@@ -101,5 +120,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     planType: user.planType,
     recentActivity,
     chartData,
+    platformBreakdown,
   })
 }
