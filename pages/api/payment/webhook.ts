@@ -23,6 +23,21 @@ function getDb() {
   return drizzle(sql, { schema })
 }
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn()
+    } catch (err: any) {
+      if (i === retries - 1) throw err
+      const isRetryable = err?.message?.includes('retryable') || err?.message?.includes('Control plane')
+      if (!isRetryable) throw err
+      console.log(`[webhook] DB retry ${i + 1}/${retries}...`)
+      await new Promise(r => setTimeout(r, delay * (i + 1)))
+    }
+  }
+  throw new Error('Max retries exceeded')
+}
+
 async function generateActivationCode(): Promise<string> {
   const chars = '0123456789ABCDEF'
   const seg = () => Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * 16)]).join('')
@@ -124,12 +139,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const db = getDb()
 
-    // Find or create user
-    const existing = await db
+    // Find or create user (with retry for transient Neon errors)
+    const existing = await withRetry(() => db
       .select()
       .from(schema.users)
       .where(eq(schema.users.email, customerEmail))
       .limit(1)
+    )
 
     let userId: string
 
