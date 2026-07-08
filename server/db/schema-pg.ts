@@ -10,6 +10,7 @@ export const users = pgTable('users', {
   credits: integer('credits').default(20), // start with 20 free trial credits
   creditsUsed: integer('credits_used').default(0),
   isActive: boolean('is_active').default(true),
+  openaiApiKey: text("openai_api_key"),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })

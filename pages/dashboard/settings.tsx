@@ -100,6 +100,7 @@ export default function SettingsPage() {
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordSaved, setPasswordSaved] = useState(false)
   const [apiKey, setApiKey] = useState("")
+  const [apiKeyMasked, setApiKeyMasked] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
   const [apiKeySaving, setApiKeySaving] = useState(false)
   const [apiKeySaved, setApiKeySaved] = useState(false)
@@ -121,6 +122,19 @@ export default function SettingsPage() {
     }
   }
 
+  // Load existing API key on mount (show masked version if already saved)
+  useEffect(() => {
+    fetch('/api/user/api-key')
+      .then(r => r.json())
+      .then(d => {
+        if (d.hasKey) {
+          setApiKey(d.maskedKey || '')
+          setApiKeyMasked(true)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   const handleSaveProfile = () => {
     setProfileSaving(true)
     setTimeout(() => {
@@ -130,17 +144,27 @@ export default function SettingsPage() {
     }, 1000)
   }
 
-  const handleSaveApiKey = () => {
+  const handleSaveApiKey = async () => {
+    // If showing masked key, don't re-save it — user must type a new one
+    if (apiKeyMasked) return
     setApiKeySaving(true)
-    // Save to localStorage (accessible by extension via chrome.storage or web dashboard)
     try {
+      const res = await fetch('/api/user/api-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: apiKey.trim() })
+      })
+      if (!res.ok) throw new Error('Gagal menyimpan')
+      // Also save to localStorage for quick access
       localStorage.setItem('autofillstock_openai_key', apiKey.trim())
-    } catch {}
-    setTimeout(() => {
-      setApiKeySaving(false)
       setApiKeySaved(true)
+      setApiKeyMasked(false)
       setTimeout(() => setApiKeySaved(false), 3000)
-    }, 800)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setApiKeySaving(false)
+    }
   }
 
   const handleSavePassword = () => {

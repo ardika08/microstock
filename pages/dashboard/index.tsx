@@ -60,11 +60,10 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    fetch("/api/user/me")
+    fetch("/api/user/activation-code")
       .then(r => r.json())
-      .then(() => {
-        // Activation codes are per-purchase; free users get null
-        setActivationCode(null)
+      .then(d => {
+        setActivationCode(d.code ?? null)
       })
       .catch(() => {})
   }, [])
@@ -174,7 +173,9 @@ export default function DashboardPage() {
             ) : (
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-500 italic">
-                  {sessionLoading ? "Memuat..." : "Belum ada kode — kode aktivasi didapat setelah pembelian paket"}
+                  {sessionLoading
+                    ? "Memuat..."
+                    : "Belum ada kode — kode aktivasi didapat setelah pembelian paket. Jika baru saja membayar, tunggu beberapa menit."}
                 </p>
                 {!sessionLoading && (
                   <a

@@ -117,15 +117,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     apiKey = process.env.OPENAI_API_KEY
     model = 'gpt-4o'
   } else {
-    // All other plans require the user to supply their own key
-    if (!userApiKey || !String(userApiKey).startsWith('sk-')) {
-      return res.status(400).json({ error: 'API key OpenAI diperlukan untuk paket ini.' })
+    // All other plans: use userApiKey from request body, or fall back to DB-stored key
+    if (userApiKey && String(userApiKey).startsWith('sk-')) {
+      apiKey = String(userApiKey)
+    } else {
+      // Try fetching stored key from DB
+      const dbUserWithKey = await db
+        .select({ openaiApiKey: schema.users.openaiApiKey })
+        .from(schema.users)
+        .where(eq(schema.users.id, user.id))
+        .limit(1)
+
+      if (dbUserWithKey[0]?.openaiApiKey) {
+        apiKey = dbUserWithKey[0].openaiApiKey
+      } else {
+        return res.status(400).json({ error: 'API key OpenAI diperlukan. Tambahkan di halaman Pengaturan.' })
+      }
     }
     // free / topup plans consume credits; lifetime does not
     if (user.planType !== 'lifetime' && (user.credits ?? 0) <= 0) {
       return res.status(402).json({ error: 'Kredit habis. Silakan top up kredit.' })
     }
-    apiKey = String(userApiKey)
     model = 'gpt-4o'
   }
 

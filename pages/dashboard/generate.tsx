@@ -13,7 +13,6 @@ import {
   Clipboard,
   Upload,
   Plus,
-  Key,
   AlertCircle,
 } from "lucide-react"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
@@ -97,8 +96,6 @@ export default function GeneratePage() {
   const [currentFilename, setCurrentFilename] = useState("asset.jpg")
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [userApiKey, setUserApiKey] = useState("")
-  const [showApiKey, setShowApiKey] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -113,6 +110,16 @@ export default function GeneratePage() {
     setPageState("processing")
     setError(null)
 
+    // Read API key from localStorage (saved via Settings page)
+    const savedApiKey = typeof window !== "undefined" ? localStorage.getItem("autofillstock_openai_key") || "" : ""
+
+    // Guard: non-starter users must have a key saved in Settings
+    if (planType !== "starter" && !savedApiKey) {
+      setError("API key OpenAI belum diatur. Silakan masuk ke Pengaturan untuk menambahkan API key Anda.")
+      setPageState("upload")
+      return
+    }
+
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -121,7 +128,7 @@ export default function GeneratePage() {
           assetBrief: brief,
           filename,
           platform: "web",
-          userApiKey: planType !== "starter" ? userApiKey : undefined,
+          userApiKey: planType !== "starter" ? savedApiKey : undefined,
         }),
       })
 
@@ -211,8 +218,6 @@ export default function GeneratePage() {
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
-  const needsApiKey = planType !== "starter"
-
   return (
     <DashboardLayout title="Generate Metadata">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -223,46 +228,6 @@ export default function GeneratePage() {
             Upload aset dan dapatkan metadata siap pakai untuk microstock.
           </p>
         </div>
-
-        {/* API Key input — only for non-starter plans */}
-        {needsApiKey && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-slate-900 border border-white/10 rounded-xl p-4"
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <Key className="w-4 h-4 text-amber-400" />
-              <span className="text-sm font-medium text-gray-200">OpenAI API Key</span>
-              <span className="ml-auto text-xs text-gray-500">
-                Diperlukan untuk paket{" "}
-                {planType === "free"
-                  ? "Free Trial"
-                  : planType === "topup"
-                  ? "Top Up"
-                  : "Lifetime"}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type={showApiKey ? "text" : "password"}
-                value={userApiKey}
-                onChange={(e) => setUserApiKey(e.target.value)}
-                placeholder="sk-..."
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white placeholder-gray-600 font-mono focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all"
-              />
-              <button
-                onClick={() => setShowApiKey((v) => !v)}
-                className="px-3 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-xs text-gray-400 hover:text-gray-200 hover:bg-slate-700 transition-all"
-              >
-                {showApiKey ? "Hide" : "Show"}
-              </button>
-            </div>
-            <p className="text-xs text-gray-600 mt-2">
-              Key tidak disimpan di server — hanya digunakan untuk request ini.
-            </p>
-          </motion.div>
-        )}
 
         {/* Credits badge */}
         {planType !== "starter" && creditsLeft !== null && (
