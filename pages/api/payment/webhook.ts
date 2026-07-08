@@ -62,7 +62,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const customerEmail = payload?.data?.customerEmail || payload?.customerEmail
   const orderStatus = payload?.data?.status || payload?.status
   const orderId = payload?.data?.id || payload?.id
+  // For invoices, productName is "INVOICE" — use productDescription instead
   const productName = (
+    payload?.data?.productDescription ||
     payload?.data?.productName ||
     payload?.data?.items?.[0]?.name ||
     payload?.productName ||
@@ -70,7 +72,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   ).toLowerCase()
 
   // Only act on successful payments
-  if (orderStatus !== 'paid' && event !== 'payment.success') {
+  // Mayar sends: event='payment.received', status='SUCCESS' OR event='payment.success', status='paid'
+  const isPaid = 
+    orderStatus === 'paid' || 
+    orderStatus === 'SUCCESS' || 
+    orderStatus === 'success' ||
+    event === 'payment.success' || 
+    event === 'payment.received'
+  
+  if (!isPaid) {
     console.log('[webhook] Ignoring non-paid event:', event, orderStatus)
     return res.status(200).json({ received: true })
   }
