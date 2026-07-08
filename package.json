@@ -48,6 +48,7 @@
     "typescript": "^5.7.2"
   },
   "manifest": {
+"key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx0+1vVP+IWSsx00rdmckZfsREiNgf0e3SE75rczPAL8ym6bKZNmI4jvPjHYO/0K1bh0jwTt1dzc0rBc2Ft4xqPWcU2vm9ecZ/wyZf0K28X798DDOwP9gHy6DShmrejPFtx2Lly8vRezDr7SplrWYkBrU7RVWYsCTYdAcKk2YlIEvbguXh/DMHWtz1tNAw+UPCq7bhUhKJTBQEDUEUB/ihSpVKxojOq/52D0NpawDrCOLlT3tyxtwBEetNBeOsXGdLr0bieaQYKocTSsCLmk9yqDDdrG+w/6YoWTVdyjwXS11WohgMsAjjwCVHOZFz1Ob7jx3Eca9c7qB97yOpPX1+wIDAQAB",
     "permissions": [
       "activeTab",
       "notifications",
