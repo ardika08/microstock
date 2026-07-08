@@ -76,10 +76,11 @@ function CopyButton({ text }: { text: string }) {
 function getTagClasses(relevance: Relevance): string {
   switch (relevance) {
     case "high":
-      return "bg-blue-500/10 border-blue-500/30 text-blue-300"
+      return "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
     case "medium":
-      return "bg-purple-500/10 border-purple-500/30 text-purple-300"
+      return "bg-amber-500/10 border-amber-500/30 text-amber-300"
     case "low":
+      return "bg-red-500/10 border-red-500/30 text-red-300"
       return "bg-slate-700/50 border-white/10 text-gray-400"
   }
 }
