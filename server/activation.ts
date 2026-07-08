@@ -1,7 +1,14 @@
 import { eq, sql } from "drizzle-orm"
+import { neon } from "@neondatabase/serverless"
+import { drizzle } from "drizzle-orm/neon-http"
+import * as schema from "~/server/db/schema-pg"
 
-import { db } from "~/server/db"
-import { activationCodes } from "~/server/db/schema"
+// ✅ Gunakan Neon PostgreSQL sebagai single source of truth
+// SQLite (server/db/index.ts) sudah tidak dipakai — semua activation codes ada di Neon
+function getDb() {
+  const sqlClient = neon(process.env.DATABASE_URL!)
+  return drizzle(sqlClient, { schema })
+}
 
 export type ActivationValidationResult =
   | {
@@ -28,58 +35,53 @@ export async function validateActivationCode(
     }
   }
 
-  // ✅ Atomic UPDATE — cegah race condition TOCTOU
-  // Hanya update jika status masih ACTIVE, cek expiry sekaligus
-  // Jika 0 rows ter-update berarti kode sudah USED/REVOKED/EXPIRED/NOT_FOUND
+  const db = getDb()
+
   try {
-    const updated = db.transaction(() => {
-      // Cek dulu apakah kode ada dan statusnya
-      const record = db
-        .select()
-        .from(activationCodes)
-        .where(eq(activationCodes.code, code))
-        .get()
+    // ✅ Baca kode dari Neon PostgreSQL
+    const records = await db
+      .select()
+      .from(schema.activationCodes)
+      .where(eq(schema.activationCodes.code, code))
+      .limit(1)
 
-      if (!record) return { result: 'NOT_FOUND' as const, record: null }
-      if (record.status === 'REVOKED') return { result: 'REVOKED' as const, record }
-      if (record.status === 'USED') return { result: 'USED' as const, record }
-      if (record.expiresAt && Date.parse(record.expiresAt) < Date.now()) {
-        return { result: 'EXPIRED' as const, record }
-      }
+    const record = records[0]
 
-      // ✅ Atomic: UPDATE hanya jika status masih ACTIVE
-      // Gunakan WHERE code = ? AND status = 'ACTIVE' untuk mencegah double-use
-      const stmt = db.run(
-        sql`UPDATE activation_codes SET status = 'USED' WHERE code = ${code} AND status = 'ACTIVE'`
-      )
-
-      // Jika 0 rows berubah berarti concurrent request sudah mark USED duluan
-      if (stmt.changes === 0) return { result: 'USED' as const, record }
-
-      return { result: 'SUCCESS' as const, record }
-    })
-
-    if (updated.result === 'NOT_FOUND') {
-      return { valid: false, status: 'NOT_FOUND', message: 'Kode aktivasi tidak ditemukan.' }
+    if (!record) {
+      return { valid: false, status: "NOT_FOUND", message: "Kode aktivasi tidak ditemukan." }
     }
-    if (updated.result === 'REVOKED') {
-      return { valid: false, status: 'REVOKED', message: 'Kode aktivasi sudah dicabut.' }
+
+    if (record.status === "REVOKED") {
+      return { valid: false, status: "REVOKED", message: "Kode aktivasi sudah dicabut." }
     }
-    if (updated.result === 'USED') {
-      return { valid: false, status: 'USED', message: 'Kode aktivasi sudah digunakan.' }
+
+    if (record.status === "USED") {
+      return { valid: false, status: "USED", message: "Kode aktivasi sudah digunakan." }
     }
-    if (updated.result === 'EXPIRED') {
-      return { valid: false, status: 'EXPIRED', message: 'Kode aktivasi sudah kedaluwarsa.' }
+
+    if (record.expiresAt && new Date(record.expiresAt).getTime() < Date.now()) {
+      return { valid: false, status: "EXPIRED", message: "Kode aktivasi sudah kedaluwarsa." }
+    }
+
+    // ✅ Atomic UPDATE — cegah race condition TOCTOU
+    // UPDATE hanya jika status masih ACTIVE, return rows yang ter-update
+    const updated = await db.execute(
+      sql`UPDATE activation_codes SET status = 'USED' WHERE code = ${code} AND status = 'ACTIVE' RETURNING code, expires_at`
+    )
+
+    // Jika 0 rows ter-update berarti concurrent request sudah mark USED duluan
+    if (!updated.rows || updated.rows.length === 0) {
+      return { valid: false, status: "USED", message: "Kode aktivasi sudah digunakan." }
     }
 
     return {
       valid: true,
-      status: 'ACTIVE',
-      code: updated.record!.code,
-      expires_at: updated.record!.expiresAt
+      status: "ACTIVE",
+      code: record.code,
+      expires_at: record.expiresAt ? record.expiresAt.toISOString() : null
     }
   } catch (err) {
-    console.error('[activation] Error validating code:', err)
-    return { valid: false, message: 'Kode tidak dapat diproses. Coba lagi.' }
+    console.error("[activation] Error validating code:", err)
+    return { valid: false, message: "Kode tidak dapat diproses. Coba lagi." }
   }
 }

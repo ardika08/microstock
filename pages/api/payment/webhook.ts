@@ -3,8 +3,6 @@ import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from '~/server/db/schema-pg'
 import { eq } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import Database from 'better-sqlite3'
-import path from 'path'
 import crypto from 'crypto'
 
 // Disable body parser so we can read the raw body
@@ -43,20 +41,6 @@ async function generateActivationCode(): Promise<string> {
   const { randomBytes } = await import('crypto')
   const seg = () => randomBytes(3).toString('hex').toUpperCase()
   return `ASAF-${seg()}-${seg()}`
-}
-
-function saveCodeToSQLite(code: string) {
-  try {
-    const dbPath = path.join(process.cwd(), 'data', 'activation.sqlite')
-    const sqlite = new Database(dbPath)
-    sqlite.prepare(`
-      INSERT OR IGNORE INTO activation_codes (code, status, created_at) 
-      VALUES (?, 'ACTIVE', datetime('now'))
-    `).run(code)
-    sqlite.close()
-  } catch (err) {
-    console.error('[webhook] Failed to save code to SQLite:', err)
-  }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -243,7 +227,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status: 'ACTIVE',
         planType: productType,
       } as any)
-      saveCodeToSQLite(code)
       console.log('[webhook] Generated activation code:', code, 'for', customerEmail)
     }
 
