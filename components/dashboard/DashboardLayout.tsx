@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/router"
 import { useSession } from "next-auth/react"
 import Sidebar from "./Sidebar"
+import type { SessionUser } from '~/hooks/useUser'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -38,9 +39,10 @@ export default function DashboardLayout({
     )
   }
 
-  const resolvedName = (session?.user as any)?.name ?? userName
-  const resolvedEmail = (session?.user as any)?.email ?? userEmail
-  const resolvedImage = (session?.user as any)?.image
+  const u = session?.user as SessionUser | undefined
+  const resolvedName = u?.name ?? userName
+  const resolvedEmail = u?.email ?? userEmail
+  const resolvedImage = u?.image
 
   return (
     <>

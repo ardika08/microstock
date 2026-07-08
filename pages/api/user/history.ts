@@ -3,7 +3,7 @@ import { authOptions } from '../auth/[...nextauth]'
 import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from '~/server/db/schema-pg'
-import { eq, desc } from 'drizzle-orm'
+import { and, or, ilike, eq, desc } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,28 +14,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions)
   if (!session?.user?.email) return res.status(401).json({ error: 'Unauthorized' })
 
-  const dbConn = neon(process.env.DATABASE_URL!)
-  const db = drizzle(dbConn, { schema })
+  try {
+    const dbConn = neon(process.env.DATABASE_URL!)
+    const db = drizzle(dbConn, { schema })
 
-  const users = await db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.email, session.user.email))
-    .limit(1)
+    const users = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.email, session.user.email))
+      .limit(1)
 
-  if (!users[0]) return res.status(404).json({ error: 'User not found' })
+    if (!users[0]) return res.status(404).json({ error: 'User not found' })
 
-  const page = Math.max(1, Number(req.query.page) || 1)
-  const limit = 20
-  const offset = (page - 1) * limit
+    const page = Math.max(1, Number(req.query.page) || 1)
+    const limit = 20
+    const offset = (page - 1) * limit
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
 
-  const history = await db
-    .select()
-    .from(schema.generateHistory)
-    .where(eq(schema.generateHistory.userId, users[0].id))
-    .orderBy(desc(schema.generateHistory.createdAt))
-    .limit(limit)
-    .offset(offset)
+    const whereClause = q
+      ? and(
+          eq(schema.generateHistory.userId, users[0].id),
+          or(
+            ilike(schema.generateHistory.filename, `%${q}%`),
+            ilike(schema.generateHistory.title, `%${q}%`)
+          )
+        )
+      : eq(schema.generateHistory.userId, users[0].id)
 
-  return res.status(200).json({ history, page })
+    const history = await db
+      .select()
+      .from(schema.generateHistory)
+      .where(whereClause)
+      .orderBy(desc(schema.generateHistory.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    return res.status(200).json({ history, page })
+  } catch (err) {
+    console.error('[api/user/history]', err)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
 }

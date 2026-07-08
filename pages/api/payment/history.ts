@@ -17,17 +17,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, authOptions)
   if (!session?.user?.email) return res.status(401).json({ error: 'Unauthorized' })
 
-  const db = getDb()
-  const users = await db.select().from(schema.users)
-    .where(eq(schema.users.email, session.user.email)).limit(1)
+  try {
+    const db = getDb()
+    const users = await db.select().from(schema.users)
+      .where(eq(schema.users.email, session.user.email)).limit(1)
 
-  if (!users[0]) return res.status(404).json({ error: 'User not found' })
+    if (!users[0]) return res.status(404).json({ error: 'User not found' })
 
-  const payments = await db.select()
-    .from(schema.payments)
-    .where(eq(schema.payments.userId, users[0].id))
-    .orderBy(desc(schema.payments.createdAt))
-    .limit(20)
+    const payments = await db.select()
+      .from(schema.payments)
+      .where(eq(schema.payments.userId, users[0].id))
+      .orderBy(desc(schema.payments.createdAt))
+      .limit(20)
 
-  return res.status(200).json({ payments })
+    return res.status(200).json({ payments })
+  } catch (err) {
+    console.error('[api/payment/history]', err)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
 }

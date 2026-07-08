@@ -41,13 +41,15 @@ export default function HistoryPage() {
   const [data, setData] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [totalFromApi, setTotalFromApi] = useState(0)
+  const [fetchError, setFetchError] = useState(false)
   const itemsPerPage = 20
 
   useEffect(() => {
     async function fetchHistory() {
       setLoading(true)
+      setFetchError(false)
       try {
-        const res = await fetch(`/api/user/history?page=${currentPage}`)
+        const res = await fetch(`/api/user/history?page=${currentPage}&q=${encodeURIComponent(searchQuery)}`)
         if (!res.ok) throw new Error("Fetch failed")
         const json = await res.json()
         const rows: HistoryItem[] = (json.history ?? []).map((h: any) => ({
@@ -64,28 +66,20 @@ export default function HistoryPage() {
         setTotalFromApi(json.total ?? rows.length)
       } catch {
         setData([])
+        setFetchError(true)
       } finally {
         setLoading(false)
       }
     }
     void fetchHistory()
-  }, [currentPage])
+  }, [currentPage, searchQuery])
 
-  // Client-side search filter over current page
-  const filteredData = data.filter(
-    item =>
-      (item.filename ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.title ?? "").toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
 
-  // Use server-driven page count when no search active, client count when filtering
-  const totalPages = searchQuery
-    ? Math.max(1, Math.ceil(filteredData.length / itemsPerPage))
-    : Math.max(1, Math.ceil(totalFromApi / itemsPerPage))
-
-  const displayData = searchQuery
-    ? filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-    : filteredData
+  const totalPages = Math.max(1, Math.ceil(totalFromApi / itemsPerPage))
 
   return (
     <DashboardLayout title="History">
@@ -103,10 +97,7 @@ export default function HistoryPage() {
             <input
               type="text"
               value={searchQuery}
-              onChange={e => {
-                setSearchQuery(e.target.value)
-                setCurrentPage(1)
-              }}
+              onChange={e => setSearchQuery(e.target.value)}
               placeholder="Cari file atau judul..."
               className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all"
             />
@@ -117,6 +108,14 @@ export default function HistoryPage() {
             </span>
           )}
         </div>
+
+        {/* Error banner */}
+        {fetchError && !loading && (
+          <div className="flex items-center gap-2 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm mb-4">
+            <span>Gagal memuat data. Coba refresh halaman.</span>
+            <button onClick={() => { setFetchError(false); setCurrentPage(1) }} className="ml-auto underline">Coba lagi</button>
+          </div>
+        )}
 
         {/* Table */}
         <motion.div
@@ -145,7 +144,7 @@ export default function HistoryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {displayData.length === 0 ? (
+                    {data.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-4 py-14 text-center">
                           <div className="flex flex-col items-center gap-2 text-gray-500">
@@ -159,7 +158,7 @@ export default function HistoryPage() {
                         </td>
                       </tr>
                     ) : (
-                      displayData.map((item, idx) => (
+                      data.map((item, idx) => (
                         <tr
                           key={item.id}
                           className="bg-slate-950 border-b border-white/5 hover:bg-white/5 transition-colors duration-150"
