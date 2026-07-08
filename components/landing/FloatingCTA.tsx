@@ -46,7 +46,7 @@ export function FloatingCTA() {
                     size="sm"
                     className="flex-1 sm:flex-none bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0 shadow-lg shadow-blue-500/25 gap-2"
                   >
-                    <Link href="/auth/signin">
+                    <Link href="/auth/login">
                       <Zap className="w-4 h-4" aria-hidden="true" />
                       Mulai Gratis
                     </Link>

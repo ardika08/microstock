@@ -162,7 +162,7 @@ export function Pricing() {
                   className={`w-full mt-8 ${plan.buttonClass}`}
                   size="lg"
                 >
-                  <Link href={`/auth/signin?plan=${plan.name === 'Free Trial' ? 'free' : plan.name === 'Starter' ? 'starter' : 'topup'}`}>
+                  <Link href={`/auth/login?plan=${plan.name === 'Free Trial' ? 'free' : plan.name === 'Starter' ? 'starter' : 'topup'}`}>
                     {plan.buttonText}
                   </Link>
                 </Button>
@@ -213,7 +213,7 @@ export function Pricing() {
                 </div>
               </div>
               <Button size="lg" asChild className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg shadow-purple-500/25 whitespace-nowrap">
-                <Link href="/auth/signin?plan=onetime">Beli Sekarang</Link>
+                <Link href="/auth/login?plan=onetime">Beli Sekarang</Link>
               </Button>
             </div>
           </div>

@@ -81,7 +81,7 @@ export function Navbar() {
                 Harga
               </Button>
               <Button asChild className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0">
-                <Link href="/auth/signin">Login</Link>
+                <Link href="/auth/login">Login</Link>
               </Button>
             </div>
 
@@ -92,7 +92,7 @@ export function Navbar() {
                 size="sm"
                 className="bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0 text-xs px-3"
               >
-                <Link href="/auth/signin">Login</Link>
+                <Link href="/auth/login">Login</Link>
               </Button>
               <button
                 onClick={() => setMobileOpen((v) => !v)}
@@ -138,7 +138,7 @@ export function Navbar() {
                     asChild
                     className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white border-0"
                   >
-                    <Link href="/auth/signin" onClick={() => setMobileOpen(false)}>
+                    <Link href="/auth/login" onClick={() => setMobileOpen(false)}>
                       Login / Daftar
                     </Link>
                   </Button>
