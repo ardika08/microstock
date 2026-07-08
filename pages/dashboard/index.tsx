@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Tooltip, Legend } from "recharts"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
 import { useUser } from "~/hooks/useUser"
-import { Copy, Check, TrendingUp, CreditCard, Package, BarChart2, ArrowRight, CheckCircle2, Circle, ChevronDown, ChevronUp } from "lucide-react"
+import { Copy, Check, TrendingUp, CreditCard, Package, BarChart2, ArrowRight, CheckCircle2, Circle, ChevronDown, ChevronUp, Download } from "lucide-react"
 
 function SkeletonCard() {
   return (
@@ -459,6 +459,60 @@ export default function DashboardPage() {
                   Kode aktivasi sedang diproses. Jika baru saja membayar, tunggu beberapa menit.
                 </p>
               )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Download Extension Card — hanya untuk paid users */}
+        {!sessionLoading && planType !== 'free' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-slate-900 border border-white/10 rounded-xl p-6"
+          >
+            <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+              {/* Left: Download */}
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <Download className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-100">Download Extension</h2>
+                    <p className="text-sm text-gray-400">Autofillstock Chrome Extension v0.1.0</p>
+                  </div>
+                </div>
+                <a
+                  href="/downloads/autofillstock-extension.zip"
+                  download
+                  className="inline-flex items-center gap-2 mt-3 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-sm font-semibold rounded-lg transition-all duration-200 shadow-lg shadow-blue-500/20"
+                >
+                  <Download className="w-4 h-4" />
+                  Download .zip
+                </a>
+              </div>
+
+              {/* Right: Install Guide */}
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-300 mb-3">Cara Install Extension:</p>
+                <ol className="space-y-2">
+                  {[
+                    { step: "1", text: "Ekstrak file .zip ke folder" },
+                    { step: "2", text: <><span>Buka </span><code className="px-1.5 py-0.5 bg-slate-800 rounded text-blue-300 text-xs">chrome://extensions</code><span> di address bar</span></> },
+                    { step: "3", text: 'Aktifkan "Developer mode" (toggle kanan atas)' },
+                    { step: "4", text: 'Klik "Load unpacked" → pilih folder hasil ekstrak' },
+                    { step: "5", text: "Extension terpasang! Klik icon di toolbar untuk aktivasi" },
+                  ].map((item) => (
+                    <li key={item.step} className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center mt-0.5">
+                        {item.step}
+                      </span>
+                      <span className="text-sm text-gray-400">{item.text}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
             </div>
           </motion.div>
         )}
