@@ -3,9 +3,11 @@ import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/router"
 import { motion, AnimatePresence } from "framer-motion"
-import { signOut } from "next-auth/react"
-import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X, Sparkles } from "lucide-react"
+import { signOut, useSession } from "next-auth/react"
+import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X, Sparkles, Shield } from "lucide-react"
 import AvatarMenu from "./AvatarMenu"
+
+const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
 
 const navItems = [
   { href: "/dashboard/generate", icon: Sparkles, label: "Generate" },
@@ -28,6 +30,8 @@ export default function Sidebar({
   userImage,
 }: SidebarProps) {
   const router = useRouter()
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.email === ADMIN_EMAIL
   const [showAvatarMenu, setShowAvatarMenu] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
@@ -76,6 +80,22 @@ export default function Sidebar({
             </Link>
           )
         })}
+
+        {/* Admin link — hanya untuk Ardika */}
+        {isAdmin && (
+          <Link
+            href="/dashboard/admin"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border-l-2 mt-2 ${
+              router.pathname === '/dashboard/admin'
+                ? 'bg-red-500/10 border-red-500 text-red-400'
+                : 'border-transparent text-gray-600 hover:bg-white/5 hover:text-red-400'
+            }`}
+            onClick={() => setIsMobileOpen(false)}
+          >
+            <Shield className="w-5 h-5 flex-shrink-0" />
+            <span>Admin</span>
+          </Link>
+        )}
       </nav>
 
       {/* Avatar section */}
