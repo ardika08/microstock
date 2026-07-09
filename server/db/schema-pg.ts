@@ -10,7 +10,7 @@ export const users = pgTable('users', {
   credits: integer('credits').default(20),
   creditsUsed: integer('credits_used').default(0),
   isActive: boolean('is_active').default(true),
-  openaiApiKey: text("...y"),
+  openaiApiKey: text('openai_api_key'),
   subscriptionEndDate: timestamp('subscription_end_date'), // Pre-launch Starter: dapat 2 bulan
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
