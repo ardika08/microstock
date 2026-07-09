@@ -11,7 +11,7 @@ export function Pricing() {
       price: 'Gratis',
       originalPrice: '',
       period: '',
-      credits: '20 kredit',
+      credits: '50 kredit 🎁 (bonus pre-launch!)',
       description: 'Coba fitur lengkap tanpa kartu kredit',
       features: [
         '20 kredit gratis',
@@ -56,7 +56,7 @@ export function Pricing() {
       price: 'Rp50.000',
       originalPrice: '',
       period: '',
-      credits: '500 kredit',
+      credits: '750 kredit 🎁 (bonus pre-launch!)',
       description: 'Beli kredit, pakai kapanpun tanpa expire',
       features: [
         '500 kredit (tidak expire)',

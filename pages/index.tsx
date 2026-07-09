@@ -9,6 +9,7 @@ import { Pricing } from '~/components/landing/Pricing';
 import { FAQ } from '~/components/landing/FAQ';
 import { Footer } from '~/components/landing/Footer';
 import { FloatingCTA } from '~/components/landing/FloatingCTA';
+import { PreLaunchModal } from '~/components/landing/PreLaunchModal';
 
 const Home: NextPage = () => {
   return (
@@ -24,6 +25,7 @@ const Home: NextPage = () => {
       </Head>
 
       <div className="min-h-screen bg-slate-950 text-gray-100">
+        <PreLaunchModal />
         <Navbar />
         <main>
           <Hero />
