@@ -8,7 +8,6 @@ import { Comparison } from '~/components/landing/Comparison';
 import { Pricing } from '~/components/landing/Pricing';
 import { FAQ } from '~/components/landing/FAQ';
 import { Footer } from '~/components/landing/Footer';
-import { FloatingCTA } from '~/components/landing/FloatingCTA';
 import { PreLaunchModal } from '~/components/landing/PreLaunchModal';
 import { PreLaunchBanner } from '~/components/landing/PreLaunchBanner';
 
@@ -38,7 +37,6 @@ const Home: NextPage = () => {
           <FAQ />
         </main>
         <Footer />
-        <FloatingCTA />
       </div>
     </>
   );
