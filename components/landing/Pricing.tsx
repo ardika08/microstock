@@ -15,7 +15,6 @@ export function Pricing() {
       description: 'Coba fitur lengkap tanpa kartu kredit',
       features: [
         '20 kredit gratis',
-        'Model AI: GPT-4o Mini',
         'Export CSV',
         'Support semua platform',
         'Kredit tidak expire',
@@ -37,7 +36,6 @@ export function Pricing() {
       description: 'Untuk contributor aktif yang butuh unlimited',
       features: [
         'Unlimited generate (fair use)',
-        'Model AI: GPT-4o (premium)',
         'API key disediakan',
         'Batch processing (50 gambar)',
         'Priority support',
@@ -60,7 +58,6 @@ export function Pricing() {
       description: 'Beli kredit, pakai kapanpun tanpa expire',
       features: [
         '500 kredit (tidak expire)',
-        'Model AI: GPT-4o (premium)',
         'Top-up kapan saja',
         'Cocok untuk pemula',
         'Tanpa komitmen bulanan',
