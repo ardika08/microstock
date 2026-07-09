@@ -7,10 +7,11 @@ export const users = pgTable('users', {
   image: text('image'),
   phone: text('phone'),
   planType: text('plan_type').default('free'), // free, topup, starter, lifetime
-  credits: integer('credits').default(20), // start with 20 free trial credits
+  credits: integer('credits').default(20),
   creditsUsed: integer('credits_used').default(0),
   isActive: boolean('is_active').default(true),
-  openaiApiKey: text("openai_api_key"),
+  openaiApiKey: text("...y"),
+  subscriptionEndDate: timestamp('subscription_end_date'), // Pre-launch Starter: dapat 2 bulan
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })

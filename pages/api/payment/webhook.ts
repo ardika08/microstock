@@ -131,7 +131,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (productName.includes('top up') || productName.includes('kredit')) {
     productType = 'topup_500'
-    creditsToAdd = 500
+    creditsToAdd = 750  // ✅ Pre-launch bonus: 500 → 750 kredit
     planType = 'topup'
   } else if (productName.includes('starter') || productName.includes('bulanan')) {
     productType = 'starter_monthly'
@@ -191,14 +191,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } else {
       userId = existing[0].id
       if (productType === 'topup_500') {
+        // ✅ Pre-launch bonus: tambah 750 kredit (bukan 500)
         await db
           .update(schema.users)
-          .set({ credits: (existing[0].credits ?? 0) + 500 } as any)
+          .set({ credits: (existing[0].credits ?? 0) + 750 } as any)
           .where(eq(schema.users.id, userId))
       } else if (productType === 'starter_monthly') {
+        // ✅ Pre-launch bonus: Starter dapat 2 bulan (bayar 1 gratis 1)
+        const now = new Date()
+        const subscriptionEndDate = new Date(now)
+        subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 2)
         await db
           .update(schema.users)
-          .set({ planType: 'starter', credits: 0 } as any)
+          .set({
+            planType: 'starter',
+            credits: 0,
+            subscriptionEndDate,
+          } as any)
           .where(eq(schema.users.id, userId))
       } else if (productType === 'lifetime') {
         await db
