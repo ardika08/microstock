@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { X, Zap, Gift, Clock } from 'lucide-react';
 
@@ -7,24 +8,28 @@ const STORAGE_KEY = 'autofillstock_prelaunch_seen';
 
 export function PreLaunchModal() {
   const [visible, setVisible] = useState(false);
+  const { status } = useSession();
 
   useEffect(() => {
-    // Tampilkan hanya jika belum pernah lihat (first visit)
+    // Jangan tampilkan jika user sudah login
+    if (status === 'authenticated') return;
+    if (status === 'loading') return;
+
+    // Gunakan sessionStorage — muncul tiap session baru, bukan sekali selamanya
     try {
-      const seen = localStorage.getItem(STORAGE_KEY);
+      const seen = sessionStorage.getItem(STORAGE_KEY);
       if (!seen) {
-        // Delay 1.5s supaya halaman sudah render dulu
         const timer = setTimeout(() => setVisible(true), 1500);
         return () => clearTimeout(timer);
       }
     } catch {
-      // localStorage tidak tersedia (SSR) — tidak tampilkan
+      // sessionStorage tidak tersedia (SSR) — tidak tampilkan
     }
-  }, []);
+  }, [status]);
 
   const handleClose = () => {
     try {
-      localStorage.setItem(STORAGE_KEY, '1');
+      sessionStorage.setItem(STORAGE_KEY, '1');
     } catch {}
     setVisible(false);
   };
