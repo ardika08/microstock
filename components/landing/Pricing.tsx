@@ -32,7 +32,7 @@ export function Pricing() {
       price: 'Rp99.000',
       originalPrice: 'Rp149.000',
       period: '/bulan',
-      credits: 'Unlimited generate',
+      credits: 'Unlimited generate 🎁 +1 bulan gratis!',
       description: 'Untuk contributor aktif yang butuh unlimited',
       features: [
         'Unlimited generate (fair use)',
