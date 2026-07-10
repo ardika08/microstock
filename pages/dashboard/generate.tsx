@@ -169,6 +169,11 @@ export default function GeneratePage() {
       setError('Format file tidak didukung. Gunakan JPG, PNG, atau WebP.')
       return
     }
+    // ✅ Validasi ukuran — maksimal 2MB
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Ukuran file terlalu besar. Maksimal 2 MB.')
+      return
+    }
     // Create preview URL for the image
     if (imagePreview) URL.revokeObjectURL(imagePreview)
     const previewUrl = URL.createObjectURL(file)
@@ -340,7 +345,7 @@ export default function GeneratePage() {
                     {isDragOver ? "Lepas file di sini" : "Drop file atau klik untuk upload"}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    JPG, PNG, WebP — maks 50 MB
+                    JPG, PNG, WebP — maks 2 MB
                   </p>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-600">
