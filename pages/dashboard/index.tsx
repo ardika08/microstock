@@ -365,6 +365,36 @@ export default function DashboardPage() {
           <p className="text-gray-400 mt-1">Selamat datang kembali! Berikut ringkasan aktivitas Anda.</p>
         </div>
 
+        {/* 🎯 Nudge banner — free user yang belum pernah generate */}
+        {!sessionLoading && planType === 'free' && (creditsUsed ?? 0) === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="relative overflow-hidden bg-gradient-to-r from-blue-600/20 via-cyan-500/20 to-blue-600/20 border border-blue-500/30 rounded-xl p-5"
+          >
+            {/* Glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-cyan-400/5 rounded-xl" />
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="text-3xl shrink-0">🎯</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-semibold text-gray-100">
+                  Kamu punya <span className="text-cyan-400">50 kredit gratis</span> yang belum dipakai!
+                </p>
+                <p className="text-sm text-gray-400 mt-0.5">
+                  Upload foto dan generate metadata AI sekarang — langsung dari browser, tanpa install apapun.
+                </p>
+              </div>
+              <a
+                href="/dashboard/generate"
+                className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/25 whitespace-nowrap"
+              >
+                Coba Generate Sekarang →
+              </a>
+            </div>
+          </motion.div>
+        )}
+
         {/* Onboarding Checklist — only when not all done and data loaded */}
         <AnimatePresence>
           {!sessionLoading && !allOnboardingDone && (
