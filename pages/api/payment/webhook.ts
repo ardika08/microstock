@@ -129,14 +129,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let creditsToAdd = 0
   let planType = ''
 
-  if (productName.includes('top up') || productName.includes('kredit')) {
-    productType = 'topup_500'
-    creditsToAdd = 150  // ✅ Pre-launch intro: Rp9.900 = 150 kredit
+  if (productName.includes('intro') || productName.includes('9.900') || productName.includes('9900')) {
+    productType = 'intro'
+    creditsToAdd = 150
     planType = 'topup'
-  } else if (productName.includes('starter') || productName.includes('bulanan')) {
-    productType = 'starter_monthly'
-    creditsToAdd = 0
-    planType = 'starter'
+  } else if (productName.includes('basic') || productName.includes('25.000') || productName.includes('25000')) {
+    productType = 'basic'
+    creditsToAdd = 450
+    planType = 'topup'
+  } else if (productName.includes('value') || productName.includes('50.000') || productName.includes('50000') || productName.includes('top up') || productName.includes('kredit')) {
+    productType = 'value'
+    creditsToAdd = 1200
+    planType = 'topup'
   } else if (
     productName.includes('one-time') ||
     productName.includes('lifetime') ||
@@ -190,28 +194,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('[webhook] Created new user:', customerEmail)
     } else {
       userId = existing[0].id
-      if (productType === 'topup_500') {
-        // ✅ Pre-launch intro: tambah 150 kredit
-        await db
-          .update(schema.users)
+      if (productType === 'intro') {
+        await db.update(schema.users)
           .set({ credits: (existing[0].credits ?? 0) + 150 } as any)
           .where(eq(schema.users.id, userId))
-      } else if (productType === 'starter_monthly') {
-        // ✅ Pre-launch bonus: Starter dapat 2 bulan (bayar 1 gratis 1)
-        const now = new Date()
-        const subscriptionEndDate = new Date(now)
-        subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 2)
-        await db
-          .update(schema.users)
-          .set({
-            planType: 'starter',
-            credits: 0,
-            subscriptionEndDate,
-          } as any)
+      } else if (productType === 'basic') {
+        await db.update(schema.users)
+          .set({ credits: (existing[0].credits ?? 0) + 450 } as any)
+          .where(eq(schema.users.id, userId))
+      } else if (productType === 'value') {
+        await db.update(schema.users)
+          .set({ credits: (existing[0].credits ?? 0) + 1200 } as any)
           .where(eq(schema.users.id, userId))
       } else if (productType === 'lifetime') {
-        await db
-          .update(schema.users)
+        await db.update(schema.users)
           .set({ planType: 'lifetime', credits: 0 } as any)
           .where(eq(schema.users.id, userId))
       }
@@ -227,8 +223,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       paidAt: new Date(),
     } as any)
 
-    // Generate an activation code for all paid product types
-    if (productType === 'topup_500' || productType === 'lifetime' || productType === 'starter_monthly') {
+    // Generate activation code untuk semua paket berbayar
+    if (['intro', 'basic', 'value', 'lifetime'].includes(productType)) {
       const code = await generateActivationCode()
       await db.insert(schema.activationCodes).values({
         code,

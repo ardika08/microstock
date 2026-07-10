@@ -120,8 +120,8 @@ export function PreLaunchModal() {
                         <Gift className="w-5 h-5 text-emerald-400" aria-hidden="true" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-100">Top Up Kredit</p>
-                        <p className="text-xs text-gray-400">Rp50.000 · tidak expire</p>
+                        <p className="text-sm font-semibold text-gray-100">Intro Pack</p>
+                        <p className="text-xs text-gray-400">150 kredit — tidak expire</p>
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-xs text-gray-500 line-through">Rp50.000</p>

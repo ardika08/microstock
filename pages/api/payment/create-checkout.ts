@@ -5,17 +5,22 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 const MAYAR_API_KEY = process.env.MAYAR_API_KEY!
 const MAYAR_API_URL = 'https://api.mayar.id'
 
-// Product definitions
+// Product definitions — full credit-only model (no subscription)
 const PRODUCTS: Record<string, { name: string; price: number; description: string }> = {
-  topup_500: {
-    name: 'Autofillstock - Top Up 500 Kredit',
-    price: 50000,
-    description: 'Top up 500 kredit untuk generate metadata microstock. Kredit tidak expire, pakai kapanpun.',
+  intro: {
+    name: 'Autofillstock - Intro Pack 150 Kredit',
+    price: 9900,
+    description: 'Intro pack 150 kredit untuk generate metadata microstock. Kredit tidak expire, pakai kapanpun.',
   },
-  starter_monthly: {
-    name: 'Autofillstock - Starter Bulanan',
-    price: 99000,
-    description: 'Unlimited generate metadata microstock per bulan. AI GPT-4o disediakan. Fair use 200 generate per hari.',
+  basic: {
+    name: 'Autofillstock - Basic Pack 450 Kredit',
+    price: 25000,
+    description: 'Basic pack 450 kredit untuk generate metadata microstock. Kredit tidak expire, pakai kapanpun.',
+  },
+  value: {
+    name: 'Autofillstock - Value Pack 1200 Kredit',
+    price: 50000,
+    description: 'Value pack 1.200 kredit untuk generate metadata microstock. Hemat Rp42/kredit. Kredit tidak expire.',
   },
   lifetime: {
     name: 'Autofillstock - One-time Lifetime',
@@ -39,7 +44,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const user = session.user as any
 
   try {
-    // Create dynamic invoice via Mayar API with user data pre-filled
     const invoiceRes = await fetch(`${MAYAR_API_URL}/hl/v1/invoice/create`, {
       method: 'POST',
       headers: {
@@ -49,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: JSON.stringify({
         name: user.name || user.email.split('@')[0],
         email: user.email,
-        mobile: '08000000000', // placeholder — user can update at checkout
+        mobile: '08000000000',
         description: product.name,
         items: [
           {
