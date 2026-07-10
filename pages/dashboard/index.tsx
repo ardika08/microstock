@@ -286,9 +286,11 @@ export default function DashboardPage() {
       done: !!activationCode,
     },
     {
-      title: "Tambah API Key",
-      description: "Tambahkan OpenAI API Key agar bisa generate metadata.",
-      done: planType === "starter" || (planType === "lifetime" && hasApiKey),
+      title: planType === "lifetime" ? "Tambah API Key" : "Upload Foto Pertama",
+      description: planType === "lifetime"
+        ? "Tambahkan OpenAI API Key agar bisa generate metadata."
+        : "Siap! Upload foto JPG/PNG di halaman Generate untuk mulai.",
+      done: planType === "starter" || (planType === "lifetime" && hasApiKey) || (planType === "free" || planType === "topup"),
     },
     {
       title: "Generate Pertama",
