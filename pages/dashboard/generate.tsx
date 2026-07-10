@@ -163,6 +163,12 @@ export default function GeneratePage() {
   }
 
   const handleFileSelected = (file: File) => {
+    // ✅ Validasi format — hanya gambar JPG/PNG/WebP/GIF
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowed.includes(file.type)) {
+      setError('Format file tidak didukung. Gunakan JPG, PNG, atau WebP.')
+      return
+    }
     // Create preview URL for the image
     if (imagePreview) URL.revokeObjectURL(imagePreview)
     const previewUrl = URL.createObjectURL(file)
@@ -300,7 +306,7 @@ export default function GeneratePage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,video/*,.eps,.ai,.svg"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 className="hidden"
                 onChange={handleFileInput}
               />
@@ -334,7 +340,7 @@ export default function GeneratePage() {
                     {isDragOver ? "Lepas file di sini" : "Drop file atau klik untuk upload"}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    JPG, PNG, SVG, EPS, AI, MP4 — maks 50 MB
+                    JPG, PNG, WebP — maks 50 MB
                   </p>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-600">
