@@ -31,7 +31,7 @@ export function Pricing() {
     {
       name: 'Intro Pack',
       price: 'Rp9.900',
-      originalPrice: 'Rp50.000',
+      originalPrice: '',
       period: '',
       credits: '150 kredit 🎁 (harga intro pre-launch!)',
       description: 'Mulai dari harga termurah, kredit tidak expire',
