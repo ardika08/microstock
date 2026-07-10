@@ -11,7 +11,7 @@ export function Pricing() {
       price: 'Gratis',
       originalPrice: '',
       period: '',
-      credits: '50 kredit 🎁 (bonus pre-launch!)',
+      credits: '20 kredit 🎁 (bonus pre-launch!)',
       description: 'Coba fitur lengkap tanpa kartu kredit',
       features: [
         '20 kredit gratis',
@@ -51,13 +51,13 @@ export function Pricing() {
     },
     {
       name: 'Top Up Kredit',
-      price: 'Rp50.000',
-      originalPrice: '',
+      price: 'Rp9.900',
+      originalPrice: 'Rp50.000',
       period: '',
-      credits: '750 kredit 🎁 (bonus pre-launch!)',
+      credits: '100 kredit 🎁 (harga intro pre-launch!)',
       description: 'Beli kredit, pakai kapanpun tanpa expire',
       features: [
-        '500 kredit (tidak expire)',
+        '100 kredit (tidak expire)',
         'Top-up kapan saja',
         'Cocok untuk pemula',
         'Tanpa komitmen bulanan',

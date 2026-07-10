@@ -111,7 +111,7 @@ export function PreLaunchModal() {
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-xs text-gray-500 line-through">20 kredit</p>
-                        <p className="text-sm font-bold text-emerald-400">50 kredit 🎁</p>
+                        <p className="text-sm font-bold text-emerald-400">20 kredit 🎁</p>
                       </div>
                     </div>
 
@@ -124,8 +124,8 @@ export function PreLaunchModal() {
                         <p className="text-xs text-gray-400">Rp50.000 · tidak expire</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-gray-500 line-through">500 kredit</p>
-                        <p className="text-sm font-bold text-emerald-400">750 kredit 🎁</p>
+                        <p className="text-xs text-gray-500 line-through">Rp50.000</p>
+                        <p className="text-sm font-bold text-emerald-400">Rp9.900 🎁</p>
                       </div>
                     </div>
 
