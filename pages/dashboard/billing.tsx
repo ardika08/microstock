@@ -42,7 +42,7 @@ const PRODUCTS = [
     key: "intro",
     name: "Intro Pack",
     price: "Rp9.900",
-    originalPrice: "Rp50.000",
+    originalPrice: null,
     credits: "150 kredit",
     badge: "🔥 Terlaris",
     icon: <TrendingUp className="w-5 h-5 text-emerald-400" />,
