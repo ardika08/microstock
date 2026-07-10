@@ -121,7 +121,7 @@ export function Pricing() {
           {plans.map((plan, index) => (
             <motion.div
               key={index}
-              className={`relative group rounded-2xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-500/10 ${
+              className={`relative group rounded-2xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col ${
                 plan.popular
                   ? 'bg-slate-900/80 backdrop-blur-xl border-2 border-emerald-500/50 shadow-lg shadow-emerald-500/10'
                   : 'bg-slate-900/50 backdrop-blur-sm border border-white/10 hover:border-white/20'
@@ -147,7 +147,7 @@ export function Pricing() {
                 </div>
               )}
 
-              <div className="p-8">
+              <div className="p-8 flex flex-col h-full">
                 {/* Icon */}
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.color} p-[1px] mb-4`}>
                   <div className="w-full h-full rounded-xl bg-slate-900 flex items-center justify-center">
@@ -168,7 +168,7 @@ export function Pricing() {
                 <p className="text-sm text-gray-400 mt-2">{plan.description}</p>
 
                 {/* Features */}
-                <ul className="mt-8 space-y-3">
+                <ul className="mt-8 space-y-3 flex-1">
                   {plan.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start gap-2">
                       <Check className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
