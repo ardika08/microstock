@@ -54,10 +54,10 @@ export function Pricing() {
       price: 'Rp9.900',
       originalPrice: 'Rp50.000',
       period: '',
-      credits: '100 kredit 🎁 (harga intro pre-launch!)',
+      credits: '150 kredit 🎁 (harga intro pre-launch!)',
       description: 'Beli kredit, pakai kapanpun tanpa expire',
       features: [
-        '100 kredit (tidak expire)',
+        '150 kredit (tidak expire)',
         'Top-up kapan saja',
         'Cocok untuk pemula',
         'Tanpa komitmen bulanan',
