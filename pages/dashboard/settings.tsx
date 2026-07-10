@@ -262,8 +262,8 @@ export default function SettingsPage() {
           </div>
         </motion.div>
 
-        {/* OpenAI API Key — hanya untuk free/topup/lifetime */}
-        {(planType === "lifetime" || planType === "free" || planType === "topup") && (
+        {/* OpenAI API Key — hanya untuk One-time (lifetime) */}
+        {planType === "lifetime" && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -276,7 +276,7 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-semibold text-gray-100">OpenAI API Key</h2>
               </div>
               <p className="text-sm text-gray-400">
-                Diperlukan untuk paket Free Trial dan One-time. Paket Starter menggunakan API key dari server.
+                Diperlukan untuk paket One-time. Generate unlimited menggunakan API key OpenAI milik sendiri.
               </p>
             </div>
 
