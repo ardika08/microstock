@@ -1,7 +1,7 @@
 import type { PlasmoCSConfig } from "plasmo"
 import iconUrl from "data-base64:~assets/icon.png"
 
-import { generateMetadata } from "~/lib/openai"
+import { generateMetadata, generateMetadataViaServer } from "~/lib/openai"
 import { getSettings, updateSettings } from "~/lib/storage"
 import type { AppSettings, AutofillMessage, MetadataResult } from "~/lib/types"
 
@@ -1867,7 +1867,23 @@ function createFloatingPanel(settings: AppSettings) {
 
   async function processCurrentAsset(settings: Awaited<ReturnType<typeof getSettings>>) {
     const brief = readPageBrief()
-    let metadata = await generateMetadata(settings.openai_api_key || "", brief)
+    const filename = readFilename() || "unknown"
+    const platform = getCurrentPlatform(settings)
+
+    // ✅ Ambil activation code dari storage
+    const stored = await chrome.storage.local.get(["activation_code"])
+    const activationCode = stored.activation_code || ""
+
+    // ✅ Generate via server (free/topup/basic/value) atau langsung ke OpenAI (lifetime)
+    let metadata
+    if (settings.openai_api_key) {
+      // Lifetime plan — pakai API key sendiri langsung ke OpenAI
+      metadata = await generateMetadata(settings.openai_api_key, brief)
+    } else {
+      // Free/topup/basic/value — pakai server API
+      metadata = await generateMetadataViaServer(activationCode, brief, filename, platform)
+    }
+
     const usageCount = (settings.usage_count || 0) + 1
 
     if (isShutterstockUploadPage()) {
@@ -2040,10 +2056,7 @@ function createFloatingPanel(settings: AppSettings) {
         throw new Error("Extension belum aktif. Buka popup extension untuk aktivasi.")
       }
 
-      if (!settings.openai_api_key) {
-        throw new Error("OpenAI API key belum disimpan. Buka popup extension untuk konfigurasi.")
-      }
-
+      // ✅ Tidak perlu cek API key — generate via server Autofillstock
       await processBatch(settings)
     } catch (error) {
       setFooterStatus(

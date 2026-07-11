@@ -1,6 +1,7 @@
 import type { MetadataResult } from "~/lib/types"
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
+const SERVER_GENERATE_ENDPOINT = "https://autofillstock.my.id/api/extension/generate"
 
 function normalizeMetadata(value: unknown): MetadataResult {
   const data = value as Partial<MetadataResult>
@@ -52,6 +53,41 @@ function extractJson(content: string) {
   return JSON.parse(raw.slice(start, end + 1))
 }
 
+// ✅ Generate via server API (untuk free/topup/basic/value plan)
+export async function generateMetadataViaServer(
+  activationCode: string,
+  assetBrief: string,
+  filename: string,
+  platform: string
+): Promise<MetadataResult> {
+  let response: Response
+  try {
+    response = await fetch(SERVER_GENERATE_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activationCode, assetBrief, filename, platform }),
+    })
+  } catch (networkError) {
+    throw new Error("Tidak dapat menghubungi server. Periksa koneksi internet dan coba lagi.")
+  }
+
+  let body: Record<string, unknown>
+  try {
+    body = await response.json()
+  } catch {
+    throw new Error("Server mengembalikan respons yang tidak valid.")
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      (body?.error as string) || "Gagal generate metadata dari server."
+    )
+  }
+
+  return normalizeMetadata(body.metadata)
+}
+
+// Legacy: generate langsung ke OpenAI (hanya untuk lifetime plan dengan API key sendiri)
 export async function generateMetadata(apiKey: string, assetBrief: string) {
   const prompt = [
     "Generate microstock contributor metadata for a digital asset.",
