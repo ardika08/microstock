@@ -127,8 +127,7 @@ export default function Popup() {
   const [notice, setNotice] = useState<Notice>(null)
 
   const isBusy = busy !== "idle"
-  const hasApiKey = Boolean(settings.openai_api_key)
-  const isReady = settings.activation_status && hasApiKey
+  const isReady = settings.activation_status // ✅ cukup aktivasi, API key diatur di dashboard
 
   useEffect(() => {
     getSettings().then((stored) => {
@@ -154,7 +153,7 @@ export default function Popup() {
       setNotice({
         type: "success",
         title: "Aktivasi berhasil",
-        message: "Extension siap dikonfigurasi dengan OpenAI API key."
+        message: "Extension siap digunakan. Untuk paket One-time, atur API key di dashboard autofillstock.my.id."
       })
     } catch (error) {
       setNotice({
@@ -315,28 +314,6 @@ export default function Popup() {
                 Verifikasi
               </Button>
             </div>
-          ) : !hasApiKey ? (
-            <div className="mt-4 space-y-3 border-t pt-4">
-              <Label htmlFor="api-key">OpenAI API Key</Label>
-              <Input
-                id="api-key"
-                type="password"
-                value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
-                placeholder="sk-..."
-              />
-              <Button
-                className="w-full gap-2"
-                disabled={isBusy || !apiKey.trim()}
-                onClick={handleSaveApiKey}>
-                {busy === "saving-key" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <KeyRound className="h-4 w-4" />
-                )}
-                Simpan API Key
-              </Button>
-            </div>
           ) : (
             <div className="mt-4 space-y-4 border-t pt-4">
               <div className="flex items-center gap-3">
@@ -394,9 +371,6 @@ export default function Popup() {
                   variant="outline">
                   <Settings2 className="h-4 w-4" />
                   Sync Panel
-                </Button>
-                <Button disabled={isBusy} onClick={handleClearApiKey} variant="outline">
-                  Ganti Key
                 </Button>
               </div>
 
