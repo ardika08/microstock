@@ -13,20 +13,18 @@ function getDb() {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // CORS — izinkan dari extension Chrome
+  // CORS — izinkan dari extension Chrome (content script atau popup)
   const origin = req.headers.origin || ''
   const isExtension = origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')
-  const isAllowed = origin === ALLOWED_ORIGIN || isExtension
+  const isAdobeStock = origin.includes('stock.adobe.com')
+  const isShutterstock = origin.includes('shutterstock.com')
+  const isAllowed = isExtension || isAdobeStock || isShutterstock || origin === ALLOWED_ORIGIN
 
   if (origin && !isAllowed) {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin)
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
-  }
+  res.setHeader('Access-Control-Allow-Origin', origin || ALLOWED_ORIGIN || '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
