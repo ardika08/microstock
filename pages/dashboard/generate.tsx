@@ -130,9 +130,21 @@ export default function GeneratePage() {
           assetBrief: brief,
           filename,
           platform: "web",
-          userApiKey: planType !== "starter" ? savedApiKey : undefined,
+          userApiKey: planType === "lifetime" ? savedApiKey : undefined
         }),
       })
+
+      // Cek apakah response adalah JSON — kalau HTML berarti session expired atau error server
+      const contentType = res.headers.get("content-type") || ""
+      if (!contentType.includes("application/json")) {
+        if (res.status === 401 || res.redirected) {
+          throw new Error("Sesi login habis. Silakan refresh halaman dan login ulang.")
+        }
+        if (res.status === 413) {
+          throw new Error("Ukuran gambar terlalu besar. Kompres gambar terlebih dahulu.")
+        }
+        throw new Error("Terjadi kesalahan server. Silakan coba lagi.")
+      }
 
       const data = await res.json()
 
