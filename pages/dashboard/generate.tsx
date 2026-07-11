@@ -29,7 +29,18 @@ interface Keyword {
 }
 
 // Page states
-type PageState = "upload" | "processing" | "results"
+type PageState = "upload" | "processing" | "results" | "batch-processing" | "batch-results"
+
+interface BatchResult {
+  filename: string
+  preview: string
+  title: string
+  description: string
+  keywords: string[]
+  category: string
+  status: "success" | "error"
+  error?: string
+}
 
 // Copy button component
 function CopyButton({ text }: { text: string }) {
@@ -101,7 +112,15 @@ export default function GeneratePage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Batch state
+  const [batchFiles, setBatchFiles] = useState<File[]>([])
+  const [batchPreviews, setBatchPreviews] = useState<string[]>([])
+  const [batchResults, setBatchResults] = useState<BatchResult[]>([])
+  const [batchProgress, setBatchProgress] = useState(0)
+  const [batchTotal, setBatchTotal] = useState(0)
+
   const { planType, credits } = useUser()
+  const isBatchMode = batchFiles.length > 1
 
   // Sync credits from session on mount
   useEffect(() => {
@@ -202,16 +221,162 @@ export default function GeneratePage() {
     reader.readAsDataURL(file)
   }
 
+  const handleMultipleFiles = (fileList: FileList) => {
+    setError(null)
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    const files: File[] = []
+    const errors: string[] = []
+
+    Array.from(fileList).forEach((file) => {
+      if (!allowed.includes(file.type)) {
+        errors.push(`${file.name}: format tidak didukung`)
+        return
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        errors.push(`${file.name}: ukuran melebihi 2MB`)
+        return
+      }
+      files.push(file)
+    })
+
+    if (files.length === 0) {
+      setError(errors.length > 0 ? errors[0] : 'Tidak ada file valid.')
+      return
+    }
+    if (files.length > 10) {
+      setError('Maksimal 10 file sekaligus.')
+      return
+    }
+
+    if (files.length === 1) {
+      void handleFileSelected(files[0])
+      return
+    }
+
+    // Batch mode: buat preview URLs dulu sebelum processing
+    const previews = files.map((f) => URL.createObjectURL(f))
+    setBatchFiles(files)
+    setBatchPreviews(previews)
+    void handleBatchGenerate(files, previews)
+  }
+
+  const handleBatchGenerate = async (files: File[], previews: string[]) => {
+    setPageState("batch-processing")
+    setBatchTotal(files.length)
+    setBatchProgress(0)
+    const results: BatchResult[] = []
+
+    for (let i = 0; i < files.length; i++) {
+      setBatchProgress(i + 1)
+      try {
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.readAsDataURL(files[i])
+        })
+
+        const savedApiKey = typeof window !== "undefined" ? localStorage.getItem("autofillstock_openai_key") || "" : ""
+
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assetBrief: base64,
+            filename: files[i].name,
+            platform: "web",
+            userApiKey: planType === "lifetime" ? savedApiKey : undefined
+          }),
+        })
+
+        const contentType = res.headers.get("content-type") || ""
+        if (!contentType.includes("application/json")) {
+          throw new Error("Terjadi kesalahan server. Silakan coba lagi.")
+        }
+
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || "Gagal generate metadata.")
+
+        results.push({
+          filename: files[i].name,
+          preview: previews[i],
+          title: data.metadata.title || "",
+          description: data.metadata.description || "",
+          keywords: data.metadata.keywords || [],
+          category: data.metadata.category || "",
+          status: "success"
+        })
+      } catch (err) {
+        results.push({
+          filename: files[i].name,
+          preview: previews[i],
+          title: "",
+          description: "",
+          keywords: [],
+          category: "",
+          status: "error",
+          error: err instanceof Error ? err.message : "Gagal generate"
+        })
+      }
+    }
+
+    setBatchResults(results)
+    setPageState("batch-results")
+  }
+
+  const exportBatchCSV = () => {
+    const header = "Filename,Title,Description,Keywords,Category"
+    const rows = batchResults.map((r) => {
+      const esc = (s: string) => `"${s.replace(/"/g, '""')}"`
+      return [
+        esc(r.filename),
+        esc(r.title),
+        esc(r.description),
+        esc(r.keywords.join("; ")),
+        esc(r.category),
+      ].join(",")
+    })
+    const csv = [header, ...rows].join("\n")
+    const blob = new Blob([csv], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "batch-metadata.csv"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const resetBatchToUpload = () => {
+    batchPreviews.forEach((url) => URL.revokeObjectURL(url))
+    setBatchFiles([])
+    setBatchPreviews([])
+    setBatchResults([])
+    setBatchProgress(0)
+    setBatchTotal(0)
+    setPageState("upload")
+  }
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleFileSelected(file)
+    const files = e.dataTransfer.files
+    if (!files || files.length === 0) return
+    if (files.length > 1 && planType !== 'free') {
+      handleMultipleFiles(files)
+    } else {
+      void handleFileSelected(files[0])
+    }
   }
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) handleFileSelected(file)
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    if (files.length > 1 && planType !== 'free') {
+      handleMultipleFiles(files)
+    } else {
+      void handleFileSelected(files[0])
+    }
+    // reset input so same files can be re-selected
+    e.target.value = ""
   }
 
   const addKeyword = () => {
@@ -329,7 +494,8 @@ export default function GeneratePage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/jpeg,image/png,image/webp"
+                multiple={planType !== 'free'}
                 className="hidden"
                 onChange={handleFileInput}
               />
@@ -360,10 +526,14 @@ export default function GeneratePage() {
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-medium text-gray-200">
-                    {isDragOver ? "Lepas file di sini" : "Drop file atau klik untuk upload"}
+                    {isDragOver
+                      ? "Lepas file di sini"
+                      : planType !== 'free'
+                      ? "Drop hingga 10 file atau klik untuk upload"
+                      : "Drop file atau klik untuk upload"}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    JPG, PNG, WebP — maks 2 MB
+                    JPG, PNG, WebP — maks 2 MB{planType !== 'free' ? ' · hingga 10 file' : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-600">
@@ -405,10 +575,189 @@ export default function GeneratePage() {
                   Generate
                 </motion.button>
               </div>
+              {planType === 'free' && (
+                <div className="mt-3 flex items-center gap-2 text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2">
+                  <span>💡</span>
+                  <span>Upgrade ke paket berbayar untuk generate hingga <strong>10 gambar sekaligus</strong></span>
+                  <a href="/dashboard/billing" className="ml-auto underline whitespace-nowrap">Upgrade →</a>
+                </div>
+              )}
             </motion.div>
           )}
 
-          {/* ── PROCESSING STATE ── */}
+          {/* ── BATCH PROCESSING STATE ── */}
+          {pageState === "batch-processing" && (
+            <motion.div
+              key="batch-processing"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col items-center justify-center gap-6 py-24 rounded-2xl bg-slate-900 border border-white/10"
+            >
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full border-2 border-blue-500/20 flex items-center justify-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="w-16 h-16 rounded-full border-t-2 border-blue-500"
+                  />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-blue-400" />
+                </div>
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-lg font-semibold text-gray-100">Memproses batch…</p>
+                <p className="text-sm text-gray-500">
+                  Memproses <span className="text-gray-300 font-medium">{batchProgress}</span> dari{" "}
+                  <span className="text-gray-300 font-medium">{batchTotal}</span> gambar...
+                </p>
+              </div>
+              {/* Progress bar */}
+              <div className="w-full max-w-xs bg-slate-800 rounded-full h-2 overflow-hidden">
+                <motion.div
+                  className="h-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: batchTotal > 0 ? `${(batchProgress / batchTotal) * 100}%` : "0%" }}
+                  transition={{ duration: 0.4 }}
+                />
+              </div>
+              <p className="text-xs text-gray-600">
+                {batchTotal > 0 ? Math.round((batchProgress / batchTotal) * 100) : 0}% selesai
+              </p>
+            </motion.div>
+          )}
+
+          {/* ── BATCH RESULTS STATE ── */}
+          {pageState === "batch-results" && (
+            <motion.div
+              key="batch-results"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6"
+            >
+              {/* Top action bar */}
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-100">Hasil Batch Generate</h2>
+                  <p className="text-sm text-gray-500">
+                    {batchResults.filter((r) => r.status === "success").length} berhasil ·{" "}
+                    {batchResults.filter((r) => r.status === "error").length} gagal dari {batchResults.length} gambar
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={exportBatchCSV}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-white/10 hover:bg-slate-700 text-gray-300 text-sm font-medium rounded-xl transition-all"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export CSV
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={resetBatchToUpload}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-white/10 hover:bg-slate-700 text-gray-300 text-sm font-medium rounded-xl transition-all"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Generate Ulang
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Grid cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {batchResults.map((result, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="bg-slate-900 border border-white/10 rounded-2xl overflow-hidden flex flex-col"
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative w-full aspect-video bg-slate-800 overflow-hidden">
+                      {result.preview ? (
+                        <img
+                          src={result.preview}
+                          alt={result.filename}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <FileText className="w-8 h-8 text-gray-600" />
+                        </div>
+                      )}
+                      {/* Status badge */}
+                      <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        result.status === "success"
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          : "bg-red-500/20 text-red-300 border border-red-500/30"
+                      }`}>
+                        {result.status === "success" ? "✅ Berhasil" : "❌ Gagal"}
+                      </div>
+                    </div>
+
+                    <div className="p-4 flex flex-col gap-3 flex-1">
+                      {/* Filename */}
+                      <p className="text-xs text-gray-500 truncate">{result.filename}</p>
+
+                      {result.status === "error" ? (
+                        <p className="text-xs text-red-400 bg-red-500/10 rounded-lg p-2">{result.error}</p>
+                      ) : (
+                        <>
+                          {/* Title */}
+                          <div className="bg-slate-800/50 rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Title</span>
+                              <CopyButton text={result.title} />
+                            </div>
+                            <p className="text-sm text-gray-200 line-clamp-2">{result.title}</p>
+                          </div>
+
+                          {/* Description */}
+                          <div className="bg-slate-800/50 rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Description</span>
+                              <CopyButton text={result.description} />
+                            </div>
+                            <p className="text-xs text-gray-400 line-clamp-3">{result.description}</p>
+                          </div>
+
+                          {/* Keywords */}
+                          <div className="bg-slate-800/50 rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Keywords</span>
+                              <CopyButton text={result.keywords.join(", ")} />
+                            </div>
+                            <p className="text-xs text-gray-400 line-clamp-2">{result.keywords.join(", ")}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Bottom export button */}
+              <div className="flex justify-center pt-2">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={exportBatchCSV}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/20"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Semua ke CSV
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
           {pageState === "processing" && (
             <motion.div
               key="processing"
