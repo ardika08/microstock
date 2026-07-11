@@ -42,7 +42,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [totalFromApi, setTotalFromApi] = useState(0)
   const [fetchError, setFetchError] = useState(false)
-  const itemsPerPage = 20
+  const itemsPerPage = 10
 
   useEffect(() => {
     async function fetchHistory() {
