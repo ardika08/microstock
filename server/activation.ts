@@ -63,17 +63,8 @@ export async function validateActivationCode(
       return { valid: false, status: "EXPIRED", message: "Kode aktivasi sudah kedaluwarsa." }
     }
 
-    // ✅ Atomic UPDATE — cegah race condition TOCTOU
-    // UPDATE hanya jika status masih ACTIVE, return rows yang ter-update
-    const updated = await db.execute(
-      sql`UPDATE activation_codes SET status = 'USED' WHERE code = ${code} AND status = 'ACTIVE' RETURNING code, expires_at`
-    )
-
-    // Jika 0 rows ter-update berarti concurrent request sudah mark USED duluan
-    if (!updated.rows || updated.rows.length === 0) {
-      return { valid: false, status: "USED", message: "Kode aktivasi sudah digunakan." }
-    }
-
+    // ✅ Kode valid dan ACTIVE — tidak di-mark USED
+    // Kode aktivasi bersifat permanen selama user aktif
     return {
       valid: true,
       status: "ACTIVE",
