@@ -261,6 +261,15 @@ export default function GeneratePage() {
   }
 
   const handleBatchGenerate = async (files: File[], previews: string[]) => {
+    // ✅ Cek kredit cukup sebelum mulai batch (hanya untuk free/topup plan)
+    if (planType !== "lifetime" && planType !== "starter") {
+      const currentCredits = creditsLeft ?? credits ?? 0
+      if (currentCredits < files.length) {
+        setError(`Kredit tidak cukup. Kamu punya ${currentCredits} kredit, butuh ${files.length} kredit untuk ${files.length} gambar.`)
+        return
+      }
+    }
+
     setPageState("batch-processing")
     setBatchTotal(files.length)
     setBatchProgress(0)
@@ -290,11 +299,18 @@ export default function GeneratePage() {
 
         const contentType = res.headers.get("content-type") || ""
         if (!contentType.includes("application/json")) {
+          if (res.status === 401 || res.redirected) throw new Error("Sesi login habis. Silakan refresh halaman.")
+          if (res.status === 413) throw new Error("Ukuran gambar terlalu besar.")
           throw new Error("Terjadi kesalahan server. Silakan coba lagi.")
         }
 
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || "Gagal generate metadata.")
+
+        // ✅ Update creditsLeft setelah setiap iterasi sukses
+        if (data.creditsRemaining !== null && data.creditsRemaining !== undefined) {
+          setCreditsLeft(data.creditsRemaining)
+        }
 
         results.push({
           filename: files[i].name,
@@ -306,6 +322,7 @@ export default function GeneratePage() {
           status: "success"
         })
       } catch (err) {
+        const errMsg = err instanceof Error ? err.message : "Gagal generate"
         results.push({
           filename: files[i].name,
           preview: previews[i],
@@ -314,8 +331,10 @@ export default function GeneratePage() {
           keywords: [],
           category: "",
           status: "error",
-          error: err instanceof Error ? err.message : "Gagal generate"
+          error: errMsg
         })
+        // ✅ Stop early jika kredit habis — iterasi selanjutnya pasti gagal
+        if (errMsg.includes("Kredit habis") || errMsg.includes("top up")) break
       }
     }
 
