@@ -60,7 +60,8 @@
       "https://stock.adobe.com/*",
       "https://submit.shutterstock.com/*",
       "https://contributor-accounts.shutterstock.com/*",
-      "https://api.openai.com/*"
+      "https://api.openai.com/*",
+      "https://autofillstock.my.id/*"
     ]
   }
 }
