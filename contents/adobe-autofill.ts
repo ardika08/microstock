@@ -1867,7 +1867,9 @@ function createFloatingPanel(settings: AppSettings) {
 
   async function processCurrentAsset(settings: Awaited<ReturnType<typeof getSettings>>) {
     const brief = readPageBrief()
-    const filename = readFilename() || "unknown"
+    const filename = isShutterstockUploadPage()
+      ? getShutterstockActiveFileName() || document.title || "unknown"
+      : document.title || "unknown"
     const platform = getCurrentPlatform(settings)
 
     // ✅ Ambil activation code dari storage
@@ -1915,10 +1917,6 @@ function createFloatingPanel(settings: AppSettings) {
     await autofill(metadata)
 
     // Non-blocking: log usage to server for dashboard history + credit sync
-    const platform = getCurrentPlatform(settings)
-    const filename = isShutterstockUploadPage()
-      ? getShutterstockActiveFileName()
-      : (document.title || "unknown")
     logGenerateToServer(metadata, filename, platform)
 
     return metadata
