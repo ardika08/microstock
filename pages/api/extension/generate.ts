@@ -13,12 +13,20 @@ function getDb() {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // CORS — hanya izinkan dari extension
+  // CORS — izinkan dari extension Chrome
   const origin = req.headers.origin || ''
-  if (origin && origin !== ALLOWED_ORIGIN) {
+  const isExtension = origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')
+  const isAllowed = origin === ALLOWED_ORIGIN || isExtension
+
+  if (origin && !isAllowed) {
     return res.status(403).json({ error: 'Forbidden' })
   }
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
+
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
