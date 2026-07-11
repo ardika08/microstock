@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!users[0]) return res.status(404).json({ error: 'User not found' })
 
     const page = Math.max(1, Number(req.query.page) || 1)
-    const limit = 20
+    const limit = 10
     const offset = (page - 1) * limit
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
 
@@ -49,7 +49,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .limit(limit)
       .offset(offset)
 
-    return res.status(200).json({ history, page })
+    // Count total untuk pagination
+    const totalResult = await db
+      .select({ count: schema.generateHistory.id })
+      .from(schema.generateHistory)
+      .where(whereClause)
+
+    const total = totalResult.length
+
+    return res.status(200).json({ history, page, total, totalPages: Math.ceil(total / limit) })
   } catch (err) {
     console.error('[api/user/history]', err)
     return res.status(500).json({ error: 'Internal server error' })
