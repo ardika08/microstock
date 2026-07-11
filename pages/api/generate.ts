@@ -26,13 +26,44 @@ function checkFairUse(userId: string): boolean {
 }
 
 async function callOpenAI(apiKey: string, assetBrief: string, model: string) {
-  const prompt = [
-    'Generate microstock contributor metadata for a digital asset.',
+  const systemPrompt = 'You are a metadata assistant for microstock contributors. Output only valid JSON.'
+  const textInstruction = [
+    'Generate microstock contributor metadata for this digital asset.',
     'Return strict JSON only with this shape:',
-    '{"title":"...","description":"...","keywords":["..."],"category":"..."}',
+    '{"title":"...","description":"...","keywords":[...],"category":"..."}',
     'Rules: description must be 120-190 characters, one sentence, no line breaks. Title under 180 characters. Keywords must contain 45-49 unique relevant microstock search terms. Category must be one of the standard microstock categories.',
-    `Asset brief: ${assetBrief || 'A general commercial stock asset.'}`
   ].join('\n')
+
+  // ✅ Deteksi apakah input adalah base64 image atau teks biasa
+  const isBase64Image = assetBrief.startsWith('data:image/')
+
+  let userMessage: any
+
+  if (isBase64Image) {
+    // Gunakan Vision API — kirim gambar langsung ke OpenAI
+    userMessage = {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: textInstruction,
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: assetBrief,
+            detail: 'low', // hemat token, cukup untuk metadata
+          },
+        },
+      ],
+    }
+  } else {
+    // Fallback: gunakan teks brief (manual input)
+    userMessage = {
+      role: 'user',
+      content: `${textInstruction}\n\nAsset brief: ${assetBrief || 'A general commercial stock asset.'}`,
+    }
+  }
 
   const response = await fetch(OPENAI_ENDPOINT, {
     method: 'POST',
@@ -45,11 +76,8 @@ async function callOpenAI(apiKey: string, assetBrief: string, model: string) {
       temperature: 0.4,
       response_format: { type: 'json_object' },
       messages: [
-        {
-          role: 'system',
-          content: 'You are a metadata assistant for microstock contributors. Output only valid JSON.',
-        },
-        { role: 'user', content: prompt },
+        { role: 'system', content: systemPrompt },
+        userMessage,
       ],
     }),
   })

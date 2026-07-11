@@ -162,7 +162,7 @@ export default function GeneratePage() {
     }
   }
 
-  const handleFileSelected = (file: File) => {
+  const handleFileSelected = async (file: File) => {
     // ✅ Validasi format — hanya gambar JPG/PNG/WebP/GIF
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
     if (!allowed.includes(file.type)) {
@@ -174,14 +174,20 @@ export default function GeneratePage() {
       setError('Ukuran file terlalu besar. Maksimal 2 MB.')
       return
     }
-    // Create preview URL for the image
+
     if (imagePreview) URL.revokeObjectURL(imagePreview)
     const previewUrl = URL.createObjectURL(file)
     setImagePreview(previewUrl)
     const filename = file.name
     setCurrentFilename(filename)
-    const assetBrief = `File: ${filename}. Generate relevant microstock metadata based on the filename.`
-    void handleGenerate(assetBrief, filename)
+
+    // ✅ Konversi gambar ke base64 agar AI bisa melihat isi gambar
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = reader.result as string
+      void handleGenerate(base64, filename)
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleDrop = (e: React.DragEvent) => {
