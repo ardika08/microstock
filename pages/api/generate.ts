@@ -8,6 +8,9 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 
+// ✅ Naikkan body size limit — base64 image bisa 3x ukuran file asli
+export const config = { api: { bodyParser: { sizeLimit: '8mb' } } }
+
 // Rate limiting map (in-memory, resets on server restart)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const FAIR_USE_LIMIT = 200 // per day for starter plan

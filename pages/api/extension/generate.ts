@@ -7,6 +7,9 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 const ALLOWED_ORIGIN = process.env.ACTIVATION_ALLOWED_ORIGIN || ''
 
+// ✅ Naikkan body size limit — base64 image bisa 3x ukuran file asli
+export const config = { api: { bodyParser: { sizeLimit: '8mb' } } }
+
 function getDb() {
   const client = neon(process.env.DATABASE_URL!)
   return drizzle(client, { schema })
