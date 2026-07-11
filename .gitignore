@@ -7,3 +7,4 @@ data/
 .env
 .env.*
 !.env.example
+ecosystem.config.js

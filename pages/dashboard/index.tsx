@@ -123,7 +123,10 @@ function CreditProgressBar({
         />
       </div>
       <p className="text-[10px] text-gray-500 leading-tight">
-        Estimasi habis dalam <span className="text-gray-400 font-medium">{daysLeft} hari</span>
+        {dailyAvg > 0
+          ? <>Estimasi habis dalam <span className="text-gray-400 font-medium">{daysLeft} hari</span></>
+          : <span>Belum ada aktivitas generate</span>
+        }
       </p>
     </div>
   )
