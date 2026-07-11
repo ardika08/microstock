@@ -750,11 +750,25 @@ export default function GeneratePage() {
 
                           {/* Keywords */}
                           <div className="bg-slate-800/50 rounded-xl p-3">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">Keywords</span>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                                Keywords <span className="text-gray-600 font-normal">({result.keywords.length})</span>
+                              </span>
                               <CopyButton text={result.keywords.join(", ")} />
                             </div>
-                            <p className="text-xs text-gray-400 line-clamp-2">{result.keywords.join(", ")}</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {result.keywords.map((kw, kwIdx) => {
+                                const relevance: Relevance = kwIdx < 12 ? "high" : kwIdx < 32 ? "medium" : "low"
+                                return (
+                                  <span
+                                    key={kwIdx}
+                                    className={`inline-flex items-center px-2.5 py-1 rounded-lg border text-xs font-medium ${getTagClasses(relevance)}`}
+                                  >
+                                    {kw}
+                                  </span>
+                                )
+                              })}
+                            </div>
                           </div>
                         </>
                       )}
