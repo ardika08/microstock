@@ -112,11 +112,11 @@ export default function GeneratePage() {
     setPageState("processing")
     setError(null)
 
-    // Read API key from localStorage (saved via Settings page)
+    // Read API key from localStorage — hanya diperlukan untuk lifetime plan
     const savedApiKey = typeof window !== "undefined" ? localStorage.getItem("autofillstock_openai_key") || "" : ""
 
-    // Guard: non-starter users must have a key saved in Settings
-    if (planType !== "starter" && !savedApiKey) {
+    // Guard: hanya lifetime plan yang wajib punya API key sendiri
+    if (planType === "lifetime" && !savedApiKey) {
       setError("API key OpenAI belum diatur. Silakan masuk ke Pengaturan untuk menambahkan API key Anda.")
       setPageState("upload")
       return

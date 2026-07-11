@@ -103,40 +103,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let apiKey: string
   let model: string
 
-  if (user.planType === 'starter') {
-    // System provides the API key for starter users
+  if (user.planType === 'starter' || user.planType === 'free' || user.planType === 'topup') {
+    // Server provides the API key for free/topup/starter users (credit-based)
     if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: 'Server belum dikonfigurasi untuk paket Starter.' })
+      return res.status(500).json({ error: 'Server belum dikonfigurasi dengan API key.' })
     }
-    // Enforce fair-use daily limit
-    if (!checkFairUse(user.id)) {
-      return res
-        .status(429)
-        .json({ error: 'Batas fair use harian tercapai (200 generate/hari). Coba lagi besok.' })
+    if (user.planType === 'starter' && !checkFairUse(user.id)) {
+      return res.status(429).json({ error: 'Batas fair use harian tercapai (200 generate/hari). Coba lagi besok.' })
+    }
+    // free/topup: check credits
+    if ((user.planType === 'free' || user.planType === 'topup') && (user.credits ?? 0) <= 0) {
+      return res.status(402).json({ error: 'Kredit habis. Silakan top up kredit.' })
     }
     apiKey = process.env.OPENAI_API_KEY
     model = 'gpt-4o'
   } else {
-    // All other plans: use userApiKey from request body, or fall back to DB-stored key
+    // lifetime: pakai API key sendiri
     if (userApiKey && String(userApiKey).startsWith('sk-')) {
       apiKey = String(userApiKey)
     } else {
-      // Try fetching stored key from DB
       const dbUserWithKey = await db
         .select({ openaiApiKey: schema.users.openaiApiKey })
         .from(schema.users)
         .where(eq(schema.users.id, user.id))
         .limit(1)
-
       if (dbUserWithKey[0]?.openaiApiKey) {
         apiKey = dbUserWithKey[0].openaiApiKey
       } else {
         return res.status(400).json({ error: 'API key OpenAI diperlukan. Tambahkan di halaman Pengaturan.' })
       }
-    }
-    // free / topup plans consume credits; lifetime does not
-    if (user.planType !== 'lifetime' && (user.credits ?? 0) <= 0) {
-      return res.status(402).json({ error: 'Kredit habis. Silakan top up kredit.' })
     }
     model = 'gpt-4o'
   }
