@@ -49,6 +49,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments'>('overview')
+  const [userPage, setUserPage] = useState(1)
+  const [paymentPage, setPaymentPage] = useState(1)
+  const PAGE_SIZE = 10
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/auth/login'); return }
@@ -91,6 +94,65 @@ export default function AdminPage() {
   }
 
   const { stats, users, payments } = data ?? {}
+
+  // Pagination helpers
+  const userTotalPages = Math.ceil((users?.length ?? 0) / PAGE_SIZE)
+  const paymentTotalPages = Math.ceil((payments?.length ?? 0) / PAGE_SIZE)
+  const pagedUsers = (users ?? []).slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE)
+  const pagedPayments = (payments ?? []).slice((paymentPage - 1) * PAGE_SIZE, paymentPage * PAGE_SIZE)
+
+  const Pagination = ({ page, totalPages, onPage }: { page: number; totalPages: number; onPage: (p: number) => void }) => {
+    if (totalPages <= 1) return null
+    return (
+      <div className="flex items-center justify-between px-4 py-3 border-t border-white/10">
+        <p className="text-xs text-gray-500">
+          Halaman {page} dari {totalPages}
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onPage(1)}
+            disabled={page === 1}
+            className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          >«</button>
+          <button
+            onClick={() => onPage(page - 1)}
+            disabled={page === 1}
+            className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          >‹</button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+            .reduce((acc: (number | string)[], p, i, arr) => {
+              if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...')
+              acc.push(p)
+              return acc
+            }, [])
+            .map((p, i) => p === '...'
+              ? <span key={`ellipsis-${i}`} className="px-2 py-1 text-xs text-gray-600">…</span>
+              : <button
+                  key={p}
+                  onClick={() => onPage(p as number)}
+                  className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                    page === p
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-slate-800 text-gray-400 hover:bg-slate-700'
+                  }`}
+                >{p}</button>
+            )
+          }
+          <button
+            onClick={() => onPage(page + 1)}
+            disabled={page === totalPages}
+            className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          >›</button>
+          <button
+            onClick={() => onPage(totalPages)}
+            disabled={page === totalPages}
+            className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          >»</button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <DashboardLayout title="Admin">
@@ -189,7 +251,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users?.map((u: any) => (
+                  {pagedUsers.map((u: any) => (
                     <tr key={u.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
                       <td className="px-4 py-3">
                         <p className="text-gray-100 font-medium">{u.name ?? '—'}</p>
@@ -212,6 +274,7 @@ export default function AdminPage() {
               {(!users || users.length === 0) && (
                 <div className="text-center py-12 text-gray-600">Belum ada user</div>
               )}
+              <Pagination page={userPage} totalPages={userTotalPages} onPage={setUserPage} />
             </div>
           </div>
         )}
@@ -231,7 +294,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {payments?.map((p: any) => (
+                  {pagedPayments.map((p: any) => (
                     <tr key={p.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
                       <td className="px-4 py-3">
                         <p className="text-gray-100 font-medium">{p.userName ?? '—'}</p>
@@ -260,6 +323,7 @@ export default function AdminPage() {
               {(!payments || payments.length === 0) && (
                 <div className="text-center py-12 text-gray-600">Belum ada transaksi</div>
               )}
+              <Pagination page={paymentPage} totalPages={paymentTotalPages} onPage={setPaymentPage} />
             </div>
           </div>
         )}
