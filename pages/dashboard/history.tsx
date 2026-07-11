@@ -205,23 +205,43 @@ export default function HistoryPage() {
                   <span className="text-sm text-gray-500">
                     Halaman {currentPage} dari {totalPages}
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >«</button>
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 border border-white/10 rounded-lg text-sm text-gray-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </button>
+                      className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >‹</button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                      .reduce((acc: (number | string)[], p, i, arr) => {
+                        if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...')
+                        acc.push(p)
+                        return acc
+                      }, [])
+                      .map((p, i) => p === '...'
+                        ? <span key={`e-${i}`} className="px-2 py-1 text-xs text-gray-600">…</span>
+                        : <button
+                            key={p}
+                            onClick={() => setCurrentPage(p as number)}
+                            className={`px-2.5 py-1 text-xs rounded transition-colors ${currentPage === p ? 'bg-blue-500 text-white' : 'bg-slate-800 text-gray-400 hover:bg-slate-700'}`}
+                          >{p}</button>
+                      )
+                    }
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 border border-white/10 rounded-lg text-sm text-gray-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                      className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >›</button>
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >»</button>
                   </div>
                 </div>
               )}

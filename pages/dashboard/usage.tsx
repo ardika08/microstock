@@ -120,6 +120,8 @@ const periods = [
 export default function UsagePage() {
   const [chartPeriod, setChartPeriod] = useState<"day" | "week" | "month">("day")
   const [apiData, setApiData] = useState<any>(null)
+  const [activityPage, setActivityPage] = useState(1)
+  const ACTIVITY_PAGE_SIZE = 10
   const { credits, planType, isLoading: sessionLoading } = useUser()
 
   useEffect(() => {
@@ -145,6 +147,8 @@ export default function UsagePage() {
   const totalGenerates = apiData?.totalGenerates ?? null
   const dailyAvg = apiData?.dailyAvg ?? null
   const recentActivity: ActivityItem[] = apiData?.recentActivity ?? []
+  const activityTotalPages = Math.ceil(recentActivity.length / ACTIVITY_PAGE_SIZE)
+  const pagedActivity = recentActivity.slice((activityPage - 1) * ACTIVITY_PAGE_SIZE, activityPage * ACTIVITY_PAGE_SIZE)
 
   const stats = [
     {
@@ -315,33 +319,56 @@ export default function UsagePage() {
                       ))}
                     </tr>
                   ))
-                ) : recentActivity.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-gray-500 text-sm">
-                      Belum ada aktivitas generate.
-                    </td>
-                  </tr>
-                ) : (
-                  recentActivity.map((item, idx) => (
-                    <tr
-                      key={item.id}
-                      className="bg-slate-950 border-b border-white/5 hover:bg-white/5 transition-colors duration-150"
-                    >
-                      <td className="px-4 py-3 text-sm text-gray-300">{idx + 1}</td>
-                      <td className="px-4 py-3 text-sm text-gray-400">{formatDate(item.createdAt)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-200">Generate Metadata</td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-200 max-w-xs truncate">
-                        {item.filename ?? item.title ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-400">{platformLabel(item.platform)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-400">-{item.creditsUsed ?? 1} kredit</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{timeAgo(item.createdAt)}</td>
-                    </tr>
-                  ))
-                )}
+                ) :   recentActivity.length === 0 ? (
+     <tr>
+       <td colSpan={7} className="px-4 py-10 text-center text-gray-500 text-sm">
+         Belum ada aktivitas generate.
+       </td>
+     </tr>
+   ) : (
+     pagedActivity.map((item, idx) => (
+       <tr
+         key={item.id}
+         className="bg-slate-950 border-b border-white/5 hover:bg-white/5 transition-colors duration-150"
+       >
+         <td className="px-4 py-3 text-sm text-gray-300">{(activityPage - 1) * ACTIVITY_PAGE_SIZE + idx + 1}</td>
+         <td className="px-4 py-3 text-sm text-gray-400">{formatDate(item.createdAt)}</td>
+         <td className="px-4 py-3 text-sm text-gray-200">Generate Metadata</td>
+         <td className="px-4 py-3 text-sm font-medium text-gray-200 max-w-xs truncate">
+           {item.filename ?? item.title ?? "—"}
+         </td>
+         <td className="px-4 py-3 text-sm text-gray-400">{platformLabel(item.platform)}</td>
+         <td className="px-4 py-3 text-sm text-gray-400">-{item.creditsUsed ?? 1} kredit</td>
+         <td className="px-4 py-3 text-sm text-gray-500">{timeAgo(item.createdAt)}</td>
+       </tr>
+     ))
+   )}
               </tbody>
             </table>
           </div>
+          {activityTotalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-white/10">
+              <p className="text-xs text-gray-500">Halaman {activityPage} dari {activityTotalPages}</p>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setActivityPage(1)} disabled={activityPage === 1} className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">«</button>
+                <button onClick={() => setActivityPage(p => Math.max(1, p - 1))} disabled={activityPage === 1} className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">‹</button>
+                {Array.from({ length: activityTotalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === activityTotalPages || Math.abs(p - activityPage) <= 1)
+                  .reduce((acc: (number | string)[], p, i, arr) => {
+                    if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...')
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((p, i) => p === '...'
+                    ? <span key={`e-${i}`} className="px-2 py-1 text-xs text-gray-600">…</span>
+                    : <button key={p} onClick={() => setActivityPage(p as number)} className={`px-2.5 py-1 text-xs rounded transition-colors ${activityPage === p ? 'bg-blue-500 text-white' : 'bg-slate-800 text-gray-400 hover:bg-slate-700'}`}>{p}</button>
+                  )
+                }
+                <button onClick={() => setActivityPage(p => Math.min(activityTotalPages, p + 1))} disabled={activityPage === activityTotalPages} className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">›</button>
+                <button onClick={() => setActivityPage(activityTotalPages)} disabled={activityPage === activityTotalPages} className="px-2 py-1 text-xs rounded bg-slate-800 text-gray-400 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">»</button>
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
     </DashboardLayout>
