@@ -35,8 +35,18 @@ function isRateLimited(ip: string): boolean {
   return false
 }
 
-function setCorsHeaders(res: NextApiResponse) {
-  res.setHeader("Access-Control-Allow-Origin", allowedOrigin || "*")
+function setCorsHeaders(req: NextApiRequest, res: NextApiResponse) {
+  // CORS — allow semua chrome-extension origin
+  const origin = req.headers.origin || ''
+  const isExtension = origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')
+
+  if (isExtension || origin === allowedOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", origin || allowedOrigin || "*")
+  } else if (!origin) {
+    res.setHeader("Access-Control-Allow-Origin", allowedOrigin || "*")
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", allowedOrigin || "*")
+  }
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS")
   res.setHeader("Access-Control-Allow-Headers", "Content-Type")
 }
@@ -45,7 +55,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  setCorsHeaders(res)
+  setCorsHeaders(req, res)
 
   if (req.method === "OPTIONS") {
     return res.status(204).end()
