@@ -20,10 +20,9 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 type Tier = "standard" | "premium"
 
-const TIERS: Record<Tier, { label: string; model: string; credits: number; color: string; icon: React.ReactNode; description: string }> = {
+const TIERS: Record<Tier, { label: string; credits: number; color: string; icon: React.ReactNode; description: string }> = {
   standard: {
     label: "Standard",
-    model: "Real-ESRGAN",
     credits: 2,
     color: "emerald",
     icon: <Zap className="w-5 h-5" />,
@@ -31,7 +30,6 @@ const TIERS: Record<Tier, { label: string; model: string; credits: number; color
   },
   premium: {
     label: "Premium",
-    model: "Clarity Upscaler",
     credits: 5,
     color: "purple",
     icon: <Crown className="w-5 h-5" />,
@@ -210,7 +208,7 @@ export default function UpscalePage() {
                   </span>
                 </div>
                 <p className="mt-2 font-semibold text-gray-100 text-sm">{t.label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{t.model}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{t.credits} kredit</p>
                 <p className="text-xs text-gray-500 mt-1 leading-relaxed">{t.description}</p>
               </button>
             )
@@ -280,7 +278,7 @@ export default function UpscalePage() {
                     />
                   </div>
                   <p className="text-xs text-gray-600 px-1">
-                    {TIERS[tier].label} · {TIERS[tier].model}
+                    {TIERS[tier].label} · {TIERS[tier].credits} kredit
                   </p>
                 </div>
               )}
@@ -361,8 +359,8 @@ export default function UpscalePage() {
 
         {/* Info card */}
         <div className="rounded-xl border border-white/5 bg-slate-900/50 p-4 text-xs text-gray-600 space-y-1">
-          <p>• Standard (Real-ESRGAN): upscale 4× — cepat, konsumsi 2 kredit</p>
-          <p>• Premium (Clarity Upscaler): upscale 2× dengan detail AI ekstra — konsumsi 5 kredit</p>
+          <p>• Standard: upscale 4× — cepat, konsumsi 2 kredit</p>
+          <p>• Premium: upscale 2× dengan detail & ketajaman ekstra — konsumsi 5 kredit</p>
           <p>• Proses biasanya selesai dalam 30–90 detik tergantung ukuran gambar</p>
         </div>
       </div>
