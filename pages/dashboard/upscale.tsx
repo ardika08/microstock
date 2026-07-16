@@ -173,7 +173,7 @@ export default function UpscalePage() {
             <p className="text-sm text-gray-500">Tingkatkan resolusi gambar dengan AI</p>
           </div>
           <div className="ml-auto text-sm text-gray-500">
-            Kredit: <span className="text-gray-200 font-medium">{credits}</span>
+            Kredit: <span className="text-gray-200 font-medium">{isAdmin ? "∞ Unlimited" : credits}</span>
           </div>
         </div>
 
