@@ -7,6 +7,7 @@ import { HowItWorks } from '~/components/landing/HowItWorks';
 import { Comparison } from '~/components/landing/Comparison';
 import { Pricing } from '~/components/landing/Pricing';
 import { FAQ } from '~/components/landing/FAQ';
+import { ChangelogSection } from '~/components/landing/ChangelogSection';
 import { Footer } from '~/components/landing/Footer';
 import { PreLaunchModal } from '~/components/landing/PreLaunchModal';
 import { PreLaunchBanner } from '~/components/landing/PreLaunchBanner';
@@ -35,6 +36,7 @@ const Home: NextPage = () => {
           <Comparison />
           <Pricing />
           <FAQ />
+          <ChangelogSection />
         </main>
         <Footer />
       </div>
