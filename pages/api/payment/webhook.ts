@@ -212,6 +212,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log('[webhook] Payment processed:', customerEmail, productType)
+
+    // Forward payload ke SpecFlow webhook (fire-and-forget, tidak blokir response)
+    fetch('https://specflow.my.id/api/webhooks/mayar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch((err) => console.error('[webhook] Failed to forward to specflow:', err))
+
     return res.status(200).json({ success: true })
   } catch (err) {
     console.error('[webhook] Error processing payment:', err)
