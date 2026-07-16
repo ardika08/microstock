@@ -52,33 +52,6 @@ export default function UpscalePage() {
 
   const isAdmin = session?.user?.email === ADMIN_EMAIL
 
-  // ── Coming Soon for non-admin ─────────────────────────────────────────────
-  if (!isAdmin) {
-    return (
-      <DashboardLayout title="Upscale">
-        <div className="flex flex-col items-center justify-center min-h-[32rem] gap-5">
-          <div className="w-20 h-20 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-            <ArrowUpFromLine className="w-10 h-10 text-purple-400" />
-          </div>
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-gray-100">Coming Soon</h2>
-            <p className="text-gray-400 max-w-md">
-              Fitur upscaling gambar sedang dalam pengembangan. Segera hadir untuk semua pengguna!
-            </p>
-          </div>
-          <div className="flex gap-3 flex-wrap justify-center">
-            <span className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs rounded-lg font-medium">
-              Standard — 2 kredit · Real-ESRGAN 4×
-            </span>
-            <span className="px-3 py-1.5 bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs rounded-lg font-medium">
-              Premium — 5 kredit · Clarity 2×
-            </span>
-          </div>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
   // ── Helpers ───────────────────────────────────────────────────────────────
   function processFile(file: File) {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
@@ -156,6 +129,33 @@ export default function UpscalePage() {
     a.href = result
     a.download = `upscale-${tier}-${Date.now()}.png`
     a.click()
+  }
+
+  // ── Coming Soon for non-admin ─────────────────────────────────────────────
+  if (!isAdmin) {
+    return (
+      <DashboardLayout title="Upscale">
+        <div className="flex flex-col items-center justify-center min-h-[32rem] gap-5">
+          <div className="w-20 h-20 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+            <ArrowUpFromLine className="w-10 h-10 text-purple-400" />
+          </div>
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold text-gray-100">Coming Soon</h2>
+            <p className="text-gray-400 max-w-md">
+              Fitur upscaling gambar sedang dalam pengembangan. Segera hadir untuk semua pengguna!
+            </p>
+          </div>
+          <div className="flex gap-3 flex-wrap justify-center">
+            <span className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs rounded-lg font-medium">
+              Standard — 2 kredit
+            </span>
+            <span className="px-3 py-1.5 bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs rounded-lg font-medium">
+              Premium — 5 kredit
+            </span>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
   }
 
   // ── Admin UI ──────────────────────────────────────────────────────────────
