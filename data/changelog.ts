@@ -11,6 +11,17 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "1.4.0",
+    date: "17 Jul 2026",
+    title: "Extension UI Redesign",
+    type: "minor",
+    changes: [
+      { type: "improvement", text: "Redesign Chrome extension popup & on-page panel — dark SaaS Autofillstock" },
+      { type: "improvement", text: "Branding baru: Autofillstock (bukan AdobeStock AutoFill)" },
+      { type: "improvement", text: "Fungsi 1-klik generate + autofill tetap sama" },
+    ]
+  },
+  {
     version: "1.3.0",
     date: "16 Jul 2026",
     title: "Image Upscaling",

@@ -11,20 +11,20 @@ html {
   --foreground: 210 40% 98%;
   --card: 222 47% 7%;
   --card-foreground: 210 40% 98%;
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
+  --primary: 160 84% 39%;
+  --primary-foreground: 160 100% 6%;
   --secondary: 217 33% 12%;
   --secondary-foreground: 210 40% 98%;
   --muted: 217 33% 12%;
   --muted-foreground: 215 20% 65%;
-  --accent: 173 80% 36%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 160 84% 39%;
+  --accent-foreground: 160 100% 6%;
   --destructive: 0 63% 51%;
   --destructive-foreground: 210 40% 98%;
   --border: 217 33% 18%;
   --input: 217 33% 18%;
-  --ring: 221 83% 53%;
-  --radius: 0.5rem;
+  --ring: 160 84% 39%;
+  --radius: 0.75rem;
 }
 
 /* Plasmo extension popup only — DO NOT apply to Next.js pages */

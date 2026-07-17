@@ -165,13 +165,13 @@ type SupportedRuntimePlatform = "adobe_stock" | "shutterstock"
 function getCompletionCopy(platform: SupportedRuntimePlatform, processed: number) {
   if (platform === "shutterstock") {
     return {
-      title: "SHUTTERSTOCK AUTO-FILL SELESAI!",
+      title: "GENERATE SELESAI",
       message: `Sebanyak ${processed} aset Shutterstock telah diproses. Cek metadata, lalu klik Save atau Submit jika sudah siap.`
     }
   }
 
   return {
-    title: "PROSES GENERATE SELESAI!",
+    title: "GENERATE SELESAI",
     message: `Sebanyak ${processed} aset telah diproses. Jangan lupa tekan tombol SAVE WORK di kiri bawah.`
   }
 }
@@ -211,21 +211,24 @@ function showCompletionModal(processed: number, platform: SupportedRuntimePlatfo
 
   modal.innerHTML = `
     <div style="
-      width: min(620px, calc(100vw - 48px));
-      border-radius: 14px;
-      background: #ffffff;
-      color: #374151;
-      padding: 42px 34px 34px;
+      width: min(420px, calc(100vw - 32px));
+      border-radius: 18px;
+      background: #0f172a;
+      color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 32px 28px 28px;
       text-align: center;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+      box-shadow: 0 24px 80px rgba(2, 6, 23, 0.55);
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
     ">
-      <div style="color: #45b35c; font-size: 54px; line-height: 1; margin-bottom: 22px;">✓</div>
-      <div style="font-size: 16px; font-weight: 700; margin-bottom: 22px;">
+      <div style="color: #34d399; font-size: 48px; line-height: 1; margin-bottom: 18px;">✓</div>
+      <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #f8fafc;">
         ${copy.title}
       </div>
-      <div style="font-size: 15px; line-height: 1.6; color: #5b6472;">
-        ${copy.message}
+      <div style="font-size: 14px; line-height: 1.6; color: #94a3b8;">
+        ${copy.message || ""}
       </div>
+      <div style="margin-top: 18px; font-size: 11px; color: #475569;">Autofillstock</div>
     </div>
   `
 
@@ -1347,12 +1350,12 @@ function setLoadingPreview(root: ShadowRoot, assetIndex: number, totalAssets: nu
   setFooterStatus(root, `Memproses aset ke ${assetIndex}/${totalAssets}`, "processing")
 }
 
-function setBusy(root: ShadowRoot, busy: boolean, label = "Start") {
+function setBusy(root: ShadowRoot, busy: boolean, label = "Generate") {
   const generateButton = root.querySelector<HTMLButtonElement>("[data-asaf-generate]")
 
   if (generateButton) {
     generateButton.disabled = busy
-    generateButton.textContent = busy ? "Running..." : label
+    generateButton.textContent = busy ? "Generating..." : label
   }
 }
 
@@ -1387,8 +1390,8 @@ function createFloatingPanel(settings: AppSettings) {
   }
 
   const platform = getCurrentPlatform(settings)
-  const platformTitle =
-    platform === "shutterstock" ? "Shutterstock AutoFill" : "AdobeStock AutoFill"
+  const platformLabel =
+    platform === "shutterstock" ? "Shutterstock" : "Adobe Stock"
 
   document.documentElement.style.setProperty("--asaf-panel-width", `${PANEL_WIDTH}px`)
   document.documentElement.style.setProperty("--asaf-content-shift", `${CONTENT_SHIFT_WIDTH}px`)
@@ -1421,19 +1424,11 @@ function createFloatingPanel(settings: AppSettings) {
   root.innerHTML = `
     <style>
       :host {
-        color-scheme: light;
+        color-scheme: dark;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
-      :host-context(html.asaf-panel-active) body {
-        width: calc(100vw - var(--asaf-content-shift, ${contentShiftCss()})) !important;
-        max-width: calc(100vw - var(--asaf-content-shift, ${contentShiftCss()})) !important;
-        overflow-x: hidden !important;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
 
       .asaf-panel {
         position: relative;
@@ -1441,37 +1436,11 @@ function createFloatingPanel(settings: AppSettings) {
         width: 100%;
         height: 100vh;
         overflow: auto;
-        border-left: 1px solid #e5e7eb;
-        border-radius: 0;
-        background: #f8fafc;
-        color: #0f172a;
-        box-shadow: -18px 0 40px rgba(15, 23, 42, 0.18);
+        border-left: 1px solid rgba(255,255,255,0.08);
+        background: #020617;
+        color: #e2e8f0;
+        box-shadow: -18px 0 48px rgba(2, 6, 23, 0.55);
         pointer-events: auto;
-      }
-
-      @media (max-width: 900px) {
-        .asaf-panel {
-          width: 320px;
-        }
-      }
-
-      .asaf-topbar {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        background: linear-gradient(135deg, #2563eb, #14b8a6);
-        color: #fff;
-        padding: 16px 18px;
-        text-align: center;
-        font-size: 16px;
-        font-weight: 800;
-      }
-
-      .asaf-topbar img {
-        width: 30px;
-        height: 30px;
-        border-radius: 8px;
       }
 
       .asaf-header {
@@ -1479,9 +1448,9 @@ function createFloatingPanel(settings: AppSettings) {
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 12px 18px;
-        background: #fff;
-        border-bottom: 1px solid #eef2f7;
+        padding: 14px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        background: linear-gradient(180deg, rgba(15,23,42,0.95), rgba(2,6,23,0.95));
       }
 
       .asaf-brand {
@@ -1492,127 +1461,117 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       .asaf-brand img {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.1);
       }
 
       .asaf-title {
         margin: 0;
-        font-size: 12px;
-        font-weight: 800;
+        font-size: 14px;
+        font-weight: 700;
+        color: #f8fafc;
+        letter-spacing: -0.01em;
       }
 
       .asaf-subtitle {
         margin: 2px 0 0;
-        color: #64748b;
-        font-size: 12px;
+        color: #94a3b8;
+        font-size: 11px;
       }
 
       .asaf-status-pill {
         display: inline-flex;
         align-items: center;
-        gap: 7px;
+        gap: 6px;
         border-radius: 999px;
-        background: #f0fdf4;
-        color: #16a34a;
-        padding: 8px 11px;
-        font-size: 12px;
-        font-weight: 700;
+        background: rgba(16,185,129,0.12);
+        color: #6ee7b7;
+        border: 1px solid rgba(16,185,129,0.25);
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 600;
         white-space: nowrap;
       }
 
       .asaf-status-dot {
-        width: 12px;
-        height: 12px;
+        width: 7px;
+        height: 7px;
         border-radius: 999px;
-        background: #4ade80;
+        background: #34d399;
+        box-shadow: 0 0 0 3px rgba(52,211,153,0.15);
       }
 
       .asaf-section {
-        padding: 12px 14px;
+        padding: 14px;
       }
 
-      .asaf-label {
-        display: block;
-        margin-bottom: 6px;
-        font-size: 12px;
-        font-weight: 700;
-        color: #334155;
-      }
-
-      .asaf-input,
-      .asaf-textarea {
-        width: 100%;
-        border: 1px solid #cbd5e1;
-        border-radius: 7px;
-        background: #fff;
-        color: #0f172a;
-        font: inherit;
-        font-size: 13px;
-        outline: none;
-        padding: 9px 10px;
-      }
-
-      .asaf-input:focus,
-      .asaf-textarea:focus {
-        border-color: #2563eb;
-        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
-      }
-
-      .asaf-textarea {
-        min-height: 72px;
-        resize: vertical;
+      .asaf-stack {
+        display: grid;
+        gap: 12px;
       }
 
       .asaf-mode {
-        border: 1px solid #bfdbfe;
-        border-radius: 8px;
-        background: #eff6ff;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        background: rgba(15,23,42,0.7);
         padding: 12px;
       }
 
       .asaf-mode-title {
         margin: 0 0 10px;
-        color: #334155;
-        font-size: 12px;
-        font-weight: 800;
+        color: #cbd5e1;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
       .asaf-radio-row {
-        display: flex;
-        gap: 10px;
-        color: #475569;
+        display: grid;
+        gap: 8px;
+        color: #94a3b8;
         font-size: 12px;
-        font-weight: 600;
+        font-weight: 500;
+      }
+
+      .asaf-radio-row label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
       }
 
       .asaf-radio-row input {
-        accent-color: #2563eb;
+        accent-color: #10b981;
       }
 
       .asaf-card {
-        border-radius: 9px;
-        background: #fff;
-        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
-        padding: 14px;
+        border-radius: 12px;
+        background: rgba(15,23,42,0.85);
+        border: 1px solid rgba(255,255,255,0.08);
+        padding: 12px;
       }
 
       .asaf-card-title {
-        margin: 0 0 10px;
-        color: #334155;
-        font-size: 13px;
-        font-weight: 800;
+        margin: 0 0 8px;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
 
       .asaf-card-body {
         margin: 0;
-        color: #0f172a;
+        color: #e2e8f0;
         font-size: 13px;
-        line-height: 1.45;
+        line-height: 1.5;
         max-height: 118px;
         overflow: hidden;
         white-space: pre-wrap;
+        word-break: break-word;
       }
 
       .asaf-card-body[data-loading="false"] {
@@ -1622,58 +1581,59 @@ function createFloatingPanel(settings: AppSettings) {
       .asaf-image-box {
         display: grid;
         place-items: center;
-        min-height: 160px;
-        color: #0f172a;
+        min-height: 148px;
+        color: #e2e8f0;
       }
 
       .asaf-thumbnail {
         display: block;
-        width: 210px;
-        max-width: 100%;
-        height: 120px;
+        width: 100%;
+        max-width: 220px;
+        height: 124px;
         object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.08);
       }
 
       .asaf-thumbnail-placeholder {
         display: grid;
         place-items: center;
-        width: 210px;
-        max-width: 100%;
-        height: 120px;
-        border: 1px dashed #cbd5e1;
-        border-radius: 7px;
+        width: 100%;
+        max-width: 220px;
+        height: 124px;
+        border: 1px dashed rgba(148,163,184,0.35);
+        border-radius: 10px;
         color: #64748b;
         font-size: 12px;
+        background: rgba(2,6,23,0.5);
       }
 
       .asaf-spinner {
         display: inline-block;
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
         margin-right: 8px;
-        vertical-align: -3px;
-        border: 2px solid #dbe3ef;
-        border-top-color: #2563eb;
+        vertical-align: -2px;
+        border: 2px solid rgba(148,163,184,0.25);
+        border-top-color: #34d399;
         border-radius: 999px;
         animation: asaf-spin 0.8s linear infinite;
       }
 
       @keyframes asaf-spin {
-        to {
-          transform: rotate(360deg);
-        }
+        to { transform: rotate(360deg); }
       }
 
       .asaf-button {
         width: 100%;
         border: 0;
-        border-radius: 7px;
-        background: #2563eb;
-        color: #fff;
+        border-radius: 10px;
+        background: #10b981;
+        color: #022c22;
         cursor: pointer;
         font-size: 13px;
-        font-weight: 800;
-        padding: 10px 12px;
+        font-weight: 700;
+        padding: 11px 12px;
         pointer-events: auto;
         position: relative;
         z-index: 3;
@@ -1682,104 +1642,90 @@ function createFloatingPanel(settings: AppSettings) {
         touch-action: manipulation;
       }
 
-      .asaf-button:hover {
-        background: #1d4ed8;
-      }
+      .asaf-button:hover { background: #34d399; }
 
       .asaf-button:disabled {
         cursor: not-allowed;
-        opacity: 0.58;
+        opacity: 0.55;
       }
 
       .asaf-button-secondary {
-        border: 1px solid #cbd5e1;
-        background: #ef4444;
-        color: #fff;
+        border: 1px solid rgba(248,113,113,0.35);
+        background: rgba(127,29,29,0.35);
+        color: #fecaca;
       }
 
       .asaf-button-secondary:hover {
-        background: #dc2626;
+        background: rgba(153,27,27,0.55);
       }
 
       .asaf-actions {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1.4fr 0.8fr;
         gap: 10px;
         position: relative;
         z-index: 2;
       }
 
-      .asaf-start {
-        background: #47b553;
-      }
-
-      .asaf-start:hover {
-        background: #36a142;
-      }
-
-      .asaf-stack {
-        display: grid;
-        gap: 10px;
-      }
-
-      .asaf-divider {
-        height: 1px;
-        margin: 14px -14px;
-        background: #e5eaf1;
-      }
-
       .asaf-footer {
-        margin-top: 18px;
-        background: #ecfdf5;
-        color: #0f9f6e;
-        padding: 14px;
+        margin-top: 4px;
+        border-radius: 10px;
+        background: rgba(16,185,129,0.1);
+        border: 1px solid rgba(16,185,129,0.2);
+        color: #6ee7b7;
+        padding: 12px;
         text-align: center;
-        font-weight: 800;
+        font-size: 12px;
+        font-weight: 600;
       }
 
       .asaf-footer[data-type="error"] {
-        background: #fef2f2;
-        color: #b91c1c;
+        background: rgba(239,68,68,0.1);
+        border-color: rgba(239,68,68,0.25);
+        color: #fca5a5;
       }
 
       .asaf-footer[data-type="muted"] {
-        background: #eef2ff;
-        color: #2563eb;
+        background: rgba(59,130,246,0.1);
+        border-color: rgba(59,130,246,0.22);
+        color: #93c5fd;
       }
 
       .asaf-footer[data-type="processing"] {
-        background: #fef2f2;
-        color: #ef4444;
+        background: rgba(245,158,11,0.1);
+        border-color: rgba(245,158,11,0.22);
+        color: #fcd34d;
       }
 
-      [hidden] {
-        display: none !important;
+      .asaf-brand-foot {
+        margin-top: 10px;
+        text-align: center;
+        color: #475569;
+        font-size: 11px;
       }
+
+      [hidden] { display: none !important; }
     </style>
 
     <section class="asaf-panel" data-asaf-panel>
-      <div class="asaf-topbar">
-        <img alt="" src="${iconUrl}" />
-        <span>Generate Metadata with AI</span>
-      </div>
-
       <header class="asaf-header">
         <div class="asaf-brand">
+          <img alt="Autofillstock" src="${iconUrl}" />
           <div>
-            <p class="asaf-title">${platformTitle}</p>
-            <p class="asaf-subtitle">Auto-generate dan isi metadata.</p>
+            <p class="asaf-title">Autofillstock</p>
+            <p class="asaf-subtitle">${platformLabel} · Auto metadata</p>
           </div>
         </div>
-        <span class="asaf-status-pill"><span class="asaf-status-dot"></span>Connected</span>
+        <span class="asaf-status-pill"><span class="asaf-status-dot"></span>Ready</span>
       </header>
 
       <div class="asaf-section">
         <div class="asaf-stack">
           <div class="asaf-mode">
-            <p class="asaf-mode-title">Mode Pengisian Aset:</p>
+            <p class="asaf-mode-title">Mode pengisian</p>
             <div class="asaf-radio-row">
-              <label><input name="asaf-fill-mode" value="all" type="radio" checked /> Isi Mulai Dari Awal</label>
-              <label><input name="asaf-fill-mode" value="empty" type="radio" /> Isi Yang Kosong Saja</label>
+              <label><input name="asaf-fill-mode" value="all" type="radio" checked /> Isi mulai dari awal</label>
+              <label><input name="asaf-fill-mode" value="empty" type="radio" /> Isi yang kosong saja</label>
             </div>
           </div>
 
@@ -1796,22 +1742,23 @@ function createFloatingPanel(settings: AppSettings) {
           </div>
 
           <div class="asaf-card">
-            <p class="asaf-card-title">Judul</p>
+            <p class="asaf-card-title">Title</p>
             <p class="asaf-card-body" data-asaf-title-preview data-loading="false">-</p>
           </div>
 
           <div class="asaf-card">
-            <p class="asaf-card-title">Keyword</p>
+            <p class="asaf-card-title">Keywords</p>
             <p class="asaf-card-body" data-asaf-keyword-preview data-loading="false">-</p>
           </div>
 
           <div class="asaf-actions">
-            <button class="asaf-button asaf-start" data-asaf-generate type="button">Start</button>
+            <button class="asaf-button" data-asaf-generate type="button">Generate</button>
             <button class="asaf-button asaf-button-secondary" data-asaf-stop type="button">Stop</button>
           </div>
-        </div>
 
-        <div class="asaf-footer" data-asaf-footer data-type="success">Ready</div>
+          <div class="asaf-footer" data-asaf-footer data-type="success">Siap generate metadata</div>
+          <div class="asaf-brand-foot">autofillstock.my.id</div>
+        </div>
       </div>
     </section>
   `
