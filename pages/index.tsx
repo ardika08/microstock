@@ -9,8 +9,6 @@ import { Pricing } from '~/components/landing/Pricing';
 import { FAQ } from '~/components/landing/FAQ';
 import { ChangelogSection } from '~/components/landing/ChangelogSection';
 import { Footer } from '~/components/landing/Footer';
-import { PreLaunchModal } from '~/components/landing/PreLaunchModal';
-import { PreLaunchBanner } from '~/components/landing/PreLaunchBanner';
 
 const Home: NextPage = () => {
   return (
@@ -26,8 +24,6 @@ const Home: NextPage = () => {
       </Head>
 
       <div className="min-h-screen bg-slate-950 text-gray-100">
-        <PreLaunchModal />
-        <PreLaunchBanner />
         <Navbar />
         <main>
           <Hero />

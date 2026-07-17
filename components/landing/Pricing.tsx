@@ -11,7 +11,7 @@ export function Pricing() {
       price: 'Gratis',
       originalPrice: '',
       period: '',
-      credits: '20 kredit 🎁 (bonus pre-launch!)',
+      credits: '20 kredit gratis',
       description: 'Coba fitur lengkap tanpa kartu kredit',
       features: [
         '20 kredit gratis',
@@ -33,7 +33,7 @@ export function Pricing() {
       price: 'Rp9.900',
       originalPrice: '',
       period: '',
-      credits: '150 kredit 🎁 (harga intro pre-launch!)',
+      credits: '150 kredit',
       description: 'Mulai dari harga termurah, kredit tidak expire',
       features: [
         '150 kredit (tidak expire)',
@@ -48,7 +48,7 @@ export function Pricing() {
       buttonText: 'Beli Sekarang',
       planKey: 'intro',
       popular: true,
-      promo: true,
+      promo: false,
     },
     {
       name: 'Basic Pack',
@@ -139,14 +139,6 @@ export function Pricing() {
                 </div>
               )}
 
-              {plan.promo && (
-                <div className="absolute -top-2 -right-2">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-500 text-white shadow-lg shadow-red-500/25">
-                    Harga Intro
-                  </span>
-                </div>
-              )}
-
               <div className="p-8 flex flex-col h-full">
                 {/* Icon */}
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.color} p-[1px] mb-4`}>
@@ -219,12 +211,8 @@ export function Pricing() {
                 <p className="text-gray-400">Bayar sekali, generate unlimited selamanya. Pakai API key OpenAI sendiri.</p>
                 <div className="mt-4 flex items-center gap-4">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-lg text-gray-500 line-through">Rp349.000</span>
                     <span className="text-3xl font-bold text-gray-100">Rp249.000</span>
                   </div>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Harga Promo
-                  </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className="text-xs text-gray-500 bg-white/5 px-2 py-1 rounded-full">Pakai API key sendiri</span>
