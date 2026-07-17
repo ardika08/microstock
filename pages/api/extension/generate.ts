@@ -121,22 +121,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           content: `${textInstruction}\n\nAsset brief: ${assetBrief || filename || 'A general commercial stock asset.'}`,
         }
 
-    const openaiRes = await fetch(OPENAI_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        temperature: 0.4,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: 'You are a metadata assistant for microstock contributors. Output only valid JSON.' },
-          userMessage,
-        ],
-      }),
-    })
+    // Text-only brief → mini (cepat). Vision/base64 image → 4o.
+    const model = isBase64Image ? 'gpt-4o' : 'gpt-4o-mini'
+    const openaiController = new AbortController()
+    const openaiTimeout = setTimeout(() => openaiController.abort(), 90_000)
+
+    let openaiRes: Response
+    try {
+      openaiRes = await fetch(OPENAI_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.4,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: 'You are a metadata assistant for microstock contributors. Output only valid JSON.' },
+            userMessage,
+          ],
+        }),
+        signal: openaiController.signal,
+      })
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('OpenAI timeout. Coba generate lagi.')
+      }
+      throw err
+    } finally {
+      clearTimeout(openaiTimeout)
+    }
 
     const openaiBody = await openaiRes.json()
     if (!openaiRes.ok) {

@@ -1863,8 +1863,10 @@ function createFloatingPanel(settings: AppSettings) {
     settings.usage_count = usageCount
     await autofill(metadata)
 
-    // Non-blocking: log usage to server for dashboard history + credit sync
-    logGenerateToServer(metadata, filename, platform)
+    // Lifetime/direct OpenAI path only — server generate already logs history + credits
+    if (settings.openai_api_key) {
+      logGenerateToServer(metadata, filename, platform)
+    }
 
     return metadata
   }
@@ -1915,7 +1917,15 @@ function createFloatingPanel(settings: AppSettings) {
 
       setLoadingPreview(root, processed + 1, totalAssets)
 
-      await processCurrentAsset(settings)
+      try {
+        await processCurrentAsset(settings)
+      } catch (assetError) {
+        const message =
+          assetError instanceof Error ? assetError.message : "Generate metadata gagal."
+        batchError = message
+        setFooterStatus(root, message, "error")
+        throw assetError
+      }
       processed += 1
 
       if (processed >= totalAssets) {
@@ -1986,13 +1996,8 @@ function createFloatingPanel(settings: AppSettings) {
     }
 
     isRunning = true
-    setFooterStatus(root, "Starting...", "muted")
+    setFooterStatus(root, "Memulai generate...", "muted")
     setBusy(root, true)
-    if (footer) {
-      footer.textContent = "Running"
-      footer.dataset.type = "muted"
-    }
-    setFooterStatus(root, "Running", "muted")
 
     try {
       const settings = await getSettings()
@@ -2004,11 +2009,10 @@ function createFloatingPanel(settings: AppSettings) {
       // ✅ Tidak perlu cek API key — generate via server Autofillstock
       await processBatch(settings)
     } catch (error) {
-      setFooterStatus(
-        root,
-        error instanceof Error ? error.message : "Generate metadata gagal.",
-        "error"
-      )
+      const message =
+        error instanceof Error ? error.message : "Generate metadata gagal."
+      setFooterStatus(root, message, "error")
+      console.error("[autofillstock] generate error:", error)
     } finally {
       isRunning = false
       setBusy(root, false)

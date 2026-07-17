@@ -60,27 +60,44 @@ export async function generateMetadataViaServer(
   filename: string,
   platform: string
 ): Promise<MetadataResult> {
+  if (!activationCode?.trim()) {
+    throw new Error("Kode aktivasi tidak ditemukan. Buka popup extension dan aktivasi ulang.")
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 120_000)
+
   let response: Response
   try {
     response = await fetch(SERVER_GENERATE_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activationCode, assetBrief, filename, platform }),
+      signal: controller.signal
     })
   } catch (networkError) {
+    if (networkError instanceof Error && networkError.name === "AbortError") {
+      throw new Error("Generate timeout. Server terlalu lama merespons. Coba lagi.")
+    }
     throw new Error("Tidak dapat menghubungi server. Periksa koneksi internet dan coba lagi.")
+  } finally {
+    clearTimeout(timeoutId)
   }
 
-  let body: Record<string, unknown>
+  const rawText = await response.text()
+  let body: Record<string, unknown> = {}
   try {
-    body = await response.json()
+    body = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : {}
   } catch {
-    throw new Error("Server mengembalikan respons yang tidak valid.")
+    if (response.status === 504 || /gateway time-?out/i.test(rawText)) {
+      throw new Error("Server timeout saat generate. Coba lagi beberapa detik.")
+    }
+    throw new Error(`Server error (${response.status}). Coba lagi.`)
   }
 
   if (!response.ok) {
     throw new Error(
-      (body?.error as string) || "Gagal generate metadata dari server."
+      (body?.error as string) || `Gagal generate metadata (${response.status}).`
     )
   }
 
