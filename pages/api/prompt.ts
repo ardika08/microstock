@@ -132,6 +132,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Silakan login terlebih dahulu.' })
   }
 
+  // Admin-only while testing before public release
+  const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
+  if (session.user.email !== ADMIN_EMAIL) {
+    return res.status(403).json({ error: 'Fitur ini masih dalam pengujian internal.' })
+  }
+
   const dbConn = neon(process.env.DATABASE_URL!)
   const db = drizzle(dbConn, { schema })
 

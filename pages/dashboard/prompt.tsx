@@ -11,8 +11,10 @@ import {
   X,
 } from "lucide-react"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
+import { useSession } from "next-auth/react"
 import { useUser } from "~/hooks/useUser"
 
+const ADMIN_EMAIL = "ardika.yudha08@gmail.com"
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const MAX_EDGE = 1280
 const CREDITS_PER_GENERATE = 1
@@ -61,7 +63,9 @@ async function fileToCompressedDataUrl(file: File): Promise<string> {
 }
 
 export default function ImageToPromptPage() {
+  const { data: session } = useSession()
   const { credits, planType } = useUser()
+  const isAdmin = session?.user?.email === ADMIN_EMAIL
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [preview, setPreview] = useState<string | null>(null)
@@ -197,6 +201,28 @@ export default function ImageToPromptPage() {
     setFileName("")
     resetResult()
     setError(null)
+  }
+
+  // Admin-only while testing — non-admin sees Coming Soon
+  if (!isAdmin) {
+    return (
+      <DashboardLayout title="Image to Prompt">
+        <div className="flex flex-col items-center justify-center min-h-[32rem] gap-5">
+          <div className="w-20 h-20 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
+            <ScanText className="w-10 h-10 text-cyan-400" />
+          </div>
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold text-gray-100">Coming Soon</h2>
+            <p className="text-gray-400 max-w-md">
+              Fitur Image to Prompt sedang diuji. Segera hadir untuk semua pengguna!
+            </p>
+          </div>
+          <span className="px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs rounded-lg font-medium">
+            1 kredit / generate
+          </span>
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (

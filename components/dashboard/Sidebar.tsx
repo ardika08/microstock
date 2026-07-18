@@ -11,7 +11,6 @@ const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
 
 const navItems = [
   { href: "/dashboard/generate", icon: Sparkles, label: "Generate" },
-  { href: "/dashboard/prompt", icon: ScanText, label: "Image to Prompt" },
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard/history", icon: History, label: "History" },
   { href: "/dashboard/usage", icon: BarChart3, label: "Usage" },
@@ -107,6 +106,35 @@ export default function Sidebar({
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 cursor-not-allowed border-l-2 border-transparent">
             <ArrowUpFromLine className="w-5 h-5 flex-shrink-0" />
             <span>Upscale</span>
+            <span className="ml-auto text-[10px] bg-slate-700 text-gray-500 px-1.5 py-0.5 rounded-full">Soon</span>
+          </div>
+        )}
+
+        {/* Image to Prompt — admin only while testing */}
+        {isAdmin ? (
+          <Link
+            href="/dashboard/prompt"
+            onClick={() => setIsMobileOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border-l-2 relative ${
+              router.pathname === "/dashboard/prompt"
+                ? "bg-blue-500/10 border-blue-500 text-blue-400"
+                : "border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-200"
+            }`}
+          >
+            <ScanText className="w-5 h-5 flex-shrink-0" />
+            <span>Image to Prompt</span>
+            {router.pathname === "/dashboard/prompt" && (
+              <motion.div
+                layoutId="activeNav"
+                className="absolute inset-0 bg-blue-500/10 rounded-lg -z-10"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+          </Link>
+        ) : (
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 cursor-not-allowed border-l-2 border-transparent">
+            <ScanText className="w-5 h-5 flex-shrink-0" />
+            <span>Image to Prompt</span>
             <span className="ml-auto text-[10px] bg-slate-700 text-gray-500 px-1.5 py-0.5 rounded-full">Soon</span>
           </div>
         )}
