@@ -14,8 +14,6 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const FAIR_USE_LIMIT = 200
 const FAIR_USE_WINDOW = 24 * 60 * 60 * 1000
 
-type PromptStyle = 'general' | 'midjourney' | 'flux' | 'sdxl'
-
 function checkFairUse(userId: string): boolean {
   const now = Date.now()
   const entry = rateLimitMap.get(userId)
@@ -28,37 +26,24 @@ function checkFairUse(userId: string): boolean {
   return true
 }
 
-function styleInstruction(style: PromptStyle): string {
-  switch (style) {
-    case 'midjourney':
-      return 'Optimize the prompt for Midjourney (natural descriptive language, optional light parameters like --stylize only if useful; do not invent fake seeds).'
-    case 'flux':
-      return 'Optimize the prompt for Flux / modern diffusion models (clear subject, composition, lighting, materials; avoid Midjourney-only flags).'
-    case 'sdxl':
-      return 'Optimize the prompt for SDXL (comma-separated descriptors ok, strong visual tokens, lighting, camera).'
-    default:
-      return 'Write a general high-quality image generation prompt usable across tools.'
-  }
-}
-
 async function callOpenAIImageToPrompt(
   apiKey: string,
   imageBase64: string,
-  model: string,
-  style: PromptStyle
+  model: string
 ) {
   const systemPrompt =
     'You are an expert image-to-prompt engineer for generative AI and microstock workflows. Output only valid JSON.'
 
   const textInstruction = [
     'Analyze the image and write a detailed English prompt that could recreate a similar image.',
-    styleInstruction(style),
+    'Write a general high-quality image generation prompt usable across tools (not Midjourney/Flux/SDXL-specific).',
     'Return strict JSON only with this shape:',
     '{"prompt":"...","negativePrompt":"...","tags":["..."]}',
     'Rules:',
     '- prompt: 40-120 words, concrete visual details (subject, setting, composition, lighting, colors, style, camera/lens if relevant).',
     '- No markdown, no quotes wrapping the whole prompt, no AI disclaimers.',
     '- Do NOT invent celebrity names, brands, logos, or copyrighted characters.',
+    '- Do NOT add tool-specific flags (e.g. --ar, --stylize, --v).',
     '- negativePrompt: short comma-separated list of quality issues to avoid.',
     '- tags: 5-12 short searchable tags.',
   ].join('\n')
@@ -150,10 +135,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const user = users[0]
   if (!user) return res.status(404).json({ error: 'User tidak ditemukan.' })
 
-  const { imageBase64, style: rawStyle, userApiKey, filename } = req.body ?? {}
-  const style = (['general', 'midjourney', 'flux', 'sdxl'].includes(rawStyle)
-    ? rawStyle
-    : 'general') as PromptStyle
+  const { imageBase64, userApiKey, filename } = req.body ?? {}
 
   if (!imageBase64 || typeof imageBase64 !== 'string' || !imageBase64.startsWith('data:image/')) {
     return res.status(400).json({ error: 'Gambar wajib diunggah (format data URL image).' })
@@ -203,7 +185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const result = await callOpenAIImageToPrompt(apiKey, String(imageBase64), model, style)
+    const result = await callOpenAIImageToPrompt(apiKey, String(imageBase64), model)
 
     // Deduct only after successful generation
     if (user.planType !== 'starter' && user.planType !== 'lifetime') {

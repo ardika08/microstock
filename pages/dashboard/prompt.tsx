@@ -19,15 +19,6 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const MAX_EDGE = 1280
 const CREDITS_PER_GENERATE = 1
 
-type PromptStyle = "general" | "midjourney" | "flux" | "sdxl"
-
-const STYLES: { key: PromptStyle; label: string; hint: string }[] = [
-  { key: "general", label: "General", hint: "Semua tools" },
-  { key: "midjourney", label: "Midjourney", hint: "Gaya MJ" },
-  { key: "flux", label: "Flux", hint: "Modern diffusion" },
-  { key: "sdxl", label: "SDXL", hint: "Stable Diffusion" },
-]
-
 async function fileToCompressedDataUrl(file: File): Promise<string> {
   const rawUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
@@ -70,7 +61,6 @@ export default function ImageToPromptPage() {
 
   const [preview, setPreview] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>("")
-  const [style, setStyle] = useState<PromptStyle>("general")
   const [isDragging, setIsDragging] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [prompt, setPrompt] = useState("")
@@ -161,7 +151,6 @@ export default function ImageToPromptPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           imageBase64: preview,
-          style,
           filename: fileName || "image-prompt",
           userApiKey: savedApiKey || undefined,
         }),
@@ -324,30 +313,6 @@ export default function ImageToPromptPage() {
               />
             </section>
 
-            <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-              <div className="text-sm font-medium text-gray-200">Style output</div>
-              <div className="grid grid-cols-2 gap-2">
-                {STYLES.map((s) => {
-                  const active = style === s.key
-                  return (
-                    <button
-                      key={s.key}
-                      type="button"
-                      onClick={() => setStyle(s.key)}
-                      className={`rounded-xl border px-3 py-2.5 text-left transition-all ${
-                        active
-                          ? "border-cyan-500/60 bg-cyan-500/10"
-                          : "border-white/10 hover:border-white/20 hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="text-sm font-medium text-gray-100">{s.label}</div>
-                      <div className="text-[11px] text-gray-500">{s.hint}</div>
-                    </button>
-                  )
-                })}
-              </div>
-            </section>
-
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 type="button"
@@ -439,7 +404,7 @@ export default function ImageToPromptPage() {
                   <div>
                     <p className="text-sm text-gray-300 font-medium">Belum ada prompt</p>
                     <p className="text-xs text-gray-500 mt-1 max-w-xs">
-                      Upload gambar, pilih style, lalu klik Generate Prompt.
+                      Upload gambar, lalu klik Generate Prompt.
                     </p>
                   </div>
                 </div>
