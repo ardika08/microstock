@@ -116,22 +116,59 @@ async function callOpenAIImageToPrompt(
   model: string,
   attempt = 1
 ): Promise<{ prompt: string; negativePrompt: string; tags: string[] }> {
-  const systemPrompt =
-    'You are an expert image-to-prompt engineer for generative AI and microstock workflows. Always return valid JSON only.'
+  const useJsonObject = attempt === 1
+  const imageDetail = attempt === 1 ? 'low' : 'auto'
 
-  const textInstruction = [
-    'Analyze the image and write a detailed English prompt that could recreate a similar image.',
-    'Write a general high-quality image generation prompt usable across tools (not Midjourney/Flux/SDXL-specific).',
-    'Return a single JSON object only with this exact shape:',
-    '{"prompt":"...","negativePrompt":"...","tags":["..."]}',
-    'Rules:',
-    '- prompt: 40-120 words, concrete visual details (subject, setting, composition, lighting, colors, style, camera/lens if relevant).',
-    '- No markdown fences, no commentary outside JSON.',
-    '- Do NOT invent celebrity names, brands, logos, or copyrighted characters.',
-    '- Do NOT add tool-specific flags (e.g. --ar, --stylize, --v).',
-    '- negativePrompt: short comma-separated list of quality issues to avoid.',
-    '- tags: 5-12 short searchable tags.',
-  ].join('\n')
+  const systemPrompt = useJsonObject
+    ? 'You are an expert image-to-prompt engineer for generative AI and microstock workflows. Always return valid JSON only.'
+    : 'You are an expert image-to-prompt engineer for generative AI and microstock workflows.'
+
+  const textInstruction = useJsonObject
+    ? [
+        'Analyze the image and write a detailed English prompt that could recreate a similar image.',
+        'Write a general high-quality image generation prompt usable across tools (not Midjourney/Flux/SDXL-specific).',
+        'Return a single JSON object only with this exact shape:',
+        '{"prompt":"...","negativePrompt":"...","tags":["..."]}',
+        'Rules:',
+        '- prompt: 40-120 words, concrete visual details (subject, setting, composition, lighting, colors, style, camera/lens if relevant).',
+        '- No markdown fences, no commentary outside JSON.',
+        '- Do NOT invent celebrity names, brands, logos, or copyrighted characters.',
+        '- Do NOT add tool-specific flags (e.g. --ar, --stylize, --v).',
+        '- negativePrompt: short comma-separated list of quality issues to avoid.',
+        '- tags: 5-12 short searchable tags.',
+      ].join('\n')
+    : [
+        'Analyze the image and write a detailed English prompt that could recreate a similar image.',
+        'Respond with plain text only: one paragraph prompt (40-120 words).',
+        'No JSON, no markdown, no labels, no negative prompt.',
+        'Do NOT invent celebrity names, brands, logos, or copyrighted characters.',
+      ].join('\n')
+
+  const body: Record<string, unknown> = {
+    model,
+    temperature: attempt === 1 ? 0.3 : 0.2,
+    max_tokens: 700,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: textInstruction },
+          {
+            type: 'image_url',
+            image_url: {
+              url: imageBase64,
+              detail: imageDetail,
+            },
+          },
+        ],
+      },
+    ],
+  }
+
+  if (useJsonObject) {
+    body.response_format = { type: 'json_object' }
+  }
 
   const response = await fetch(OPENAI_ENDPOINT, {
     method: 'POST',
@@ -139,33 +176,13 @@ async function callOpenAIImageToPrompt(
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model,
-      temperature: attempt === 1 ? 0.3 : 0.2,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: textInstruction },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageBase64,
-                detail: 'low',
-              },
-            },
-          ],
-        },
-      ],
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '')
     // Retry transient OpenAI errors
-    if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+    if ((response.status === 429 || response.status >= 500) && attempt < 3) {
       await sleep(1200 * attempt)
       return callOpenAIImageToPrompt(apiKey, imageBase64, model, attempt + 1)
     }
@@ -175,14 +192,64 @@ async function callOpenAIImageToPrompt(
   }
 
   const data = await response.json()
-  const content: string = data?.choices?.[0]?.message?.content ?? ''
+  const choice = data?.choices?.[0]
+  const message = choice?.message ?? {}
+  const finishReason = choice?.finish_reason ?? data?.choices?.[0]?.finish_reason
+  const refusal =
+    typeof message.refusal === 'string' && message.refusal.trim()
+      ? message.refusal.trim()
+      : ''
+
+  // content can be string or (rarely) array of parts
+  let content = ''
+  if (typeof message.content === 'string') {
+    content = message.content
+  } else if (Array.isArray(message.content)) {
+    content = message.content
+      .map((part: { type?: string; text?: string }) =>
+        typeof part?.text === 'string' ? part.text : ''
+      )
+      .join('\n')
+      .trim()
+  }
+
+  if (refusal) {
+    console.error('[api/prompt] model refusal:', refusal.slice(0, 200))
+    if (attempt < 3) {
+      await sleep(600 * attempt)
+      return callOpenAIImageToPrompt(apiKey, imageBase64, model, attempt + 1)
+    }
+    throw new Error(`Model menolak memproses gambar: ${refusal.slice(0, 160)}`)
+  }
+
+  if (finishReason === 'content_filter') {
+    throw new Error('Gambar diblokir content filter OpenAI. Coba gambar lain.')
+  }
+
+  if (!content.trim()) {
+    console.error('[api/prompt] empty content meta:', {
+      finishReason,
+      hasChoices: Array.isArray(data?.choices),
+      choiceKeys: choice ? Object.keys(choice) : [],
+      messageKeys: message ? Object.keys(message) : [],
+      model: data?.model,
+      usage: data?.usage,
+    })
+
+    if (attempt < 3) {
+      await sleep(700 * attempt)
+      return callOpenAIImageToPrompt(apiKey, imageBase64, model, attempt + 1)
+    }
+    throw new Error(
+      `Respons AI kosong${finishReason ? ` (finish_reason: ${finishReason})` : ''}. Coba lagi atau ganti gambar.`
+    )
+  }
 
   try {
     return extractPromptFields(content)
   } catch (err) {
-    // one retry for unusable content
-    if (attempt < 2) {
-      await sleep(800)
+    if (attempt < 3) {
+      await sleep(700 * attempt)
       return callOpenAIImageToPrompt(apiKey, imageBase64, model, attempt + 1)
     }
     console.error('[api/prompt] unparseable content sample:', String(content).slice(0, 300))
