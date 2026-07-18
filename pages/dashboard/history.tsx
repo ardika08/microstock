@@ -29,6 +29,7 @@ function platformLabel(p: string | null | undefined): string {
     case "adobe_stock": return "Adobe Stock"
     case "shutterstock": return "Shutterstock"
     case "web": return "Web Dashboard"
+    case "image_prompt": return "Image to Prompt"
     default: return p ?? "—"
   }
 }

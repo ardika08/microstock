@@ -4,13 +4,14 @@ import Image from "next/image"
 import { useRouter } from "next/router"
 import { motion, AnimatePresence } from "framer-motion"
 import { signOut, useSession } from "next-auth/react"
-import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X, Sparkles, Shield, MessageCircle, ArrowUpFromLine, ScrollText, Grid2X2 } from "lucide-react"
+import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X, Sparkles, Shield, MessageCircle, ArrowUpFromLine, ScrollText, Grid2X2, ScanText } from "lucide-react"
 import AvatarMenu from "./AvatarMenu"
 
 const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
 
 const navItems = [
   { href: "/dashboard/generate", icon: Sparkles, label: "Generate" },
+  { href: "/dashboard/prompt", icon: ScanText, label: "Image to Prompt" },
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard/history", icon: History, label: "History" },
   { href: "/dashboard/usage", icon: BarChart3, label: "Usage" },
