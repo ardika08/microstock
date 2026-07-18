@@ -4,7 +4,7 @@ import Image from "next/image"
 import { useRouter } from "next/router"
 import { motion, AnimatePresence } from "framer-motion"
 import { signOut, useSession } from "next-auth/react"
-import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X, Sparkles, Shield, MessageCircle, ArrowUpFromLine, ScrollText } from "lucide-react"
+import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X, Sparkles, Shield, MessageCircle, ArrowUpFromLine, ScrollText, Grid2X2 } from "lucide-react"
 import AvatarMenu from "./AvatarMenu"
 
 const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
@@ -106,6 +106,35 @@ export default function Sidebar({
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 cursor-not-allowed border-l-2 border-transparent">
             <ArrowUpFromLine className="w-5 h-5 flex-shrink-0" />
             <span>Upscale</span>
+            <span className="ml-auto text-[10px] bg-slate-700 text-gray-500 px-1.5 py-0.5 rounded-full">Soon</span>
+          </div>
+        )}
+
+        {/* Seamless Pattern — admin full access, non-admin Soon */}
+        {isAdmin ? (
+          <Link
+            href="/dashboard/seamless"
+            onClick={() => setIsMobileOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border-l-2 relative ${
+              router.pathname === "/dashboard/seamless"
+                ? "bg-blue-500/10 border-blue-500 text-blue-400"
+                : "border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-200"
+            }`}
+          >
+            <Grid2X2 className="w-5 h-5 flex-shrink-0" />
+            <span>Seamless</span>
+            {router.pathname === "/dashboard/seamless" && (
+              <motion.div
+                layoutId="activeNav"
+                className="absolute inset-0 bg-blue-500/10 rounded-lg -z-10"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+          </Link>
+        ) : (
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 cursor-not-allowed border-l-2 border-transparent">
+            <Grid2X2 className="w-5 h-5 flex-shrink-0" />
+            <span>Seamless</span>
             <span className="ml-auto text-[10px] bg-slate-700 text-gray-500 px-1.5 py-0.5 rounded-full">Soon</span>
           </div>
         )}
