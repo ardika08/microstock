@@ -26,22 +26,107 @@ function checkFairUse(userId: string): boolean {
   return true
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function extractPromptFields(content: string): {
+  prompt: string
+  negativePrompt: string
+  tags: string[]
+} {
+  const text = (content || '').trim()
+  if (!text) throw new Error('Respons AI kosong.')
+
+  // 1) fenced json
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidates: string[] = []
+  if (fenced?.[1]) candidates.push(fenced[1].trim())
+  candidates.push(text)
+
+  // 2) raw object slice
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start !== -1 && end > start) candidates.push(text.slice(start, end + 1))
+
+  for (const raw of candidates) {
+    try {
+      const parsed = JSON.parse(raw)
+      const prompt =
+        typeof parsed?.prompt === 'string'
+          ? parsed.prompt
+          : typeof parsed?.image_prompt === 'string'
+            ? parsed.image_prompt
+            : typeof parsed?.description === 'string'
+              ? parsed.description
+              : ''
+      if (!prompt.trim()) continue
+
+      const negativePrompt =
+        typeof parsed?.negativePrompt === 'string'
+          ? parsed.negativePrompt
+          : typeof parsed?.negative_prompt === 'string'
+            ? parsed.negative_prompt
+            : ''
+
+      const tags = Array.isArray(parsed?.tags)
+        ? parsed.tags.map((t: unknown) => String(t)).filter(Boolean).slice(0, 12)
+        : []
+
+      return {
+        prompt: prompt.trim(),
+        negativePrompt: negativePrompt.trim(),
+        tags,
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  // 3) fallback: plain text prompt (no JSON)
+  // strip common labels
+  let plain = text
+    .replace(/^```(?:json|text)?/i, '')
+    .replace(/```$/i, '')
+    .replace(/^(prompt|image prompt)\s*:\s*/i, '')
+    .trim()
+
+  // if it looks like broken json with prompt field, try soft extract
+  const soft = plain.match(/"prompt"\s*:\s*"((?:\\.|[^"\\])*)"/i)
+  if (soft?.[1]) {
+    plain = soft[1].replace(/\\n/g, ' ').replace(/\\"/g, '"').trim()
+  }
+
+  // reject if still looks like pure json braces without usable text
+  if (!plain || (plain.startsWith('{') && plain.endsWith('}') && plain.length < 40)) {
+    throw new Error('Respons AI tidak berisi prompt yang valid.')
+  }
+
+  // use first ~800 chars as prompt
+  return {
+    prompt: plain.replace(/\s+/g, ' ').slice(0, 800).trim(),
+    negativePrompt: '',
+    tags: [],
+  }
+}
+
 async function callOpenAIImageToPrompt(
   apiKey: string,
   imageBase64: string,
-  model: string
-) {
+  model: string,
+  attempt = 1
+): Promise<{ prompt: string; negativePrompt: string; tags: string[] }> {
   const systemPrompt =
-    'You are an expert image-to-prompt engineer for generative AI and microstock workflows. Output only valid JSON.'
+    'You are an expert image-to-prompt engineer for generative AI and microstock workflows. Always return valid JSON only.'
 
   const textInstruction = [
     'Analyze the image and write a detailed English prompt that could recreate a similar image.',
     'Write a general high-quality image generation prompt usable across tools (not Midjourney/Flux/SDXL-specific).',
-    'Return strict JSON only with this shape:',
+    'Return a single JSON object only with this exact shape:',
     '{"prompt":"...","negativePrompt":"...","tags":["..."]}',
     'Rules:',
     '- prompt: 40-120 words, concrete visual details (subject, setting, composition, lighting, colors, style, camera/lens if relevant).',
-    '- No markdown, no quotes wrapping the whole prompt, no AI disclaimers.',
+    '- No markdown fences, no commentary outside JSON.',
     '- Do NOT invent celebrity names, brands, logos, or copyrighted characters.',
     '- Do NOT add tool-specific flags (e.g. --ar, --stylize, --v).',
     '- negativePrompt: short comma-separated list of quality issues to avoid.',
@@ -56,7 +141,7 @@ async function callOpenAIImageToPrompt(
     },
     body: JSON.stringify({
       model,
-      temperature: 0.4,
+      temperature: attempt === 1 ? 0.3 : 0.2,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
@@ -79,6 +164,11 @@ async function callOpenAIImageToPrompt(
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '')
+    // Retry transient OpenAI errors
+    if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+      await sleep(1200 * attempt)
+      return callOpenAIImageToPrompt(apiKey, imageBase64, model, attempt + 1)
+    }
     throw new Error(
       `OpenAI error ${response.status}${errText ? `: ${errText.slice(0, 200)}` : ''}`
     )
@@ -86,24 +176,17 @@ async function callOpenAIImageToPrompt(
 
   const data = await response.json()
   const content: string = data?.choices?.[0]?.message?.content ?? ''
-  const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const raw = fenced?.[1] ?? content
-  const start = raw.indexOf('{')
-  const end = raw.lastIndexOf('}')
-  if (start === -1 || end === -1) throw new Error('Respons AI tidak berisi JSON.')
-  const parsed = JSON.parse(raw.slice(start, end + 1))
 
-  if (!parsed?.prompt || typeof parsed.prompt !== 'string') {
-    throw new Error('Respons AI tidak berisi prompt yang valid.')
-  }
-
-  return {
-    prompt: String(parsed.prompt).trim(),
-    negativePrompt:
-      typeof parsed.negativePrompt === 'string' ? parsed.negativePrompt.trim() : '',
-    tags: Array.isArray(parsed.tags)
-      ? parsed.tags.map((t: unknown) => String(t)).filter(Boolean).slice(0, 12)
-      : [],
+  try {
+    return extractPromptFields(content)
+  } catch (err) {
+    // one retry for unusable content
+    if (attempt < 2) {
+      await sleep(800)
+      return callOpenAIImageToPrompt(apiKey, imageBase64, model, attempt + 1)
+    }
+    console.error('[api/prompt] unparseable content sample:', String(content).slice(0, 300))
+    throw err
   }
 }
 

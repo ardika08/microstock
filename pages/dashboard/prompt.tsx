@@ -454,6 +454,11 @@ export default function ImageToPromptPage() {
 
       processed++
       setBulkProgress({ done: processed, total: targets.length })
+
+      // Small gap between items to reduce OpenAI rate-limit flakes
+      if (processed < targets.length && !stopBulkRef.current) {
+        await new Promise((r) => setTimeout(r, 400))
+      }
     }
 
     setIsBulkRunning(false)
