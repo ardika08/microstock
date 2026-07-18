@@ -185,7 +185,7 @@ async function callOpenAIImageToPrompt(
   const body: Record<string, unknown> = {
     model,
     temperature: attempt === 1 ? 0.3 : 0.2,
-    max_tokens: 2000,
+    max_tokens: 3500,
     messages: [
       { role: 'system', content: systemPrompt },
       {
@@ -262,6 +262,39 @@ async function callOpenAIImageToPrompt(
 
   if (finishReason === 'content_filter') {
     throw new Error('Gambar diblokir content filter OpenAI. Coba gambar lain.')
+  }
+
+  // Handle truncated response (max_tokens hit)
+  if (finishReason === 'length' && content.trim()) {
+    console.warn('[api/prompt] response truncated (finish_reason: length), attempting repair')
+    // Try to repair truncated JSON by closing open strings/arrays/objects
+    let repaired = content.trim()
+    // Close any open string
+    const quoteCount = (repaired.match(/(?<!\\)"/g) || []).length
+    if (quoteCount % 2 !== 0) repaired += '"'
+    // Close open arrays/objects
+    const opens = (repaired.match(/[\[{]/g) || []).length
+    const closes = (repaired.match(/[\]}]/g) || []).length
+    for (let i = 0; i < opens - closes; i++) {
+      // guess what needs closing based on last opener
+      const lastOpen = repaired.lastIndexOf('[') > repaired.lastIndexOf('{') ? ']' : '}'
+      repaired += lastOpen
+    }
+    // Try parsing repaired version
+    try {
+      const result = extractPromptFields(repaired)
+      // Truncated prompt is still usable if it has reasonable length
+      if (result.prompt && result.prompt.length > 80) {
+        return result
+      }
+    } catch {
+      // repair failed — fall through to retry
+    }
+    // Retry with higher token budget on attempt 2+
+    if (attempt < 3) {
+      await sleep(500)
+      return callOpenAIImageToPrompt(apiKey, imageBase64, model, attempt + 1)
+    }
   }
 
   if (!content.trim()) {
