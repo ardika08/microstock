@@ -127,7 +127,7 @@ async function callOpenAIImageToPrompt(
   attempt = 1
 ): Promise<PromptResult> {
   const useJsonObject = attempt === 1
-  const imageDetail = attempt === 1 ? 'low' : 'auto'
+  const imageDetail = 'auto'
 
   const systemPrompt = useJsonObject
     ? 'You are an expert microstock prompt engineer. You specialize in writing prompts that faithfully reproduce the SAME subject, style, and mood of a reference image — while making just enough subtle changes (slight angle shift, minor prop addition/removal, small framing difference) to avoid being flagged as "similar" by Adobe Stock similarity detection. You produce images that look like they belong to the SAME photoshoot series. Always return valid JSON only.'
@@ -335,7 +335,36 @@ async function callOpenAIImageToPrompt(
   }
 
   try {
-    return extractPromptFields(content)
+    const result = extractPromptFields(content)
+    // Final safety: ensure prompt ends with proper punctuation
+    if (result.prompt && !/[.!?;:)\]"']$/.test(result.prompt.trim())) {
+      const lastSentenceEnd = Math.max(
+        result.prompt.lastIndexOf('.'),
+        result.prompt.lastIndexOf('!'),
+        result.prompt.lastIndexOf('?')
+      )
+      if (lastSentenceEnd > 80) {
+        result.prompt = result.prompt.slice(0, lastSentenceEnd + 1).trim()
+      }
+    }
+    // Same for variants
+    if (result.variants) {
+      result.variants = result.variants.map((v: string) => {
+        if (v && !/[.!?;:)\]"']$/.test(v.trim())) {
+          const end = Math.max(v.lastIndexOf('.'), v.lastIndexOf('!'), v.lastIndexOf('?'))
+          if (end > 40) return v.slice(0, end + 1).trim()
+        }
+        return v
+      })
+    }
+    console.log('[api/prompt] success:', {
+      finishReason,
+      promptLen: result.prompt.length,
+      variantsCount: result.variants?.length ?? 0,
+      promptEnd: result.prompt.slice(-40),
+      usage: data?.usage,
+    })
+    return result
   } catch (err) {
     if (attempt < 3) {
       await sleep(700 * attempt)
