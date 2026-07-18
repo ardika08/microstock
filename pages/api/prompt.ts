@@ -30,11 +30,14 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function extractPromptFields(content: string): {
+interface PromptResult {
   prompt: string
   negativePrompt: string
   tags: string[]
-} {
+  variants?: string[]
+}
+
+function extractPromptFields(content: string): PromptResult {
   const text = (content || '').trim()
   if (!text) throw new Error('Respons AI kosong.')
 
@@ -73,10 +76,20 @@ function extractPromptFields(content: string): {
         ? parsed.tags.map((t: unknown) => String(t)).filter(Boolean).slice(0, 12)
         : []
 
+      // Extract variants array
+      let variants: string[] = []
+      if (Array.isArray(parsed?.variants)) {
+        variants = parsed.variants
+          .map((v: unknown) => (typeof v === 'string' ? v.trim() : ''))
+          .filter(Boolean)
+          .slice(0, 3)
+      }
+
       return {
         prompt: prompt.trim(),
         negativePrompt: negativePrompt.trim(),
         tags,
+        variants,
       }
     } catch {
       // try next candidate
@@ -84,29 +97,26 @@ function extractPromptFields(content: string): {
   }
 
   // 3) fallback: plain text prompt (no JSON)
-  // strip common labels
   let plain = text
     .replace(/^```(?:json|text)?/i, '')
     .replace(/```$/i, '')
     .replace(/^(prompt|image prompt)\s*:\s*/i, '')
     .trim()
 
-  // if it looks like broken json with prompt field, try soft extract
   const soft = plain.match(/"prompt"\s*:\s*"((?:\\.|[^"\\])*)"/i)
   if (soft?.[1]) {
     plain = soft[1].replace(/\\n/g, ' ').replace(/\\"/g, '"').trim()
   }
 
-  // reject if still looks like pure json braces without usable text
   if (!plain || (plain.startsWith('{') && plain.endsWith('}') && plain.length < 40)) {
     throw new Error('Respons AI tidak berisi prompt yang valid.')
   }
 
-  // use first ~800 chars as prompt
   return {
     prompt: plain.replace(/\s+/g, ' ').slice(0, 800).trim(),
     negativePrompt: '',
     tags: [],
+    variants: [],
   }
 }
 
@@ -115,39 +125,55 @@ async function callOpenAIImageToPrompt(
   imageBase64: string,
   model: string,
   attempt = 1
-): Promise<{ prompt: string; negativePrompt: string; tags: string[] }> {
+): Promise<PromptResult> {
   const useJsonObject = attempt === 1
   const imageDetail = attempt === 1 ? 'low' : 'auto'
 
   const systemPrompt = useJsonObject
-    ? 'You are an expert image-to-prompt engineer for generative AI and microstock workflows. Always return valid JSON only.'
-    : 'You are an expert image-to-prompt engineer for generative AI and microstock workflows.'
+    ? 'You are an expert microstock prompt engineer specializing in creating commercially viable, differentiated AI-generated images for Adobe Stock. You understand stock photography similarity detection and always produce prompts that will result in unique, non-similar assets. Always return valid JSON only.'
+    : 'You are an expert microstock prompt engineer specializing in creating differentiated AI-generated images for stock platforms.'
 
   const textInstruction = useJsonObject
     ? [
-        'Analyze the image and write a detailed English prompt that could recreate a similar image.',
-        'Write a general high-quality image generation prompt usable across tools (not Midjourney/Flux/SDXL-specific).',
-        'Return a single JSON object only with this exact shape:',
-        '{"prompt":"...","negativePrompt":"...","tags":["..."]}',
-        'Rules:',
-        '- prompt: 40-120 words, concrete visual details (subject, setting, composition, lighting, colors, style, camera/lens if relevant).',
-        '- No markdown fences, no commentary outside JSON.',
+        'Analyze this reference image. Your goal is NOT to recreate it, but to write a prompt INSPIRED BY it that produces a commercially DIFFERENT image — one that will NOT be flagged as "similar" by Adobe Stock.',
+        '',
+        'Anti-similarity differentiation rules (CRITICAL):',
+        '- Change the camera angle or perspective (e.g. if reference is eye-level, use bird-eye or low-angle)',
+        '- Change the subject pose, gesture, or body language significantly',
+        '- Change the color palette or lighting mood (e.g. warm to cool, day to night)',
+        '- Change background elements, depth, and environment details',
+        '- Change composition and framing (e.g. close-up vs wide, centered vs rule-of-thirds)',
+        '- Avoid stock photography clichés (forced smiles, handshakes, thumbs up)',
+        '- Keep the same CONCEPT/THEME but express it differently',
+        '',
+        'Return a single JSON object with this exact shape:',
+        '{"prompt":"...","negativePrompt":"...","tags":["..."],"variants":["...","...","..."]}',
+        '',
+        'Field rules:',
+        '- prompt: 60-150 words. The MAIN differentiated prompt. Concrete visual details: subject (different pose/angle from reference), setting (altered environment), composition, lighting, colors, style, camera perspective.',
+        '- negativePrompt: things to avoid that would make it too similar to the reference or generic stock.',
+        '- tags: 8-15 searchable microstock keywords for the generated concept.',
+        '- variants: exactly 3 alternative prompts (each 40-80 words), each taking the concept in a DIFFERENT creative direction (different angle, different mood, different crop/framing). These give the contributor 3 extra unique assets from 1 reference.',
+        '',
+        'Additional rules:',
         '- Do NOT invent celebrity names, brands, logos, or copyrighted characters.',
-        '- Do NOT add tool-specific flags (e.g. --ar, --stylize, --v).',
-        '- negativePrompt: short comma-separated list of quality issues to avoid.',
-        '- tags: 5-12 short searchable tags.',
+        '- Do NOT add tool-specific flags (--ar, --stylize, --v).',
+        '- No markdown fences, no commentary outside JSON.',
+        '- Write prompts that produce images commercially viable for microstock (high quality, versatile, broad appeal).',
       ].join('\n')
     : [
-        'Analyze the image and write a detailed English prompt that could recreate a similar image.',
-        'Respond with plain text only: one paragraph prompt (40-120 words).',
-        'No JSON, no markdown, no labels, no negative prompt.',
+        'Analyze this reference image. Write a prompt INSPIRED BY it but commercially DIFFERENT — it must NOT be flagged as similar on Adobe Stock.',
+        'Change: camera angle, subject pose, color palette, background, composition.',
+        'Keep the same concept/theme but express it in a unique way.',
+        'Respond with plain text only: one paragraph prompt (60-150 words).',
+        'No JSON, no markdown, no labels.',
         'Do NOT invent celebrity names, brands, logos, or copyrighted characters.',
       ].join('\n')
 
   const body: Record<string, unknown> = {
     model,
     temperature: attempt === 1 ? 0.3 : 0.2,
-    max_tokens: 700,
+    max_tokens: 1200,
     messages: [
       { role: 'system', content: systemPrompt },
       {
@@ -373,6 +399,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       prompt: result.prompt,
       negativePrompt: result.negativePrompt,
       tags: result.tags,
+      variants: result.variants || [],
       creditsRemaining:
         user.planType === 'starter' || user.planType === 'lifetime'
           ? null

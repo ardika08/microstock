@@ -34,6 +34,7 @@ interface BulkItem {
   prompt: string
   negativePrompt: string
   tags: string[]
+  variants?: string[]
   error?: string
 }
 
@@ -82,13 +83,16 @@ function csvEscape(value: string): string {
 
 function downloadCsv(items: BulkItem[]) {
   const rows = [
-    ["filename", "status", "prompt", "negative_prompt", "tags"],
+    ["filename", "status", "prompt", "negative_prompt", "tags", "variant_A", "variant_B", "variant_C"],
     ...items.map((item) => [
       item.fileName,
       item.status,
       item.prompt,
       item.negativePrompt,
       item.tags.join("; "),
+      item.variants?.[0] || "",
+      item.variants?.[1] || "",
+      item.variants?.[2] || "",
     ]),
   ]
   const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n")
@@ -153,6 +157,7 @@ export default function ImageToPromptPage() {
   const [prompt, setPrompt] = useState("")
   const [negativePrompt, setNegativePrompt] = useState("")
   const [tags, setTags] = useState<string[]>([])
+  const [variants, setVariants] = useState<string[]>([])
 
   // Bulk
   const [bulkItems, setBulkItems] = useState<BulkItem[]>([])
@@ -180,6 +185,7 @@ export default function ImageToPromptPage() {
     setPrompt("")
     setNegativePrompt("")
     setTags([])
+    setVariants([])
   }
 
   const processSingleFile = useCallback(async (file: File) => {
@@ -331,6 +337,7 @@ export default function ImageToPromptPage() {
       prompt?: string
       negativePrompt?: string
       tags?: string[]
+      variants?: string[]
       creditsRemaining?: number | null
     }
   }
@@ -354,6 +361,7 @@ export default function ImageToPromptPage() {
       setPrompt(data.prompt || "")
       setNegativePrompt(data.negativePrompt || "")
       setTags(Array.isArray(data.tags) ? data.tags : [])
+      setVariants(Array.isArray(data.variants) ? data.variants : [])
       if (data.creditsRemaining !== null && data.creditsRemaining !== undefined) {
         setCreditsLeft(data.creditsRemaining)
       }
@@ -434,6 +442,7 @@ export default function ImageToPromptPage() {
           prompt: data.prompt || "",
           negativePrompt: data.negativePrompt || "",
           tags: Array.isArray(data.tags) ? data.tags : [],
+          variants: Array.isArray(data.variants) ? data.variants : [],
           error: undefined,
         })
         if (data.creditsRemaining !== null && data.creditsRemaining !== undefined) {
@@ -813,6 +822,36 @@ export default function ImageToPromptPage() {
                           >
                             {tag}
                           </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {variants.length > 0 && (
+                      <div className="space-y-2 pt-2 border-t border-white/5">
+                        <div className="text-xs font-medium text-emerald-400 uppercase tracking-wider">
+                          Variant Prompts (Anti-Similar)
+                        </div>
+                        {variants.map((v, i) => (
+                          <div
+                            key={i}
+                            className="group relative rounded-xl border border-white/5 bg-white/[0.02] p-3"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="shrink-0 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                {String.fromCharCode(65 + i)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => copyText(v, `Variant ${String.fromCharCode(65 + i)}`)}
+                                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-white"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-300 mt-1.5 leading-relaxed">
+                              {v}
+                            </p>
+                          </div>
                         ))}
                       </div>
                     )}
