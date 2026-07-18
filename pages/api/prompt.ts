@@ -185,7 +185,7 @@ async function callOpenAIImageToPrompt(
   const body: Record<string, unknown> = {
     model,
     temperature: attempt === 1 ? 0.3 : 0.2,
-    max_tokens: 3500,
+    max_tokens: 4096,
     messages: [
       { role: 'system', content: systemPrompt },
       {
@@ -276,15 +276,33 @@ async function callOpenAIImageToPrompt(
     const opens = (repaired.match(/[\[{]/g) || []).length
     const closes = (repaired.match(/[\]}]/g) || []).length
     for (let i = 0; i < opens - closes; i++) {
-      // guess what needs closing based on last opener
       const lastOpen = repaired.lastIndexOf('[') > repaired.lastIndexOf('{') ? ']' : '}'
       repaired += lastOpen
     }
     // Try parsing repaired version
     try {
       const result = extractPromptFields(repaired)
-      // Truncated prompt is still usable if it has reasonable length
+      // Check if prompt ends properly (not mid-word/sentence)
+      const promptEndsClean = result.prompt && /[.!?;:)\]"']$/.test(result.prompt.trim())
+      if (result.prompt && result.prompt.length > 80 && promptEndsClean) {
+        return result
+      }
+      // Prompt is cut mid-word — retry if possible
+      if (attempt < 3) {
+        console.warn('[api/prompt] prompt ends mid-word, retrying:', result.prompt.slice(-30))
+        await sleep(500)
+        return callOpenAIImageToPrompt(apiKey, imageBase64, model, attempt + 1)
+      }
+      // Last attempt: still return what we have but trim to last complete sentence
       if (result.prompt && result.prompt.length > 80) {
+        const lastSentenceEnd = Math.max(
+          result.prompt.lastIndexOf('.'),
+          result.prompt.lastIndexOf('!'),
+          result.prompt.lastIndexOf('?')
+        )
+        if (lastSentenceEnd > 80) {
+          result.prompt = result.prompt.slice(0, lastSentenceEnd + 1).trim()
+        }
         return result
       }
     } catch {
