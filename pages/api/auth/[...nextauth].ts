@@ -53,7 +53,7 @@ export const authOptions: NextAuthOptions = {
             name: user.name ?? null,
             image: user.image ?? null,
             planType: 'free',
-          credits: 50, // ✅ Pre-launch: 20 kredit (normal: 10)
+          credits: 20, // Free user: 20 kredit
           } as any)
         }
         return true
