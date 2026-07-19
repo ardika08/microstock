@@ -205,30 +205,40 @@ function showCompletionModal(processed: number, platform: SupportedRuntimePlatfo
   modal.style.zIndex = "2147483647"
   modal.style.display = "grid"
   modal.style.placeItems = "center"
-  modal.style.background = "rgba(0, 0, 0, 0.68)"
+  modal.style.background = "rgba(0, 0, 0, 0.6)"
+  modal.style.backdropFilter = "blur(8px)"
   modal.style.fontFamily =
     'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
 
   modal.innerHTML = `
     <div style="
       width: min(420px, calc(100vw - 32px));
-      border-radius: 18px;
-      background: #0f172a;
+      border-radius: 20px;
+      background: rgba(13, 17, 23, 0.92);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       color: #e2e8f0;
       border: 1px solid rgba(255,255,255,0.1);
-      padding: 32px 28px 28px;
+      padding: 36px 28px 28px;
       text-align: center;
-      box-shadow: 0 24px 80px rgba(2, 6, 23, 0.55);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;
       font-family: Inter, ui-sans-serif, system-ui, sans-serif;
     ">
-      <div style="color: #34d399; font-size: 48px; line-height: 1; margin-bottom: 18px;">✓</div>
+      <div style="
+        width: 56px; height: 56px; margin: 0 auto 18px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(6,182,212,0.15));
+        border: 1px solid rgba(16,185,129,0.25);
+        display: grid; place-items: center;
+        font-size: 28px; color: #34d399;
+      ">✓</div>
       <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #f8fafc;">
         ${copy.title}
       </div>
       <div style="font-size: 14px; line-height: 1.6; color: #94a3b8;">
         ${copy.message || ""}
       </div>
-      <div style="margin-top: 18px; font-size: 11px; color: #475569;">Autofillstock</div>
+      <div style="margin-top: 18px; font-size: 11px; color: #475569;">autofillstock.my.id</div>
     </div>
   `
 
@@ -1393,32 +1403,21 @@ function createFloatingPanel(settings: AppSettings) {
   const platformLabel =
     platform === "shutterstock" ? "Shutterstock" : "Adobe Stock"
 
-  document.documentElement.style.setProperty("--asaf-panel-width", `${PANEL_WIDTH}px`)
-  document.documentElement.style.setProperty("--asaf-content-shift", `${CONTENT_SHIFT_WIDTH}px`)
-  document.documentElement.classList.add("asaf-panel-active")
-
+  // No body shift needed for center modal
   if (!document.getElementById(PANEL_STYLE_ID)) {
     const layoutStyle = document.createElement("style")
     layoutStyle.id = PANEL_STYLE_ID
-    layoutStyle.textContent = `
-      html.asaf-panel-active body {
-        width: calc(100vw - var(--asaf-content-shift, ${contentShiftCss()})) !important;
-        max-width: calc(100vw - var(--asaf-content-shift, ${contentShiftCss()})) !important;
-        margin-right: var(--asaf-content-shift, ${contentShiftCss()}) !important;
-        overflow-x: hidden !important;
-      }
-    `
+    layoutStyle.textContent = ``
     document.head.appendChild(layoutStyle)
   }
 
   const host = createElement("div", { id: PANEL_HOST_ID })
   host.style.position = "fixed"
-  host.style.right = "0"
-  host.style.top = "0"
-  host.style.width = panelWidthCss()
-  host.style.height = "100vh"
+  host.style.inset = "0"
   host.style.zIndex = "2147483647"
   host.style.pointerEvents = "auto"
+  host.style.display = "grid"
+  host.style.placeItems = "center"
   const root = host.attachShadow({ mode: "open" })
 
   root.innerHTML = `
@@ -1430,16 +1429,28 @@ function createFloatingPanel(settings: AppSettings) {
 
       * { box-sizing: border-box; }
 
+      .asaf-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 1;
+      }
+
       .asaf-panel {
         position: relative;
-        z-index: 2147483647;
-        width: 100%;
-        height: 100vh;
+        z-index: 2;
+        width: min(420px, calc(100vw - 32px));
+        max-height: 90vh;
         overflow: auto;
-        border-left: 1px solid rgba(255,255,255,0.08);
-        background: #020617;
+        border-radius: 20px;
+        background: rgba(13, 17, 23, 0.92);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
         color: #e2e8f0;
-        box-shadow: -18px 0 48px rgba(2, 6, 23, 0.55);
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;
         pointer-events: auto;
       }
 
@@ -1448,31 +1459,33 @@ function createFloatingPanel(settings: AppSettings) {
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 14px 16px;
-        border-bottom: 1px solid rgba(255,255,255,0.08);
-        background: linear-gradient(180deg, rgba(15,23,42,0.95), rgba(2,6,23,0.95));
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        background: linear-gradient(135deg, rgba(26,26,62,0.8) 0%, rgba(15,40,71,0.6) 50%, rgba(10,22,40,0.8) 100%);
+        border-radius: 20px 20px 0 0;
       }
 
       .asaf-brand {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         min-width: 0;
       }
 
       .asaf-brand img {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,0.1);
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.12);
+        box-shadow: 0 4px 16px rgba(102,126,234,0.15);
       }
 
       .asaf-title {
         margin: 0;
-        font-size: 14px;
-        font-weight: 700;
+        font-size: 15px;
+        font-weight: 800;
         color: #f8fafc;
-        letter-spacing: -0.01em;
+        letter-spacing: -0.02em;
       }
 
       .asaf-subtitle {
@@ -1481,30 +1494,51 @@ function createFloatingPanel(settings: AppSettings) {
         font-size: 11px;
       }
 
+      .asaf-close-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.04);
+        color: #94a3b8;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .asaf-close-btn:hover {
+        background: rgba(255,255,255,0.1);
+        color: #f8fafc;
+      }
+
       .asaf-status-pill {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         border-radius: 999px;
-        background: rgba(16,185,129,0.12);
+        background: rgba(16,185,129,0.1);
         color: #6ee7b7;
-        border: 1px solid rgba(16,185,129,0.25);
-        padding: 6px 10px;
-        font-size: 11px;
-        font-weight: 600;
+        border: 1px solid rgba(16,185,129,0.2);
+        padding: 5px 10px;
+        font-size: 10px;
+        font-weight: 700;
         white-space: nowrap;
+        letter-spacing: 0.03em;
       }
 
       .asaf-status-dot {
-        width: 7px;
-        height: 7px;
+        width: 6px;
+        height: 6px;
         border-radius: 999px;
         background: #34d399;
-        box-shadow: 0 0 0 3px rgba(52,211,153,0.15);
+        box-shadow: 0 0 6px rgba(52,211,153,0.4);
       }
 
       .asaf-section {
-        padding: 14px;
+        padding: 16px 20px;
       }
 
       .asaf-stack {
@@ -1513,25 +1547,25 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       .asaf-mode {
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 12px;
-        background: rgba(15,23,42,0.7);
-        padding: 12px;
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 14px;
+        background: rgba(255,255,255,0.03);
+        padding: 14px;
       }
 
       .asaf-mode-title {
         margin: 0 0 10px;
-        color: #cbd5e1;
-        font-size: 11px;
+        color: #94a3b8;
+        font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.06em;
       }
 
       .asaf-radio-row {
         display: grid;
         gap: 8px;
-        color: #94a3b8;
+        color: #cbd5e1;
         font-size: 12px;
         font-weight: 500;
       }
@@ -1548,19 +1582,19 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       .asaf-card {
-        border-radius: 12px;
-        background: rgba(15,23,42,0.85);
-        border: 1px solid rgba(255,255,255,0.08);
-        padding: 12px;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        padding: 14px;
       }
 
       .asaf-card-title {
         margin: 0 0 8px;
-        color: #94a3b8;
-        font-size: 11px;
+        color: #64748b;
+        font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.06em;
       }
 
       .asaf-card-body {
@@ -1581,7 +1615,7 @@ function createFloatingPanel(settings: AppSettings) {
       .asaf-image-box {
         display: grid;
         place-items: center;
-        min-height: 148px;
+        min-height: 140px;
         color: #e2e8f0;
       }
 
@@ -1591,7 +1625,7 @@ function createFloatingPanel(settings: AppSettings) {
         max-width: 220px;
         height: 124px;
         object-fit: cover;
-        border-radius: 10px;
+        border-radius: 12px;
         border: 1px solid rgba(255,255,255,0.08);
       }
 
@@ -1601,11 +1635,11 @@ function createFloatingPanel(settings: AppSettings) {
         width: 100%;
         max-width: 220px;
         height: 124px;
-        border: 1px dashed rgba(148,163,184,0.35);
-        border-radius: 10px;
-        color: #64748b;
+        border: 1px dashed rgba(148,163,184,0.25);
+        border-radius: 12px;
+        color: #475569;
         font-size: 12px;
-        background: rgba(2,6,23,0.5);
+        background: rgba(255,255,255,0.02);
       }
 
       .asaf-spinner {
@@ -1614,7 +1648,7 @@ function createFloatingPanel(settings: AppSettings) {
         height: 14px;
         margin-right: 8px;
         vertical-align: -2px;
-        border: 2px solid rgba(148,163,184,0.25);
+        border: 2px solid rgba(148,163,184,0.2);
         border-top-color: #34d399;
         border-radius: 999px;
         animation: asaf-spin 0.8s linear infinite;
@@ -1627,36 +1661,45 @@ function createFloatingPanel(settings: AppSettings) {
       .asaf-button {
         width: 100%;
         border: 0;
-        border-radius: 10px;
-        background: #10b981;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #10b981, #06b6d4);
         color: #022c22;
         cursor: pointer;
         font-size: 13px;
         font-weight: 700;
-        padding: 11px 12px;
+        padding: 12px 14px;
         pointer-events: auto;
         position: relative;
         z-index: 3;
         user-select: none;
         -webkit-user-select: none;
         touch-action: manipulation;
+        box-shadow: 0 4px 20px rgba(16,185,129,0.2);
+        transition: all 0.2s;
       }
 
-      .asaf-button:hover { background: #34d399; }
+      .asaf-button:hover { 
+        box-shadow: 0 6px 28px rgba(16,185,129,0.35);
+        transform: translateY(-1px);
+      }
 
       .asaf-button:disabled {
         cursor: not-allowed;
         opacity: 0.55;
+        transform: none;
       }
 
       .asaf-button-secondary {
-        border: 1px solid rgba(248,113,113,0.35);
-        background: rgba(127,29,29,0.35);
+        border: 1px solid rgba(248,113,113,0.25);
+        background: rgba(127,29,29,0.2);
         color: #fecaca;
+        box-shadow: none;
       }
 
       .asaf-button-secondary:hover {
-        background: rgba(153,27,27,0.55);
+        background: rgba(153,27,27,0.35);
+        box-shadow: none;
+        transform: none;
       }
 
       .asaf-actions {
@@ -1669,9 +1712,9 @@ function createFloatingPanel(settings: AppSettings) {
 
       .asaf-footer {
         margin-top: 4px;
-        border-radius: 10px;
-        background: rgba(16,185,129,0.1);
-        border: 1px solid rgba(16,185,129,0.2);
+        border-radius: 12px;
+        background: rgba(16,185,129,0.08);
+        border: 1px solid rgba(16,185,129,0.15);
         color: #6ee7b7;
         padding: 12px;
         text-align: center;
@@ -1680,20 +1723,20 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       .asaf-footer[data-type="error"] {
-        background: rgba(239,68,68,0.1);
-        border-color: rgba(239,68,68,0.25);
+        background: rgba(239,68,68,0.08);
+        border-color: rgba(239,68,68,0.2);
         color: #fca5a5;
       }
 
       .asaf-footer[data-type="muted"] {
-        background: rgba(59,130,246,0.1);
-        border-color: rgba(59,130,246,0.22);
+        background: rgba(59,130,246,0.08);
+        border-color: rgba(59,130,246,0.15);
         color: #93c5fd;
       }
 
       .asaf-footer[data-type="processing"] {
-        background: rgba(245,158,11,0.1);
-        border-color: rgba(245,158,11,0.22);
+        background: rgba(245,158,11,0.08);
+        border-color: rgba(245,158,11,0.15);
         color: #fcd34d;
       }
 
@@ -1707,16 +1750,20 @@ function createFloatingPanel(settings: AppSettings) {
       [hidden] { display: none !important; }
     </style>
 
+    <div class="asaf-backdrop" data-asaf-backdrop></div>
     <section class="asaf-panel" data-asaf-panel>
       <header class="asaf-header">
         <div class="asaf-brand">
           <img alt="Autofillstock" src="${iconUrl}" />
           <div>
-            <p class="asaf-title">Autofillstock</p>
+            <p class="asaf-title">AUTOFILLSTOCK</p>
             <p class="asaf-subtitle">${platformLabel} · Auto metadata</p>
           </div>
         </div>
-        <span class="asaf-status-pill"><span class="asaf-status-dot"></span>Ready</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="asaf-status-pill"><span class="asaf-status-dot"></span>ACTIVE</span>
+          <button class="asaf-close-btn" data-asaf-close type="button" title="Minimize">✕</button>
+        </div>
       </header>
 
       <div class="asaf-section">
@@ -1752,7 +1799,7 @@ function createFloatingPanel(settings: AppSettings) {
           </div>
 
           <div class="asaf-actions">
-            <button class="asaf-button" data-asaf-generate type="button">Generate</button>
+            <button class="asaf-button" data-asaf-generate type="button">⚡ Generate</button>
             <button class="asaf-button asaf-button-secondary" data-asaf-stop type="button">Stop</button>
           </div>
 
@@ -1764,6 +1811,28 @@ function createFloatingPanel(settings: AppSettings) {
   `
 
   document.documentElement.appendChild(host)
+
+  // Close button & backdrop click — only when not running
+  const closeBtn = root.querySelector<HTMLButtonElement>("[data-asaf-close]")
+  const backdrop = root.querySelector<HTMLDivElement>("[data-asaf-backdrop]")
+
+  function minimizePanel() {
+    if (isRunning) return // don't close during generate
+    host.style.display = "none"
+  }
+
+  if (closeBtn) closeBtn.addEventListener("click", minimizePanel)
+  if (backdrop) backdrop.addEventListener("click", minimizePanel)
+
+  // Re-show on message sync
+  const origSync = chrome.runtime?.onMessage
+  if (origSync) {
+    origSync.addListener((msg: any) => {
+      if (msg?.type === "ADOBESTOCK_PANEL_SYNC") {
+        host.style.display = "grid"
+      }
+    })
+  }
 
   const panel = root.querySelector<HTMLElement>("[data-asaf-panel]")
   const generateButton = root.querySelector<HTMLButtonElement>("[data-asaf-generate]")

@@ -25,6 +25,15 @@ html {
   --input: 217 33% 18%;
   --ring: 160 84% 39%;
   --radius: 0.75rem;
+
+  /* Neuromorphic Glass tokens */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-card: rgba(255, 255, 255, 0.04);
+  --glass-highlight: rgba(255, 255, 255, 0.08);
+  --gradient-warm: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  --gradient-header: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-btn: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
 }
 
 /* Plasmo extension popup only — DO NOT apply to Next.js pages */
@@ -72,4 +81,14 @@ body {
 .animate-gradient-x {
   background-size: 200% 200%;
   animation: gradient-x 3s ease infinite;
+}
+
+@keyframes glass-shimmer {
+  0% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+  100% { opacity: 0.3; }
+}
+
+.glass-shimmer {
+  animation: glass-shimmer 2s ease-in-out infinite;
 }

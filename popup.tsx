@@ -5,17 +5,12 @@ import {
   AlertCircle,
   CheckCircle2,
   ExternalLink,
-  KeyRound,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Zap
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
-import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
 import { validateActivationCode } from "~/lib/activation"
 import { getSettings, updateSettings } from "~/lib/storage"
 import type { AppSettings, AutofillMessage, MicrostockPlatform } from "~/lib/types"
@@ -68,39 +63,6 @@ async function syncActiveTabPanel() {
       console.error("[syncActiveTabPanel] Unexpected error:", error)
     }
   }
-}
-
-function ToggleSwitch({
-  checked,
-  disabled,
-  onChange,
-  label
-}: {
-  checked: boolean
-  disabled?: boolean
-  onChange: (checked: boolean) => void
-  label: string
-}) {
-  return (
-    <button
-      aria-label={label}
-      aria-pressed={checked}
-      className={[
-        "relative h-7 w-12 rounded-full transition-colors",
-        checked ? "bg-emerald-500" : "bg-slate-700",
-        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-      ].join(" ")}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      type="button">
-      <span
-        className={[
-          "absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform",
-          checked ? "translate-x-5" : "translate-x-0"
-        ].join(" ")}
-      />
-    </button>
-  )
 }
 
 export default function Popup() {
@@ -199,178 +161,258 @@ export default function Popup() {
     await syncActiveTabPanel()
   }
 
+  const activePlatformLabel =
+    MICROSTOCKS.find((p) => p.id === settings.selected_microstock)?.label || "Adobe Stock"
+
   return (
-    <main className="min-h-[420px] w-[380px] bg-slate-950 p-4 text-slate-100">
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 shadow-xl">
-        {/* Header */}
-        <div className="border-b border-white/10 p-4">
-          <div className="flex items-start gap-3">
+    <main className="min-h-[520px] w-[400px] bg-[#0d1117] p-0 text-white overflow-hidden">
+      {/* Glass container */}
+      <div className="relative overflow-hidden rounded-none">
+        {/* Header gradient */}
+        <div className="relative px-6 pt-6 pb-5" style={{ background: "linear-gradient(135deg, #1a1a3e 0%, #0f2847 50%, #0a1628 100%)" }}>
+          {/* Subtle glass overlay */}
+          <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(102,126,234,0.3) 0%, transparent 60%)" }} />
+
+          <div className="relative z-10 flex items-center gap-4">
             <img
               alt="Autofillstock"
-              className="h-11 w-11 rounded-xl border border-white/10"
+              className="h-14 w-14 rounded-2xl border border-white/10 shadow-lg"
               src={iconUrl}
+              style={{ boxShadow: "0 8px 32px rgba(102,126,234,0.2)" }}
             />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h1 className="text-base font-semibold tracking-tight text-white">
-                    Autofillstock
-                  </h1>
-                  <p className="mt-1 text-xs leading-snug text-slate-400">
-                    Generate & isi metadata microstock otomatis.
-                  </p>
-                </div>
-                <Badge
-                  className={
-                    isReady
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                      : "border-white/10 bg-white/5 text-slate-300"
-                  }
-                  variant={isReady ? "success" : "secondary"}>
-                  {isReady ? "Siap" : "Setup"}
-                </Badge>
-              </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-white" style={{ letterSpacing: "-0.02em" }}>
+                AUTOFILLSTOCK
+              </h1>
+              <p className="text-[11px] font-medium tracking-[0.15em] text-slate-400 uppercase mt-0.5">
+                Creative Tools
+              </p>
             </div>
           </div>
+
+          {/* Status badge */}
+          {isReady && (
+            <div className="relative z-10 mt-4">
+              <span className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold"
+                style={{
+                  background: "rgba(16,185,129,0.12)",
+                  border: "1px solid rgba(16,185,129,0.25)",
+                  color: "#6ee7b7"
+                }}>
+                <span className="h-2 w-2 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 6px rgba(52,211,153,0.5)" }} />
+                ACTIVE: {activePlatformLabel.toUpperCase()}
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="space-y-4 p-4">
-          {notice ? (
-            <Alert
-              className={
-                notice.type === "error"
-                  ? "border-red-500/30 bg-red-500/10"
-                  : "border-emerald-500/30 bg-emerald-500/10"
-              }
-              variant={notice.type === "error" ? "destructive" : "default"}>
+        {/* Platform tabs */}
+        {isReady && (
+          <div className="flex border-b border-white/[0.06] bg-[#0d1117]">
+            {MICROSTOCKS.filter((p) => p.enabled).map((platform) => {
+              const selected = settings.selected_microstock === platform.id
+              return (
+                <button
+                  key={platform.id}
+                  className="flex-1 py-3 text-xs font-semibold transition-all relative"
+                  style={{
+                    color: selected ? "#e2e8f0" : "#64748b",
+                    background: selected ? "rgba(255,255,255,0.03)" : "transparent"
+                  }}
+                  disabled={isBusy}
+                  onClick={() => handleMicrostockSelect(platform.id)}
+                  type="button"
+                >
+                  {platform.label}
+                  {selected && (
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-emerald-400" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Body */}
+        <div className="p-5 space-y-4">
+          {/* Notice */}
+          {notice && (
+            <div
+              className="rounded-xl p-3.5 text-sm flex items-start gap-3"
+              style={{
+                background: notice.type === "error" ? "rgba(239,68,68,0.08)" : "rgba(16,185,129,0.08)",
+                border: `1px solid ${notice.type === "error" ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.2)"}`
+              }}
+            >
               {notice.type === "error" ? (
-                <AlertCircle className="mb-2 h-4 w-4" />
+                <AlertCircle className="h-4 w-4 mt-0.5 text-red-400 shrink-0" />
               ) : (
-                <CheckCircle2 className="mb-2 h-4 w-4 text-emerald-400" />
+                <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-400 shrink-0" />
               )}
-              <AlertTitle>{notice.title}</AlertTitle>
-              <AlertDescription>{notice.message}</AlertDescription>
-            </Alert>
-          ) : null}
+              <div>
+                <p className="font-semibold text-xs" style={{ color: notice.type === "error" ? "#fca5a5" : "#6ee7b7" }}>
+                  {notice.title}
+                </p>
+                <p className="text-[11px] mt-1 text-slate-400 leading-relaxed">{notice.message}</p>
+              </div>
+            </div>
+          )}
 
           {!settings.activation_status ? (
-            <div className="space-y-3">
-              <div>
-                <Label className="text-slate-300" htmlFor="activation-code">
-                  Kode Aktivasi
-                </Label>
-                <Input
-                  className="mt-1.5 border-white/10 bg-slate-950/80 text-slate-100 placeholder:text-slate-500"
-                  id="activation-code"
-                  value={activationCode}
-                  onChange={(event) => setActivationCode(event.target.value)}
-                  placeholder="Masukkan kode aktivasi"
-                />
+            /* ─── Activation state ─── */
+            <div className="space-y-4">
+              <div
+                className="rounded-2xl p-5 space-y-4"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  backdropFilter: "blur(12px)"
+                }}
+              >
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    Activation Code
+                  </label>
+                  <input
+                    type="text"
+                    value={activationCode}
+                    onChange={(e) => setActivationCode(e.target.value)}
+                    placeholder="ASAF-XXXXXX-XXXXXX"
+                    className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition-all focus:ring-2 focus:ring-emerald-500/30"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.1)"
+                    }}
+                  />
+                </div>
+
+                <button
+                  className="w-full flex items-center justify-center gap-2.5 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isBusy || !activationCode.trim()}
+                  onClick={handleActivate}
+                  style={{
+                    background: "linear-gradient(135deg, #10b981, #06b6d4)",
+                    color: "#022c22",
+                    boxShadow: "0 4px 20px rgba(16,185,129,0.25)"
+                  }}
+                  type="button"
+                >
+                  {busy === "activating" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                  Validate & Activate
+                </button>
               </div>
-              <Button
-                className="w-full gap-2 bg-emerald-500 text-white hover:bg-emerald-400"
-                disabled={isBusy || !activationCode.trim()}
-                onClick={handleActivate}>
-                {busy === "activating" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <KeyRound className="h-4 w-4" />
-                )}
-                Verifikasi
-              </Button>
-              <p className="text-center text-[11px] text-slate-500">
+
+              <p className="text-center text-[11px] text-slate-600">
                 Ambil kode di dashboard → Settings
               </p>
             </div>
           ) : (
+            /* ─── Ready state ─── */
             <div className="space-y-4">
-              {/* Panel toggle */}
-              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/50 px-3 py-3">
+              {/* Panel toggle — glass card */}
+              <div
+                className="rounded-2xl p-4 flex items-center justify-between gap-3"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)"
+                }}
+              >
                 <div>
-                  <p className="text-sm font-medium text-slate-100">Panel on-page</p>
-                  <p className="text-[11px] text-slate-500">
-                    Tampil di halaman upload microstock
+                  <p className="text-sm font-semibold text-slate-100">Auto Panel</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Tampil otomatis di halaman upload
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={
-                      settings.panel_enabled
-                        ? "text-xs font-medium text-emerald-400"
-                        : "text-xs font-medium text-slate-500"
-                    }>
-                    {settings.panel_enabled ? "ON" : "OFF"}
-                  </span>
-                  <ToggleSwitch
+                <label className="relative inline-flex cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
                     checked={settings.panel_enabled}
                     disabled={busy === "syncing-panel"}
-                    label="Aktifkan panel autofill"
-                    onChange={handlePanelToggle}
+                    onChange={(e) => handlePanelToggle(e.target.checked)}
                   />
-                </div>
+                  <div className="w-11 h-6 rounded-full peer transition-all peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-5 after:w-5 after:transition-all after:bg-white"
+                    style={{
+                      background: settings.panel_enabled
+                        ? "linear-gradient(135deg, #10b981, #06b6d4)"
+                        : "rgba(255,255,255,0.1)"
+                    }}
+                  />
+                </label>
               </div>
 
-              {/* Platform */}
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Platform
+              {/* Auto-select options */}
+              <div
+                className="rounded-2xl p-4 space-y-3"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)"
+                }}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Auto-Selection
                 </p>
-                <div
-                  className="grid grid-cols-2 gap-2"
-                  role="tablist"
-                  aria-label="Pilih platform microstock">
-                  {MICROSTOCKS.filter((p) => p.enabled || p.id === "vecteezy").map(
-                    (platform) => {
-                      const selected = settings.selected_microstock === platform.id
-                      const isSoon = !platform.enabled
-
-                      return (
-                        <button
-                          aria-selected={selected}
-                          aria-disabled={isSoon}
-                          className={[
-                            "inline-flex h-9 items-center justify-center rounded-lg border px-2 text-xs font-medium transition-colors",
-                            selected
-                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                              : "border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200",
-                            isSoon ? "cursor-not-allowed opacity-45" : ""
-                          ].join(" ")}
-                          disabled={isBusy || isSoon}
-                          key={platform.id}
-                          onClick={() => handleMicrostockSelect(platform.id)}
-                          role="tab"
-                          tabIndex={isSoon ? -1 : 0}
-                          type="button">
-                          {platform.label}
-                          {isSoon ? " · Soon" : ""}
-                        </button>
-                      )
-                    }
-                  )}
-                </div>
+                {[
+                  "Auto-select file type (Photo/Illustration)",
+                  "Auto-select file category",
+                  "Auto-enable 'Created with AI tools'",
+                  "Auto-select 'People & property are fictional'"
+                ].map((label, i) => (
+                  <label key={i} className="flex items-center gap-3 cursor-pointer group">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-md border transition-all"
+                      style={{
+                        background: "rgba(16,185,129,0.15)",
+                        borderColor: "rgba(16,185,129,0.4)"
+                      }}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    </span>
+                    <span className="text-[12px] text-slate-300 group-hover:text-slate-100 transition-colors">
+                      {label}
+                    </span>
+                  </label>
+                ))}
               </div>
 
+              {/* Actions */}
               <div className="flex gap-2">
-                <Button
-                  className="flex-1 gap-2 border-white/10 bg-transparent text-slate-200 hover:bg-white/5"
+                <button
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold transition-all"
                   onClick={() => syncActiveTabPanel()}
-                  variant="outline">
-                  <RefreshCw className="h-4 w-4" />
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#94a3b8"
+                  }}
+                  type="button"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
                   Sync Panel
-                </Button>
-                <Button
-                  className="flex-1 gap-2 border-white/10 bg-transparent text-slate-200 hover:bg-white/5"
+                </button>
+                <button
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold transition-all"
                   onClick={() =>
                     window.open("https://autofillstock.my.id/dashboard", "_blank")
                   }
-                  variant="outline">
-                  <ExternalLink className="h-4 w-4" />
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#94a3b8"
+                  }}
+                  type="button"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
                   Dashboard
-                </Button>
+                </button>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-slate-500">
-                <span>Usage lokal: {settings.usage_count || 0}</span>
+              {/* Footer */}
+              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-600">
+                <span>Usage: {settings.usage_count || 0}</span>
                 <span>autofillstock.my.id</span>
               </div>
             </div>
