@@ -11,6 +11,20 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "1.5.0",
+    date: "19 Jul 2026",
+    title: "Image to Prompt",
+    type: "minor",
+    changes: [
+      { type: "new", text: "Fitur Image to Prompt — upload gambar, AI generate prompt detail + 3 variant (anti-similar)" },
+      { type: "new", text: "Mode 80% faithful: hasil mirip referensi tapi cukup beda buat lolos similarity check" },
+      { type: "new", text: "Bulk mode — upload hingga 10 gambar sekaligus, proses sequential" },
+      { type: "new", text: "Export CSV (prompt + negative + tags + variant A/B/C)" },
+      { type: "improvement", text: "1 kredit = 4 prompt unik (main + 3 variant)" },
+      { type: "fix", text: "Free user signup kredit 50 → 20 (masa pre-launch berakhir)" },
+    ]
+  },
+  {
     version: "1.4.0",
     date: "17 Jul 2026",
     title: "Extension UI Redesign",
