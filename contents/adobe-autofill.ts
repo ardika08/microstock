@@ -1437,13 +1437,10 @@ function createFloatingPanel(settings: AppSettings) {
         width: 100%;
         height: 100vh;
         overflow: auto;
-        border-radius: 0;
-        background: rgba(13, 17, 23, 0.65);
-        backdrop-filter: blur(40px) saturate(1.2);
-        -webkit-backdrop-filter: blur(40px) saturate(1.2);
+        border-left: 1px solid rgba(255,255,255,0.08);
+        background: #020617;
         color: #e2e8f0;
-        border-left: 1px solid rgba(255,255,255,0.12);
-        box-shadow: -8px 0 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.04) inset;
+        box-shadow: -18px 0 48px rgba(2, 6, 23, 0.55);
         pointer-events: auto;
       }
 
