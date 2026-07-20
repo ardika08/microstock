@@ -2013,6 +2013,10 @@ function createFloatingPanel(settings: AppSettings) {
         break
       }
 
+      // Temporarily hide panel so it doesn't block card clicks
+      host.style.pointerEvents = "none"
+      host.style.opacity = "0"
+
       const cards = getAssetCards()
       const nextCard = isShutterstockUploadPage()
         ? cards[processed]
@@ -2029,6 +2033,9 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       const moved = await clickAssetCardAndWait(nextCard)
+      // Restore panel visibility after navigation
+      host.style.pointerEvents = "auto"
+      host.style.opacity = "1"
       if (!moved) {
         batchError = `Gagal pindah ke file ${processed + 1}/${totalAssets}`
         setFooterStatus(root, batchError, "error")
