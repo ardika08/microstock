@@ -2013,26 +2013,14 @@ function createFloatingPanel(settings: AppSettings) {
         break
       }
 
-      // Temporarily hide panel so it doesn't block card clicks
-      host.style.pointerEvents = "none"
-      host.style.opacity = "0"
+      // Hide panel completely during navigation (center modal covers entire page
+      // which breaks getAssetCards() viewport detection even with pointerEvents:none)
+      host.style.display = "none"
+      await wait(300)
 
-      // Adobe Stock auto-scrolls to the form panel after selecting a file.
-      // Scroll the page back to top so the thumbnail grid is fully visible,
-      // then wait for cards to render before detecting next card.
+      // Reset scroll so thumbnail grid is visible
       window.scrollTo(0, 0)
-      document.documentElement.scrollTop = 0
-      document.body.scrollTop = 0
-      // Also try to scroll any scrollable ancestor of the grid
-      const anyScrollable = Array.from(document.querySelectorAll<HTMLElement>("*")).find(el => {
-        const s = window.getComputedStyle(el)
-        return (s.overflow === "auto" || s.overflow === "scroll" ||
-                s.overflowY === "auto" || s.overflowY === "scroll") &&
-               el.scrollHeight > el.clientHeight &&
-               !el.closest(`#${PANEL_HOST_ID}`)
-      })
-      if (anyScrollable) anyScrollable.scrollTop = 0
-      await wait(700)
+      await wait(500)
 
       const cards = getAssetCards()
       const nextCard = isShutterstockUploadPage()
@@ -2050,7 +2038,8 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       const moved = await clickAssetCardAndWait(nextCard)
-      // Restore panel visibility after navigation
+      // Restore panel after navigation
+      host.style.display = "grid"
       host.style.pointerEvents = "auto"
       host.style.opacity = "1"
       if (!moved) {
