@@ -94,8 +94,8 @@ const emptyMetadata: MetadataResult = {
 
 const PANEL_HOST_ID = "adobestock-autofill-trigger"
 const PANEL_STYLE_ID = "adobestock-autofill-layout-style"
-const PANEL_WIDTH = 345
-const CONTENT_SHIFT_WIDTH = 345
+const PANEL_WIDTH = 380
+const CONTENT_SHIFT_WIDTH = 380
 const BATCH_DELAY_MS = 5000
 
 function queryFirst(selectors: string[]) {
@@ -1422,12 +1422,12 @@ function createFloatingPanel(settings: AppSettings) {
     document.head.appendChild(layoutStyle)
   }
 
-  // Side panel — fixed right, no body shift, glass style
+  // Side panel — fixed right, solid dark
   const host = createElement("div", { id: PANEL_HOST_ID })
   host.style.position = "fixed"
   host.style.right = "0"
   host.style.top = "0"
-  host.style.width = "380px"
+  host.style.width = panelWidthCss()
   host.style.height = "100vh"
   host.style.zIndex = "2147483647"
   host.style.pointerEvents = "auto"
