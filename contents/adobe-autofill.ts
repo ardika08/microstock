@@ -1411,13 +1411,15 @@ function createFloatingPanel(settings: AppSettings) {
     document.head.appendChild(layoutStyle)
   }
 
+  // Side panel — fixed right, no body shift, glass style
   const host = createElement("div", { id: PANEL_HOST_ID })
   host.style.position = "fixed"
-  host.style.inset = "0"
+  host.style.right = "0"
+  host.style.top = "0"
+  host.style.width = "380px"
+  host.style.height = "100vh"
   host.style.zIndex = "2147483647"
   host.style.pointerEvents = "auto"
-  host.style.display = "grid"
-  host.style.placeItems = "center"
   const root = host.attachShadow({ mode: "open" })
 
   root.innerHTML = `
@@ -1429,32 +1431,23 @@ function createFloatingPanel(settings: AppSettings) {
 
       * { box-sizing: border-box; }
 
-      .asaf-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.55);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        z-index: 1;
-      }
-
       .asaf-panel {
         position: relative;
         z-index: 2;
-        width: min(420px, calc(100vw - 32px));
-        max-height: 90vh;
+        width: 100%;
+        height: 100vh;
         overflow: auto;
-        border-radius: 20px;
+        border-radius: 0;
         background: rgba(13, 17, 23, 0.65);
         backdrop-filter: blur(40px) saturate(1.2);
         -webkit-backdrop-filter: blur(40px) saturate(1.2);
         color: #e2e8f0;
-        border: 1px solid rgba(255,255,255,0.12);
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 120px rgba(16,185,129,0.03) inset;
-          pointer-events: auto;
-        }
+        border-left: 1px solid rgba(255,255,255,0.12);
+        box-shadow: -8px 0 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.04) inset;
+        pointer-events: auto;
+      }
 
-        .asaf-header {
+      .asaf-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -1750,7 +1743,6 @@ function createFloatingPanel(settings: AppSettings) {
       [hidden] { display: none !important; }
     </style>
 
-    <div class="asaf-backdrop" data-asaf-backdrop></div>
     <section class="asaf-panel" data-asaf-panel>
       <header class="asaf-header">
         <div class="asaf-brand">
@@ -1762,7 +1754,6 @@ function createFloatingPanel(settings: AppSettings) {
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="asaf-status-pill"><span class="asaf-status-dot"></span>ACTIVE</span>
-          <button class="asaf-close-btn" data-asaf-close type="button" title="Minimize">✕</button>
         </div>
       </header>
 
@@ -2013,14 +2004,9 @@ function createFloatingPanel(settings: AppSettings) {
         break
       }
 
-      // Hide panel completely during navigation (center modal covers entire page
-      // which breaks getAssetCards() viewport detection even with pointerEvents:none)
-      host.style.display = "none"
+      // Side panel doesn't block the thumbnail grid, just pause pointer events
+      host.style.pointerEvents = "none"
       await wait(300)
-
-      // Reset scroll so thumbnail grid is visible
-      window.scrollTo(0, 0)
-      await wait(500)
 
       const cards = getAssetCards()
       const nextCard = isShutterstockUploadPage()
@@ -2038,10 +2024,7 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       const moved = await clickAssetCardAndWait(nextCard)
-      // Restore panel after navigation
-      host.style.display = "grid"
       host.style.pointerEvents = "auto"
-      host.style.opacity = "1"
       if (!moved) {
         batchError = `Gagal pindah ke file ${processed + 1}/${totalAssets}`
         setFooterStatus(root, batchError, "error")
