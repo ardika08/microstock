@@ -1403,11 +1403,22 @@ function createFloatingPanel(settings: AppSettings) {
   const platformLabel =
     platform === "shutterstock" ? "Shutterstock" : "Adobe Stock"
 
-  // No body shift needed for center modal
+  // Body shift — push Adobe page content to the left
+  document.documentElement.style.setProperty("--asaf-panel-width", panelWidthCss())
+  document.documentElement.style.setProperty("--asaf-content-shift", contentShiftCss())
+  document.documentElement.classList.add("asaf-panel-active")
+
   if (!document.getElementById(PANEL_STYLE_ID)) {
     const layoutStyle = document.createElement("style")
     layoutStyle.id = PANEL_STYLE_ID
-    layoutStyle.textContent = ``
+    layoutStyle.textContent = `
+      html.asaf-panel-active body {
+        width: calc(100vw - var(--asaf-content-shift, ${contentShiftCss()})) !important;
+        max-width: calc(100vw - var(--asaf-content-shift, ${contentShiftCss()})) !important;
+        margin-right: var(--asaf-content-shift, ${contentShiftCss()}) !important;
+        overflow-x: hidden !important;
+      }
+    `
     document.head.appendChild(layoutStyle)
   }
 
