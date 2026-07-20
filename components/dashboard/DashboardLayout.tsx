@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/router"
 import { useSession } from "next-auth/react"
 import Sidebar from "./Sidebar"
+import AnnouncementBanner from "./AnnouncementBanner"
 import type { SessionUser } from '~/hooks/useUser'
 
 interface DashboardLayoutProps {
@@ -56,6 +57,7 @@ export default function DashboardLayout({
 
         {/* Main content with page transition */}
         <main className="flex-1 overflow-auto lg:ml-0">
+          <AnnouncementBanner />
           <AnimatePresence mode="wait">
             <motion.div
               key={router.pathname}

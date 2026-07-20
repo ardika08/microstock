@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/router"
@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { signOut, useSession } from "next-auth/react"
 import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X, Sparkles, Shield, MessageCircle, ArrowUpFromLine, ScrollText, Grid2X2, ScanText } from "lucide-react"
 import AvatarMenu from "./AvatarMenu"
+import { changelog } from "~/data/changelog"
 
 const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
 
@@ -34,6 +35,21 @@ export default function Sidebar({
   const isAdmin = session?.user?.email === ADMIN_EMAIL
   const [showAvatarMenu, setShowAvatarMenu] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [hasNewChangelog, setHasNewChangelog] = useState(false)
+
+  const latestVersion = changelog[0]?.version || ""
+  const changelogKey = `asaf-changelog-seen-${latestVersion}`
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const seen = localStorage.getItem(changelogKey)
+    if (!seen) setHasNewChangelog(true)
+    // Clear badge when user visits changelog page
+    if (router.pathname === "/dashboard/changelog") {
+      localStorage.setItem(changelogKey, "1")
+      setHasNewChangelog(false)
+    }
+  }, [router.pathname, changelogKey])
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/auth/login" })
@@ -188,6 +204,11 @@ export default function Sidebar({
         >
           <ScrollText className="w-5 h-5 flex-shrink-0" />
           <span>Changelog</span>
+          {hasNewChangelog && (
+            <span className="ml-auto text-[10px] font-bold bg-emerald-500 text-emerald-950 px-1.5 py-0.5 rounded-full">
+              NEW
+            </span>
+          )}
           {router.pathname === "/dashboard/changelog" && (
             <motion.div
               layoutId="activeNav"
