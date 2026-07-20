@@ -2017,6 +2017,14 @@ function createFloatingPanel(settings: AppSettings) {
       host.style.pointerEvents = "none"
       host.style.opacity = "0"
 
+      // Scroll down to reveal more cards (in case next cards are below viewport)
+      const currentCards = getAssetCards()
+      const lastVisible = currentCards[currentCards.length - 1]
+      if (lastVisible) {
+        lastVisible.scrollIntoView({ block: "end", inline: "nearest" })
+        await wait(400)
+      }
+
       const cards = getAssetCards()
       const nextCard = isShutterstockUploadPage()
         ? cards[processed]
