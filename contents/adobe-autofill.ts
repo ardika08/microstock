@@ -214,14 +214,14 @@ function showCompletionModal(processed: number, platform: SupportedRuntimePlatfo
     <div style="
       width: min(420px, calc(100vw - 32px));
       border-radius: 20px;
-      background: rgba(13, 17, 23, 0.92);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      background: rgba(13, 17, 23, 0.65);
+      backdrop-filter: blur(40px) saturate(1.2);
+      -webkit-backdrop-filter: blur(40px) saturate(1.2);
       color: #e2e8f0;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
       padding: 36px 28px 28px;
       text-align: center;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04) inset;
       font-family: Inter, ui-sans-serif, system-ui, sans-serif;
     ">
       <div style="
@@ -1445,16 +1445,16 @@ function createFloatingPanel(settings: AppSettings) {
         max-height: 90vh;
         overflow: auto;
         border-radius: 20px;
-        background: rgba(13, 17, 23, 0.92);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
+        background: rgba(13, 17, 23, 0.65);
+        backdrop-filter: blur(40px) saturate(1.2);
+        -webkit-backdrop-filter: blur(40px) saturate(1.2);
         color: #e2e8f0;
-        border: 1px solid rgba(255,255,255,0.1);
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05) inset;
-        pointer-events: auto;
-      }
+        border: 1px solid rgba(255,255,255,0.12);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 120px rgba(16,185,129,0.03) inset;
+          pointer-events: auto;
+        }
 
-      .asaf-header {
+        .asaf-header {
         display: flex;
         align-items: center;
         justify-content: space-between;

@@ -165,13 +165,32 @@ export default function Popup() {
     MICROSTOCKS.find((p) => p.id === settings.selected_microstock)?.label || "Adobe Stock"
 
   return (
-    <main className="min-h-[520px] w-[400px] bg-[#0d1117] p-0 text-white overflow-hidden">
+    <main
+      className="min-h-[520px] w-[400px] p-0 text-white overflow-hidden"
+      style={{
+        background: "linear-gradient(145deg, #0a0e1a 0%, #0d1520 40%, #0a1015 100%)",
+      }}
+    >
+      {/* Faux-glass noise overlay */}
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.015]"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        }}
+      />
       {/* Glass container */}
       <div className="relative overflow-hidden rounded-none">
-        {/* Header gradient */}
-        <div className="relative px-6 pt-6 pb-5" style={{ background: "linear-gradient(135deg, #1a1a3e 0%, #0f2847 50%, #0a1628 100%)" }}>
-          {/* Subtle glass overlay */}
-          <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(102,126,234,0.3) 0%, transparent 60%)" }} />
+        {/* Header gradient — soft, translucent */}
+        <div
+          className="relative px-6 pt-6 pb-5"
+          style={{
+            background: "linear-gradient(135deg, rgba(26,26,62,0.6) 0%, rgba(15,40,71,0.5) 50%, rgba(10,22,40,0.4) 100%)",
+          }}
+        >
+          {/* Soft glow accents */}
+          <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse at 25% 15%, rgba(102,126,234,0.15) 0%, transparent 55%)" }} />
+          <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(ellipse at 80% 80%, rgba(16,185,129,0.1) 0%, transparent 50%)" }} />
 
           <div className="relative z-10 flex items-center gap-4">
             <img
@@ -264,9 +283,9 @@ export default function Popup() {
               <div
                 className="rounded-2xl p-5 space-y-4"
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  backdropFilter: "blur(12px)"
+                  background: "rgba(255,255,255,0.025)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04)"
                 }}
               >
                 <div>
@@ -280,8 +299,9 @@ export default function Popup() {
                     placeholder="ASAF-XXXXXX-XXXXXX"
                     className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition-all focus:ring-2 focus:ring-emerald-500/30"
                     style={{
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.1)"
+                      background: "rgba(255,255,255,0.025)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      boxShadow: "inset 0 1px 2px rgba(0,0,0,0.15)"
                     }}
                   />
                 </div>

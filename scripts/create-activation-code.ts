@@ -1,8 +1,17 @@
 import { randomBytes } from "node:crypto"
 
+import * as dotenv from "dotenv"
+import { neon } from "@neondatabase/serverless"
+import { drizzle } from "drizzle-orm/neon-http"
 import { sql } from "drizzle-orm"
 
-import { db } from "~/server/db"
+// Load env vars (DATABASE_URL wajib ada)
+dotenv.config()
+
+if (!process.env.DATABASE_URL) {
+  console.error("[create-activation-code] ERROR: DATABASE_URL tidak dikonfigurasi di .env")
+  process.exit(1)
+}
 
 function getArg(name: string) {
   const prefix = `--${name}=`
@@ -15,15 +24,36 @@ function makeCode() {
     .toUpperCase()}`
 }
 
-const code = (getArg("code") || makeCode()).trim().toUpperCase()
-const expiresAt = getArg("expires-at") || null
+async function main() {
+  const code = (getArg("code") || makeCode()).trim().toUpperCase()
+  const expiresAt = getArg("expires-at") || null
+  const planType = getArg("plan-type") || null
 
-db.run(sql`
-  INSERT OR IGNORE INTO activation_codes (code, status, created_at, expires_at)
-  VALUES (${code}, 'ACTIVE', ${new Date().toISOString()}, ${expiresAt})
-`)
+  // ✅ Gunakan Neon PostgreSQL — sama dengan yang dibaca server production
+  const sqlClient = neon(process.env.DATABASE_URL!)
+  const db = drizzle(sqlClient)
 
-console.log(`Kode aktivasi siap: ${code}`)
-if (expiresAt) {
-  console.log(`Berlaku sampai: ${expiresAt}`)
+  await db.execute(
+    sql`
+      INSERT INTO activation_codes (code, status, plan_type, created_at, expires_at)
+      VALUES (
+        ${code},
+        'ACTIVE',
+        ${planType},
+        NOW(),
+        ${expiresAt ? new Date(expiresAt) : null}
+      )
+      ON CONFLICT (code) DO NOTHING
+    `
+  )
+
+  console.log(`✅ Kode aktivasi siap: ${code}`)
+  if (planType) console.log(`   Plan: ${planType}`)
+  if (expiresAt) console.log(`   Berlaku sampai: ${expiresAt}`)
+  console.log(`   Database: Neon PostgreSQL (${process.env.DATABASE_URL!.split("@")[1]?.split("/")[0] ?? "neon"})`)
 }
+
+main().catch((err) => {
+  console.error("[create-activation-code] Gagal:", err)
+  process.exit(1)
+})
