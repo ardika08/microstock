@@ -1991,9 +1991,12 @@ function createFloatingPanel(settings: AppSettings) {
       } catch (assetError) {
         const message =
           assetError instanceof Error ? assetError.message : "Generate metadata gagal."
-        batchError = message
-        setFooterStatus(root, message, "error")
-        throw assetError
+        // Don't throw — skip this file and continue batch
+        setFooterStatus(root, `File ${processed + 1} gagal: ${message}. Lanjut...`, "error")
+        await wait(1500)
+        // Still count as processed to move to next file
+        processed += 1
+        continue
       }
       processed += 1
 
