@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import DashboardLayout from '~/components/dashboard/DashboardLayout'
 import {
   Users, CreditCard, TrendingUp, DollarSign,
-  Crown, Zap, RefreshCw, Shield
+  Crown, Zap, RefreshCw, Shield, X, Eye,
+  Calendar, Activity, CheckCircle2, XCircle
 } from 'lucide-react'
 
 const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
@@ -51,6 +52,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments'>('overview')
   const [userPage, setUserPage] = useState(1)
   const [paymentPage, setPaymentPage] = useState(1)
+  const [selectedUser, setSelectedUser] = useState<any>(null)
   const PAGE_SIZE = 10
 
   useEffect(() => {
@@ -248,6 +250,7 @@ export default function AdminPage() {
                     <th className="px-4 py-3 text-right">Kredit</th>
                     <th className="px-4 py-3 text-right">Digunakan</th>
                     <th className="px-4 py-3 text-left">Daftar</th>
+                    <th className="px-4 py-3 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -267,6 +270,15 @@ export default function AdminPage() {
                       </td>
                       <td className="px-4 py-3 text-right text-gray-500">{u.creditsUsed ?? 0}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(u.createdAt)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => setSelectedUser(u)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+                        >
+                          <Eye className="w-3 h-3" />
+                          Detail
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -329,6 +341,105 @@ export default function AdminPage() {
         )}
 
       </div>
+
+      {/* User Detail Modal */}
+      <AnimatePresence>
+        {selectedUser && (() => {
+          const userPayments = (data?.payments ?? []).filter((p: any) => p.userId === selectedUser.id)
+          const totalSpent = userPayments.filter((p: any) => p.status === 'success').reduce((s: number, p: any) => s + (p.amount ?? 0), 0)
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              style={{ background: 'rgba(0,0,0,0.7)' }}
+              onClick={() => setSelectedUser(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                transition={{ duration: 0.2 }}
+                className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-5 border-b border-white/10">
+                  <h2 className="text-base font-semibold text-gray-100">Detail User</h2>
+                  <button onClick={() => setSelectedUser(null)} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-5 space-y-5">
+                  {/* Profil */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                      {(selectedUser.name ?? selectedUser.email ?? '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-gray-100 font-semibold truncate">{selectedUser.name ?? '—'}</p>
+                      <p className="text-gray-400 text-sm truncate">{selectedUser.email}</p>
+                    </div>
+                    <div className="ml-auto flex-shrink-0">
+                      {selectedUser.isActive !== false
+                        ? <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20"><CheckCircle2 className="w-3 h-3" />Aktif</span>
+                        : <span className="flex items-center gap-1 text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded-full border border-red-500/20"><XCircle className="w-3 h-3" />Nonaktif</span>
+                      }
+                    </div>
+                  </div>
+
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: 'Plan', value: <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PLAN_COLOR[selectedUser.planType ?? 'free']}`}>{PLAN_LABEL[selectedUser.planType ?? 'free'] ?? selectedUser.planType}</span> },
+                      { label: 'Kredit Sisa', value: selectedUser.planType === 'lifetime' ? '∞' : (selectedUser.credits ?? 0) },
+                      { label: 'Kredit Digunakan', value: selectedUser.creditsUsed ?? 0 },
+                      { label: 'Total Belanja', value: formatRupiah(totalSpent) },
+                      { label: 'Tanggal Daftar', value: formatDate(selectedUser.createdAt) },
+                      { label: 'Total Transaksi', value: userPayments.length },
+                    ].map((item, i) => (
+                      <div key={i} className="bg-slate-800/50 rounded-xl p-3">
+                        <p className="text-xs text-gray-500 mb-1">{item.label}</p>
+                        <div className="text-sm font-semibold text-gray-100">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Riwayat Payment */}
+                  {userPayments.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Riwayat Transaksi</p>
+                      <div className="space-y-2">
+                        {userPayments.map((p: any) => (
+                          <div key={p.id} className="flex items-center justify-between bg-slate-800/50 rounded-xl px-4 py-3">
+                            <div>
+                              <p className="text-sm text-gray-200 font-medium">{PRODUCT_LABEL[p.productType] ?? p.productType}</p>
+                              <p className="text-xs text-gray-500">{formatDate(p.paidAt ?? p.createdAt)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-gray-100">{formatRupiah(p.amount ?? 0)}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === 'success' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                {p.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {userPayments.length === 0 && (
+                    <div className="text-center py-4 text-gray-600 text-sm">Belum ada transaksi</div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
+
     </DashboardLayout>
   )
 }
