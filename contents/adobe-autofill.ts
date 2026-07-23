@@ -56,6 +56,7 @@ const FIELD_SELECTORS = {
 }
 
 const SHUTTERSTOCK_SELECTORS = {
+  title: 'input[name="title"], textarea[name="title"], input[placeholder*="title" i], textarea[placeholder*="title" i]',
   description: 'textarea[name="description"]',
   keywordInput: 'input[placeholder="Add keyword, separated by a comma or semicolon"]',
   assetMedia: 'img[data-testid^="card-media-"]',
@@ -696,14 +697,24 @@ async function autofill(metadata: MetadataResult) {
       category: normalizeShutterstockCategory(metadata)
     }
     const results = {
+      title: false,
       description: false,
       keywords: false,
       category: false
     }
+
+    // Fill title
+    const titleField = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+      SHUTTERSTOCK_SELECTORS.title
+    )
+    if (titleField) {
+      results.title = setNativeValue(titleField, shutterstockMetadata.title || shutterstockMetadata.description)
+    }
+
+    // Fill description
     const descriptionField = document.querySelector<HTMLTextAreaElement>(
       SHUTTERSTOCK_SELECTORS.description
     )
-
     if (descriptionField) {
       results.description = setNativeValue(descriptionField, shutterstockMetadata.description)
     }
@@ -712,7 +723,7 @@ async function autofill(metadata: MetadataResult) {
     results.keywords = await fillKeywordTokens(shutterstockMetadata)
     await wait(250)
 
-    if (!results.description && !results.keywords && !results.category) {
+    if (!results.title && !results.description && !results.keywords && !results.category) {
       throw new Error("Tidak menemukan field Shutterstock yang bisa diisi.")
     }
 
