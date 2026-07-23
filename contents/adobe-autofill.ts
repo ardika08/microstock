@@ -783,6 +783,10 @@ function readPageBrief() {
       SHUTTERSTOCK_SELECTORS.category1
     )
     const fileName = getShutterstockActiveFileName()
+    const fileExt = fileName ? fileName.split('.').pop()?.toLowerCase() ?? '' : ''
+    const isVideo = ['mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm', 'm4v'].includes(fileExt)
+    const isVector = ['eps', 'svg', 'ai', 'pdf'].includes(fileExt)
+    const fileType = isVideo ? 'video' : isVector ? 'vector/illustration' : 'photo/image'
     const keywordSuggestions = Array.from(document.querySelectorAll("button"))
       .filter((button) => button.textContent?.includes("+"))
       .map((button) => button.textContent?.replace("+", "").trim() || "")
@@ -793,8 +797,10 @@ function readPageBrief() {
     const category = categoryField?.textContent?.replace(/\u200B/g, "").trim() || ""
 
     return [
+      `Platform: Shutterstock`,
+      `File type: ${fileType}`,
       fileName ? `Original file name: ${fileName}` : "",
-      keywordSuggestions ? `Keyword suggestions: ${keywordSuggestions}` : "",
+      keywordSuggestions ? `Keyword suggestions from Shutterstock: ${keywordSuggestions}` : "",
       `Available Shutterstock categories: ${SHUTTERSTOCK_CATEGORIES.join(", ")}`,
       category ? `Current Shutterstock category: ${category}` : "",
       description ? `Existing description: ${description}` : ""

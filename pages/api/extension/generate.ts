@@ -101,12 +101,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Generate metadata via OpenAI Vision API
     const isBase64Image = typeof assetBrief === 'string' && assetBrief.startsWith('data:image/')
+
+    // Detect file type from brief or filename
+    const briefStr = typeof assetBrief === 'string' ? assetBrief : ''
+    const isVideoContent = briefStr.toLowerCase().includes('file type: video') ||
+      /\.(mp4|mov|avi|wmv|mkv|webm|m4v)$/i.test(filename || '')
+    const isVectorContent = briefStr.toLowerCase().includes('file type: vector') ||
+      /\.(eps|svg|ai)$/i.test(filename || '')
+    const contentType = isVideoContent ? 'video' : isVectorContent ? 'vector/illustration' : 'photo/image'
+    const platformHint = platform?.includes('shutterstock') ? 'Shutterstock' : 'Adobe Stock'
+
     const textInstruction = [
-      'Generate microstock contributor metadata for this digital asset.',
+      `Generate microstock contributor metadata for this ${contentType} asset on ${platformHint}.`,
+      isVideoContent
+        ? 'This is a VIDEO file. The description must accurately describe the visual content, motion, mood, and use-case of the video — NOT generic nature/landscape text.'
+        : '',
       'Return strict JSON only with this shape:',
       '{"title":"...","description":"...","keywords":[...],"category":"..."}',
-      'Rules: description must be 120-190 characters, one sentence, no line breaks. Title under 180 characters. Keywords must contain 45-49 unique relevant microstock search terms. Category must be one of the standard microstock categories.',
-    ].join('\n')
+      `Rules:`,
+      `- description: 120-190 characters, one sentence, accurately describes the actual ${contentType} content, no line breaks`,
+      `- title: under 180 characters, specific and descriptive`,
+      `- keywords: 45-49 unique relevant microstock search terms matching the actual content`,
+      `- category: must be one of the standard ${platformHint} categories`,
+      `- IMPORTANT: base the metadata on the actual file name and content clues provided, not generic templates`,
+    ].filter(Boolean).join('\n')
 
     const userMessage = isBase64Image
       ? {
