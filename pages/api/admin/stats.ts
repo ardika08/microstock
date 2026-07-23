@@ -56,6 +56,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       lifetime: users.filter(u => u.planType === 'lifetime').length,
     }
 
+    // Semua generate history
+    const generateHistory = await db.select({
+      id: schema.generateHistory.id,
+      userId: schema.generateHistory.userId,
+      platform: schema.generateHistory.platform,
+      createdAt: schema.generateHistory.createdAt,
+    }).from(schema.generateHistory).orderBy(desc(schema.generateHistory.createdAt))
+
     // Gabungkan email user ke payment
     const userMap = Object.fromEntries(users.map(u => [u.id, u]))
     const paymentsWithEmail = payments.map(p => ({
@@ -63,6 +71,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userEmail: userMap[p.userId ?? '']?.email ?? '—',
       userName: userMap[p.userId ?? '']?.name ?? '—',
     }))
+
+    // Generate stats per user
+    const generateByUser: Record<string, { total: number; platforms: Record<string, number> }> = {}
+    for (const g of generateHistory) {
+      const uid = g.userId ?? ''
+      if (!generateByUser[uid]) generateByUser[uid] = { total: 0, platforms: {} }
+      generateByUser[uid].total += 1
+      const plat = g.platform ?? 'unknown'
+      generateByUser[uid].platforms[plat] = (generateByUser[uid].platforms[plat] ?? 0) + 1
+    }
 
     return res.status(200).json({
       stats: {
@@ -74,6 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       users,
       payments: paymentsWithEmail,
+      generateByUser,
     })
   } catch (err) {
     console.error('[admin/stats]', err)

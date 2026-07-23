@@ -347,6 +347,7 @@ export default function AdminPage() {
         {selectedUser && (() => {
           const userPayments = (data?.payments ?? []).filter((p: any) => p.userId === selectedUser.id)
           const totalSpent = userPayments.filter((p: any) => p.status === 'success').reduce((s: number, p: any) => s + (p.amount ?? 0), 0)
+          const genStats = data?.generateByUser?.[selectedUser.id] ?? { total: 0, platforms: {} }
           return (
             <motion.div
               initial={{ opacity: 0 }}
@@ -399,6 +400,11 @@ export default function AdminPage() {
                       { label: 'Total Belanja', value: formatRupiah(totalSpent) },
                       { label: 'Tanggal Daftar', value: formatDate(selectedUser.createdAt) },
                       { label: 'Total Transaksi', value: userPayments.length },
+                      { label: 'Total Generate', value: genStats.total },
+                      { label: 'Platform Generate', value: Object.keys(genStats.platforms).length > 0
+                        ? Object.entries(genStats.platforms).map(([p, c]: any) => `${p} (${c})`).join(', ')
+                        : '—'
+                      },
                     ].map((item, i) => (
                       <div key={i} className="bg-slate-800/50 rounded-xl p-3">
                         <p className="text-xs text-gray-500 mb-1">{item.label}</p>
