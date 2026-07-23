@@ -7,6 +7,13 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 const ALLOWED_ORIGIN = process.env.ACTIVATION_ALLOWED_ORIGIN || ''
 
+const SHUTTERSTOCK_CATEGORIES_STR = [
+  "Animals/Wildlife", "Arts", "Backgrounds/Textures", "Buildings/Landmarks",
+  "Business/Finance", "Education", "Food and drink", "Healthcare/Medical",
+  "Holidays", "Industrial", "Nature", "Objects", "People", "Religion",
+  "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation"
+].join(', ')
+
 // ✅ Naikkan body size limit — base64 image bisa 3x ukuran file asli
 export const config = { api: { bodyParser: { sizeLimit: '8mb' } } }
 
@@ -112,18 +119,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const platformHint = platform?.includes('shutterstock') ? 'Shutterstock' : 'Adobe Stock'
 
     const textInstruction = [
-      `Generate microstock contributor metadata for this ${contentType} asset on ${platformHint}.`,
+      `You are a professional microstock metadata expert for ${platformHint}.`,
+      `Generate accurate metadata for this ${contentType} asset.`,
       isVideoContent
-        ? 'This is a VIDEO file. The description must accurately describe the visual content, motion, mood, and use-case of the video — NOT generic nature/landscape text.'
+        ? `IMPORTANT: This is a VIDEO/MOTION file. Describe the actual visual motion, animation style, mood, colors, and use-case of THIS specific video. DO NOT use generic landscape/nature descriptions. The metadata must match the actual video content inferred from the filename and keywords.`
+        : isVectorContent
+        ? `IMPORTANT: This is a VECTOR/ILLUSTRATION file. Describe the actual design style, elements, and use-case.`
         : '',
-      'Return strict JSON only with this shape:',
-      '{"title":"...","description":"...","keywords":[...],"category":"..."}',
-      `Rules:`,
-      `- description: 120-190 characters, one sentence, accurately describes the actual ${contentType} content, no line breaks`,
-      `- title: under 180 characters, specific and descriptive`,
-      `- keywords: 45-49 unique relevant microstock search terms matching the actual content`,
-      `- category: must be one of the standard ${platformHint} categories`,
-      `- IMPORTANT: base the metadata on the actual file name and content clues provided, not generic templates`,
+      `Return strict JSON only — no extra text, no markdown:`,
+      `{"title":"...","description":"...","keywords":[...],"category":"..."}`,
+      `STRICT RULES:`,
+      `- title: under 180 chars, specific and descriptive of actual content`,
+      `- description: 120-190 chars, one sentence, NO line breaks, describes actual ${contentType} content precisely`,
+      `- keywords: EXACTLY 50 unique single or multi-word terms relevant to the actual content (not generic)`,
+      `- category: MUST be EXACTLY one of these values: ${SHUTTERSTOCK_CATEGORIES_STR}`,
+      `- Choose category based on primary subject of the asset, not generic defaults`,
+      `- Base everything on the actual filename, keyword suggestions, and content clues — NOT generic templates`,
     ].filter(Boolean).join('\n')
 
     const userMessage = isBase64Image
@@ -139,8 +150,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           content: `${textInstruction}\n\nAsset brief: ${assetBrief || filename || 'A general commercial stock asset.'}`,
         }
 
-    // Text-only brief → mini (cepat). Vision/base64 image → 4o.
-    const model = isBase64Image ? 'gpt-4o' : 'gpt-4o-mini'
+    // Text-only brief → gpt-4o for quality. Vision/base64 image → gpt-4o.
+    const model = 'gpt-4o'
     const openaiController = new AbortController()
     const openaiTimeout = setTimeout(() => openaiController.abort(), 90_000)
 

@@ -35,7 +35,7 @@ function normalizeMetadata(value: unknown): MetadataResult {
     keywords: data.keywords
       .map((keyword) => String(keyword).trim())
       .filter(Boolean)
-      .slice(0, 49),
+      .slice(0, 50),
     category: data.category.trim()
   }
 }
