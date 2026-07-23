@@ -51,6 +51,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const planBreakdown = {
       free: users.filter(u => u.planType === 'free').length,
+      intro: users.filter(u => u.planType === 'intro').length,
+      basic: users.filter(u => u.planType === 'basic').length,
+      value: users.filter(u => u.planType === 'value').length,
       topup: users.filter(u => u.planType === 'topup').length,
       starter: users.filter(u => u.planType === 'starter').length,
       lifetime: users.filter(u => u.planType === 'lifetime').length,

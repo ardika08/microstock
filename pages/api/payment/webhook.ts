@@ -172,15 +172,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userId = existing[0].id
       if (productType === 'intro') {
         await db.update(schema.users)
-          .set({ planType: 'topup', credits: (existing[0].credits ?? 0) + 150 } as any)
+          .set({ planType: 'intro', credits: (existing[0].credits ?? 0) + 150 } as any)
           .where(eq(schema.users.id, userId))
       } else if (productType === 'basic') {
         await db.update(schema.users)
-          .set({ planType: 'topup', credits: (existing[0].credits ?? 0) + 450 } as any)
+          .set({ planType: 'basic', credits: (existing[0].credits ?? 0) + 450 } as any)
           .where(eq(schema.users.id, userId))
       } else if (productType === 'value') {
         await db.update(schema.users)
-          .set({ planType: 'topup', credits: (existing[0].credits ?? 0) + 1200 } as any)
+          .set({ planType: 'value', credits: (existing[0].credits ?? 0) + 1200 } as any)
           .where(eq(schema.users.id, userId))
       } else if (productType === 'lifetime') {
         await db.update(schema.users)

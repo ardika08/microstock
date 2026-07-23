@@ -13,6 +13,9 @@ const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
 
 const PLAN_LABEL: Record<string, string> = {
   free: 'Free',
+  intro: 'Intro Pack',
+  basic: 'Basic Pack',
+  value: 'Value Pack',
   topup: 'Top Up',
   starter: 'Starter',
   lifetime: 'One-time',
@@ -20,6 +23,9 @@ const PLAN_LABEL: Record<string, string> = {
 
 const PLAN_COLOR: Record<string, string> = {
   free: 'bg-slate-700/50 text-gray-400',
+  intro: 'bg-emerald-500/20 text-emerald-400',
+  basic: 'bg-blue-500/20 text-blue-400',
+  value: 'bg-violet-500/20 text-violet-400',
   topup: 'bg-emerald-500/20 text-emerald-400',
   starter: 'bg-blue-500/20 text-blue-400',
   lifetime: 'bg-purple-500/20 text-purple-400',
