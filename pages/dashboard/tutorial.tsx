@@ -96,7 +96,7 @@ export default function TutorialPage() {
         </div>
 
         {/* Video Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {tutorials.filter(t => !t.comingSoon).map(tutorial => (
             <VideoCard key={tutorial.id} tutorial={tutorial} />
           ))}
@@ -108,7 +108,7 @@ export default function TutorialPage() {
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
               Segera Hadir
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {tutorials.filter(t => t.comingSoon).map(tutorial => (
                 <VideoCard key={tutorial.id} tutorial={tutorial} />
               ))}
