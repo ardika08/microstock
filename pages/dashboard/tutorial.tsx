@@ -19,13 +19,13 @@ const tutorials: Tutorial[] = [
     id: '2',
     title: 'Cara Generate Metadata di Adobe Stock',
     description: 'Tutorial step-by-step cara generate metadata otomatis untuk upload di Adobe Stock menggunakan extension Autofillstock.',
-    youtubeId: null,
+    youtubeId: 'QE98Fb0f6KY',
   },
   {
     id: '3',
     title: 'Cara Generate Metadata Menggunakan Extension',
     description: 'Panduan lengkap cara menggunakan extension Autofillstock langsung dari halaman upload untuk generate metadata secara otomatis.',
-    youtubeId: null,
+    youtubeId: 'zfh7uUVoiNk',
   },
 ]
 
