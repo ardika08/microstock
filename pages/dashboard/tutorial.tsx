@@ -13,13 +13,19 @@ const tutorials: Tutorial[] = [
     id: '1',
     title: 'Cara Install & Aktivasi Extension',
     description: 'Panduan lengkap install extension Autofillstock di Chrome, aktivasi kode, dan setup awal sebelum mulai generate metadata.',
-    youtubeId: null, // ganti dengan YouTube ID, contoh: 'dQw4w9WgXcQ'
+    youtubeId: null,
   },
   {
     id: '2',
     title: 'Cara Generate Metadata di Adobe Stock',
     description: 'Tutorial step-by-step cara generate metadata otomatis untuk upload di Adobe Stock menggunakan extension Autofillstock.',
-    youtubeId: null, // ganti dengan YouTube ID
+    youtubeId: null,
+  },
+  {
+    id: '3',
+    title: 'Cara Generate Metadata Menggunakan Extension',
+    description: 'Panduan lengkap cara menggunakan extension Autofillstock langsung dari halaman upload untuk generate metadata secara otomatis.',
+    youtubeId: null,
   },
 ]
 
