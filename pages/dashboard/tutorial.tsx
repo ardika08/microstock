@@ -33,15 +33,41 @@ function VideoCard({ tutorial }: { tutorial: Tutorial }) {
   return (
     <div className="bg-slate-900 border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition-all duration-200">
       {/* Video embed / placeholder */}
-      <div className="relative w-full aspect-video bg-slate-800">
+      <div className="relative w-full aspect-video bg-slate-800 group">
         {tutorial.youtubeId ? (
-          <iframe
-            className="w-full h-full"
-            src={`https://www.youtube-nocookie.com/embed/${tutorial.youtubeId}`}
-            title={tutorial.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+          <>
+            <img
+              src={`https://img.youtube.com/vi/${tutorial.youtubeId}/maxresdefault.jpg`}
+              alt={tutorial.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${tutorial.youtubeId}/hqdefault.jpg`
+              }}
+            />
+            <a
+              href={`https://youtu.be/${tutorial.youtubeId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            >
+              <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center shadow-xl">
+                <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </div>
+            </a>
+            <a
+              href={`https://youtu.be/${tutorial.youtubeId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              Tonton di YouTube
+            </a>
+          </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
