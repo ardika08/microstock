@@ -37,7 +37,7 @@ function VideoCard({ tutorial }: { tutorial: Tutorial }) {
         {tutorial.youtubeId ? (
           <iframe
             className="w-full h-full"
-            src={`https://www.youtube.com/embed/${tutorial.youtubeId}`}
+            src={`https://www.youtube-nocookie.com/embed/${tutorial.youtubeId}`}
             title={tutorial.title}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
