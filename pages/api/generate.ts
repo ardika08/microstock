@@ -134,16 +134,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let apiKey: string
   let model: string
 
-  if (user.planType === 'starter' || user.planType === 'free' || user.planType === 'topup') {
-    // Server provides the API key for free/topup/starter users (credit-based)
+  // Credit-based plans: server provides API key
+  const isCreditPlan = ['starter', 'free', 'topup', 'intro', 'basic', 'value'].includes(user.planType)
+
+  if (isCreditPlan) {
+    // Server provides the API key for credit-based users
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({ error: 'Server belum dikonfigurasi dengan API key.' })
     }
     if (user.planType === 'starter' && !checkFairUse(user.id)) {
       return res.status(429).json({ error: 'Batas fair use harian tercapai (200 generate/hari). Coba lagi besok.' })
     }
-    // free/topup: check credits
-    if ((user.planType === 'free' || user.planType === 'topup') && (user.credits ?? 0) <= 0) {
+    // free/topup/intro/basic/value: check credits
+    if (user.planType !== 'starter' && (user.credits ?? 0) <= 0) {
       return res.status(402).json({ error: 'Kredit habis. Silakan top up kredit.' })
     }
     apiKey = process.env.OPENAI_API_KEY
@@ -170,8 +173,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const metadata = await callOpenAI(apiKey, String(assetBrief), model)
 
-    // Deduct 1 credit for free / topup plans
-    if (user.planType !== 'starter' && user.planType !== 'lifetime') {
+    // Deduct 1 credit for credit-based plans (not starter/lifetime)
+    if (!['starter', 'lifetime'].includes(user.planType)) {
       await db
         .update(schema.users)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
