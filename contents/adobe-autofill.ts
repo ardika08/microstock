@@ -1902,7 +1902,28 @@ function createFloatingPanel(settings: AppSettings) {
       ? getShutterstockActiveFileName() || document.title || "unknown"
       : document.title || "unknown"
     const platform = getCurrentPlatform(settings)
-
+    
+    // Extract thumbnail and convert to base64 for vision API
+    const thumbnailUrl = extractAssetThumbnail()
+    let assetBrief: string | ArrayBuffer | null = brief
+    
+    if (thumbnailUrl) {
+      // Convert thumbnail to base64 for OpenAI Vision API (for all plans)
+      try {
+        const response = await fetch(thumbnailUrl)
+        const blob = await response.blob()
+        const arrayBuffer = await blob.arrayBuffer()
+        const uint8Array = new Uint8Array(arrayBuffer)
+        const bytes = String.fromCharCode(...uint8Array)
+        const binary = btoa(bytes)
+        const extension = thumbnailUrl.split('.').pop()?.toLowerCase() || 'jpg'
+        assetBrief = `data:image/${extension};base64,${binary}`
+      } catch (err) {
+        console.log("[autofillstock] Failed to read image, using text-only:", err)
+        assetBrief = brief
+      }
+    }
+    
     // ✅ Ambil activation code dari storage
     const stored = await chrome.storage.local.get(["activation_code"])
     const activationCode = stored.activation_code || ""
@@ -1910,11 +1931,11 @@ function createFloatingPanel(settings: AppSettings) {
     // ✅ Generate via server (free/topup/basic/value) atau langsung ke OpenAI (lifetime)
     let metadata
     if (settings.openai_api_key) {
-      // Lifetime plan — pakai API key sendiri langsung ke OpenAI
-      metadata = await generateMetadata(settings.openai_api_key, brief)
+      // Lifetime plan - pakai API key sendiri langsung ke OpenAI dengan image
+      metadata = await generateMetadata(settings.openai_api_key, assetBrief)
     } else {
-      // Free/topup/basic/value — pakai server API
-      metadata = await generateMetadataViaServer(activationCode, brief, filename, platform)
+      // Free/topup/basic/value - pakai server API dengan image
+      metadata = await generateMetadataViaServer(activationCode, assetBrief, filename, platform)
     }
 
     const usageCount = (settings.usage_count || 0) + 1

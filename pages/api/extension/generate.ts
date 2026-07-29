@@ -120,21 +120,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const textInstruction = [
       `You are a professional microstock metadata expert for ${platformHint}.`,
-      `Generate accurate metadata for this ${contentType} asset.`,
+      `Generate accurate metadata for this ${contentType} asset based on the VISUAL CONTENT provided.`,
       isVideoContent
-        ? `IMPORTANT: This is a VIDEO/MOTION file. Describe the actual visual motion, animation style, mood, colors, and use-case of THIS specific video. DO NOT use generic landscape/nature descriptions. The metadata must match the actual video content inferred from the filename and keywords.`
+        ? `IMPORTANT: This is a VIDEO/MOTION file. Describe the actual visual motion, animation style, mood, colors, and use-case of THIS specific video seen in the image.`
         : isVectorContent
-        ? `IMPORTANT: This is a VECTOR/ILLUSTRATION file. Describe the actual design style, elements, and use-case.`
+        ? `IMPORTANT: This is a VECTOR/ILLUSTRATION file. Describe the actual design style, elements, and use-case visible in the image.`
         : '',
       `Return strict JSON only — no extra text, no markdown:`,
       `{"title":"...","description":"...","keywords":[...],"category":"..."}`,
       `STRICT RULES:`,
-      `- title: under 180 chars, specific and descriptive of actual content`,
-      `- description: 120-190 chars, one sentence, NO line breaks, describes actual ${contentType} content precisely`,
-      `- keywords: EXACTLY 50 unique single or multi-word terms relevant to the actual content (not generic)`,
+      `- title: under 180 chars, specific and descriptive of what is VISIBLE in the uploaded image`,
+      `- description: 120-190 chars, one sentence, NO line breaks, describes what you actually SEE in the image precisely`,
+      `- keywords: EXACTLY 50 unique terms matching objects, styles, colors, moods visible IN THE IMAGE`,
       `- category: MUST be EXACTLY one of these values: ${SHUTTERSTOCK_CATEGORIES_STR}`,
-      `- Choose category based on primary subject of the asset, not generic defaults`,
-      `- Base everything on the actual filename, keyword suggestions, and content clues — NOT generic templates`,
+      `- CRITICAL: Your entire output must be based on the VISUAL CONTENT of the uploaded image — NOT generic templates or text-only descriptions`,
     ].filter(Boolean).join('\n')
 
     const userMessage = isBase64Image
@@ -168,7 +167,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           temperature: 0.4,
           response_format: { type: 'json_object' },
           messages: [
-            { role: 'system', content: 'You are a metadata assistant for microstock contributors. Output only valid JSON.' },
+            { role: 'system', content: 'You are a metadata assistant for microstock contributors. When an image is provided, describe the actual visual content of that image. Output only valid JSON.' },
             userMessage,
           ],
         }),
