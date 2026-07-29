@@ -851,8 +851,7 @@ function readPageBrief() {
     originalName ? `Original file name: ${originalName}` : "",
     keywordSuggestions ? `Keyword suggestions: ${keywordSuggestions}` : "",
     category ? `Current Adobe category: ${category}` : "",
-    title ? `Existing text: ${title}` : "",
-    description ? `Existing description: ${description}` : ""
+    // DO NOT include existing text/title/description - AI must generate fresh from scratch based on image/filename only
   ]
     .filter(Boolean)
     .join("\n")
