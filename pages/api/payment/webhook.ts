@@ -48,8 +48,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const rawBody = await getRawBody(req)
 
-  // Mayar tidak mengirim signature header — skip HMAC verification
-  // Keamanan dijaga via idempotency check (orderId) dan validasi payload
+  // ✅ Validate webhook secret token — reject unauthorized requests
+  const WEBHOOK_SECRET = process.env.MAYAR_WEBHOOK_SECRET
+  if (WEBHOOK_SECRET) {
+    const signature = req.headers['x-callback-token'] || req.headers['x-webhook-token'] || req.headers['authorization']
+    if (!signature || signature !== WEBHOOK_SECRET) {
+      console.log('[webhook] Unauthorized request — invalid or missing secret token')
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+  }
   let payload: any
   try {
     payload = JSON.parse(rawBody.toString())
