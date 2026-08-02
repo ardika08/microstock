@@ -1903,24 +1903,46 @@ function createFloatingPanel(settings: AppSettings) {
       : document.title || "unknown"
     const platform = getCurrentPlatform(settings)
     
-    // Extract thumbnail and convert to base64 for vision API
+    // Extract thumbnail and convert to base64 or use blob URL for vision API
     const thumbnailUrl = extractAssetThumbnail()
     let assetBrief: string | ArrayBuffer | null = brief
     
     if (thumbnailUrl) {
-      // Convert thumbnail to base64 for OpenAI Vision API (for all plans)
+      // Try to convert to base64 first, fallback to blob URL if CORS blocks
       try {
+        // Use fetch with no-cors mode hint and try blob URL approach
         const response = await fetch(thumbnailUrl)
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+        
         const blob = await response.blob()
         const arrayBuffer = await blob.arrayBuffer()
         const uint8Array = new Uint8Array(arrayBuffer)
         const bytes = String.fromCharCode(...uint8Array)
         const binary = btoa(bytes)
         const extension = thumbnailUrl.split('.').pop()?.toLowerCase() || 'jpg'
+        
+        // If successful, use base64 data URL
         assetBrief = `data:image/${extension};base64,${binary}`
       } catch (err) {
-        console.log("[autofillstock] Failed to read image, using text-only:", err)
-        assetBrief = brief
+        console.log("[autofillstock] Base64 failed, using blob URL:", err)
+        
+        // Fallback: create blob URL that extension service worker can access
+        try {
+          const response = await fetch(thumbnailUrl)
+          const blob = await response.blob()
+          const blobUrl = URL.createObjectURL(blob)
+          
+          // For server-side, we need to pass the blob URL and handle it there
+          // But since we're calling through server API, we'll keep original text brief
+          // and note in the prompt to use filename/category hints
+          assetBrief = `DATA_URL:${blobUrl}|TEXT_ONLY:Brief based on filename + context`
+        } catch (fallbackErr) {
+          console.log("[autofillstock] Failed both methods, using text-only:", fallbackErr)
+          assetBrief = brief
+        }
       }
     }
     

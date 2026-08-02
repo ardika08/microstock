@@ -66,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // ✅ Log hanya field yang relevan, bukan full payload (hindari PII di log)
   const logEvent = payload?.event || payload?.type
-  const logOrderId = payload?.data?.id || payload?.id
+  const logOrderId = payload?.data?.id || payload?.data?.order_id || payload?.id || payload?.order_id || 'unknown'
   console.log('[webhook] Mayar event:', logEvent, '| orderId:', logOrderId)
 
   // Mayar webhook payload normalisation — covers both flat and nested shapes

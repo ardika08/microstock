@@ -33,11 +33,11 @@ export const authOptions: NextAuthOptions = {
     },
     state: {
       name: `__Secure-next-auth.state`,
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true, maxAge: 900 },
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true, maxAge: 1800 },
     },
     pkceCodeVerifier: {
       name: `__Secure-next-auth.pkce.code_verifier`,
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true, maxAge: 900 },
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true, maxAge: 1800 },
     },
   },
   callbacks: {
