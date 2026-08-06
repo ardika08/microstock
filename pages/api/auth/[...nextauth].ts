@@ -17,29 +17,34 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-  useSecureCookies: true,
-  cookies: {
-    sessionToken: {
-      name: `__Secure-next-auth.session-token`,
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true },
-    },
-    callbackUrl: {
-      name: `__Secure-next-auth.callback-url`,
-      options: { sameSite: 'lax', path: '/', secure: true },
-    },
-    csrfToken: {
-      name: `next-auth.csrf-token`,
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true },
-    },
-    state: {
-      name: `__Secure-next-auth.state`,
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true, maxAge: 1800 },
-    },
-    pkceCodeVerifier: {
-      name: `__Secure-next-auth.pkce.code_verifier`,
-      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true, maxAge: 1800 },
-    },
-  },
+  // useSecureCookies hanya aktif di production (HTTPS)
+  // Di localhost (HTTP) harus false agar cookie OAuth bisa tersimpan
+  useSecureCookies: process.env.NODE_ENV === 'production',
+  cookies:
+    process.env.NODE_ENV === 'production'
+      ? {
+          sessionToken: {
+            name: `__Secure-next-auth.session-token`,
+            options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true },
+          },
+          callbackUrl: {
+            name: `__Secure-next-auth.callback-url`,
+            options: { sameSite: 'lax', path: '/', secure: true },
+          },
+          csrfToken: {
+            name: `next-auth.csrf-token`,
+            options: { httpOnly: true, sameSite: 'lax', path: '/' },
+          },
+          state: {
+            name: `__Secure-next-auth.state`,
+            options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true, maxAge: 1800 },
+          },
+          pkceCodeVerifier: {
+            name: `__Secure-next-auth.pkce.code_verifier`,
+            options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true, maxAge: 1800 },
+          },
+        }
+      : undefined,
   callbacks: {
     async signIn({ user }) {
       if (!user.email) return false

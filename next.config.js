@@ -33,7 +33,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.googleusercontent.com",
-              "connect-src 'self' https://api.openai.com https://api.mayar.id",
+              "connect-src 'self' https://api.openai.com https://api.mayar.id https://accounts.google.com https://oauth2.googleapis.com",
               "font-src 'self'",
               "frame-ancestors 'none'",
             ].join('; '),
