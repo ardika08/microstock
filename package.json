@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
+    "@neondatabase/serverless": "0.9.5",
     "@plasmohq/messaging": "^0.7.1",
     "@radix-ui/react-slot": "^1.1.1",
     "class-variance-authority": "^0.7.1",
