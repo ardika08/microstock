@@ -14,6 +14,42 @@ const SHUTTERSTOCK_CATEGORIES_STR = [
   "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation"
 ].join(', ')
 
+async function generateOpenAIPrompt(contentType: string, platformHint: string): Promise<{systemPrompt: string; userInstruction: string}> {
+  return {
+    systemPrompt: `You are a professional microstock contributor specializing in analyzing images and writing accurate metadata based SOLELY on what you see in the image. 
+
+CRITICAL RULES:
+1. NEVER invent or hallucinate content not visible in the image
+2. Only describe objects, colors, text, people, landscapes, etc. that are actually present
+3. If something is unclear, use generic terms like "abstract background", "blurred foreground"
+4. Description must be factual - no assumptions about context outside frame
+5. If image contains text, quote it exactly as shown
+6. Keywords MUST match what's actually visible
+
+DO NOT guess:
+- The photographer's intent
+- Locations not clearly identifiable  
+- Brand names unless explicitly visible
+- Hidden meanings or symbolism
+- Information beyond the frame`,
+    
+    userInstruction: [
+      `Generate microstock metadata for this ${contentType} asset with STRICT visual analysis.`,
+      `Return EXACTLY valid JSON only: {"title":"...","description":"...","keywords":[...],"category":"..."}`,
+      '',
+      'SPECIFIC REQUIREMENTS:',
+      `- title: 5-15 words, under 180 chars, describes MAIN subject VISIBLE in image`,
+      `- description: ONE sentence ONLY, 120-190 chars, FACTUAL description of what you ACTUALLY SEE`,
+      `- keywords: 45-49 unique search terms ALL BASED ON VISIBLE ELEMENTS in the image`,
+      `- category: Choose from: ${SHUTTERSTOCK_CATEGORIES_STR}`,
+      '',
+      'IMPORTANT: For ${contentType}, focus on VISIBLE details only - style, composition, colors, elements present.',
+      'IF IMAGE IS BLURRY/DARK/UNCLEAR: Use honest language like "blurred", "dim lighting", "out of focus" - DO NOT invent precise details.',
+      ''
+    ].filter(Boolean).join('\n')
+  }
+}
+
 // ✅ Naikkan body size limit — base64 image bisa 3x ukuran file asli
 export const config = { api: { bodyParser: { sizeLimit: '8mb' } } }
 
@@ -117,36 +153,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       /\.(eps|svg|ai)$/i.test(filename || '')
     const contentType = isVideoContent ? 'video' : isVectorContent ? 'vector/illustration' : 'photo/image'
     const platformHint = platform?.includes('shutterstock') ? 'Shutterstock' : 'Adobe Stock'
-
-    const textInstruction = [
-      `You are a professional microstock metadata expert for ${platformHint}.`,
-      `Generate accurate metadata for this ${contentType} asset based on the VISUAL CONTENT provided.`,
-      isVideoContent
-        ? `IMPORTANT: This is a VIDEO/MOTION file. Describe the actual visual motion, animation style, mood, colors, and use-case of THIS specific video seen in the image.`
-        : isVectorContent
-        ? `IMPORTANT: This is a VECTOR/ILLUSTRATION file. Describe the actual design style, elements, and use-case visible in the image.`
-        : '',
-      `Return strict JSON only — no extra text, no markdown:`,
-      `{"title":"...","description":"...","keywords":[...],"category":"..."}`,
-      `STRICT RULES:`,
-      `- title: under 180 chars, specific and descriptive of what is VISIBLE in the uploaded image`,
-      `- description: 120-190 chars, one sentence, NO line breaks, describes what you actually SEE in the image precisely`,
-      `- keywords: EXACTLY 50 unique terms matching objects, styles, colors, moods visible IN THE IMAGE`,
-      `- category: MUST be EXACTLY one of these values: ${SHUTTERSTOCK_CATEGORIES_STR}`,
-      `- CRITICAL: Your entire output must be based on the VISUAL CONTENT of the uploaded image — NOT generic templates or text-only descriptions`,
-    ].filter(Boolean).join('\n')
+    
+    // Generate optimized prompt with strict hallucination prevention
+    const { systemPrompt, userInstruction } = await generateOpenAIPrompt(contentType, platformHint)
 
     const userMessage = isBase64Image
       ? {
           role: 'user',
           content: [
-            { type: 'text', text: textInstruction },
-            { type: 'image_url', image_url: { url: assetBrief, detail: 'low' } },
+            { type: 'text', text: userInstruction },
+            { type: 'image_url', image_url: { url: assetBrief, detail: 'high' } }, // HIGH detail untuk akurasi maksimal
           ],
         }
       : {
           role: 'user',
-          content: `${textInstruction}\n\nAsset brief: ${assetBrief || filename || 'A general commercial stock asset.'}`,
+          content: `${userInstruction}\n\nAsset brief: ${assetBrief || filename || 'A general commercial stock asset.'}`,
         }
 
     // Text-only brief → gpt-4o for quality. Vision/base64 image → gpt-4o.
@@ -164,10 +185,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         body: JSON.stringify({
           model,
-          temperature: 0.4,
+          temperature: 0, // MINIMAL temp untuk akurasi maksimal
           response_format: { type: 'json_object' },
           messages: [
-            { role: 'system', content: 'You are a metadata assistant for microstock contributors. When an image is provided, describe the actual visual content of that image. Output only valid JSON.' },
+            { role: 'system', content: systemPrompt },
             userMessage,
           ],
         }),
@@ -192,27 +213,68 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('OpenAI tidak mengembalikan konten.')
     }
 
-    const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/)
-    const raw = fenced?.[1] ?? content
-    const start = raw.indexOf('{')
-    const end = raw.lastIndexOf('}')
-    const metadata = JSON.parse(raw.slice(start, end + 1))
+    // Parse JSON — handle fenced code blocks and bare JSON
+    let rawContent = content
+    
+    // Try regex first for fenced code blocks
+    const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```)
+    if (fenced && fenced[1]) {
+      rawContent = fenced[1]
+    }
+    
+    // Extract JSON object
+    const start = rawContent.indexOf('{')
+    const end = rawContent.lastIndexOf('}')
+    if (start === -1 || end === -1) {
+      console.error('[extension/generate] No JSON found in response:', rawContent.substring(0, 200))
+      throw new Error(`Respons AI tidak berisi JSON. Received: ${rawContent.substring(0, 200)}`)
+    }
+    
+    let jsonStr
+    try {
+      jsonStr = rawContent.slice(start, end + 1)
+      
+      const metadata = JSON.parse(jsonStr)
+      
+      // Validate structure
+      if (!metadata.title || !metadata.description || !Array.isArray(metadata.keywords) || !metadata.category) {
+        console.error('[extension/generate] Invalid metadata structure:', metadata)
+        throw new Error('Format metadata tidak lengkap (missing title/description/keywords/category)')
+      }
+      
+      // Validate keyword count
+      if (metadata.keywords.length < 45 || metadata.keywords.length > 49) {
+        console.warn('[extension/generate] Keyword count warning:', metadata.keywords.length, 'keywords')
+        if (metadata.keywords.length < 45) {
+          const extraKeywords = ['commercial', 'stock photo', 'microstock']
+          while (metadata.keywords.length < 45 && extraKeywords.length > 0) {
+            metadata.keywords.push(extraKeywords.shift())
+          }
+        } else {
+          metadata.keywords = metadata.keywords.slice(0, 49)
+        }
+      }
+      
+      // Log ke history before returning
+      await db.insert(schema.generateHistory).values({
+        userId: user.id,
+        platform: platform || 'extension',
+        filename: filename || 'unknown',
+        title: metadata.title || '',
+        creditsUsed: 1,
+      } as any)
 
-    // Log ke history
-    await db.insert(schema.generateHistory).values({
-      userId: user.id,
-      platform: platform || 'extension',
-      filename: filename || 'unknown',
-      title: metadata.title || '',
-      creditsUsed: 1,
-    } as any)
-
-    return res.status(200).json({
-      success: true,
-      metadata,
-      creditsRemaining: user.planType === 'lifetime' || user.planType === 'starter' ? null : (user.credits ?? 0) - 1,
-    })
-
+      return res.status(200).json({
+        success: true,
+        metadata,
+        creditsRemaining: user.planType === 'lifetime' || user.planType === 'starter' ? null : (user.credits ?? 0) - 1,
+      })
+      
+    } catch (parseError) {
+      console.error('[extension/generate] JSON parse error:', parseError.message)
+      console.error('[extension/generate] Raw content received:', rawContent.substring(0, 500))
+      throw new Error(`Parsing metadata gagal: ${parseError.message}. Response: ${jsonStr.substring(0, 200)}`)
+    }
   } catch (err) {
     console.error('[api/extension/generate]', err)
     return res.status(500).json({ error: err instanceof Error ? err.message : 'Internal server error' })
