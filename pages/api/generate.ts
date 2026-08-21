@@ -58,7 +58,7 @@ DO NOT guess:
     '- Category: Choose from: ["people", "animals", "nature", "business", "technology", "food", "travel", "education", "healthcare", "sports", "entertainment", "transportation", "architecture", "lifestyle"]',
     '',
     'IF IMAGE IS BLURRY/OVERCAST/DARK:',
-    '- Use descriptive but honest language: "blurred background", "dim lighting", "out of focus"'
+    '- Use descriptive but honest language: "blurred background", "dim lighting", "out of focus"',
     '- Do NOT force precise details if you cannot see them clearly',
     ''
   ].join('\n')
@@ -226,7 +226,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       apiKey = String(userApiKey)
     } else {
       const dbUserWithKey = await db
-        .select({ openaiApiKey: schema...iKey })
+        .select({ openaiApiKey: schema.users.openaiApiKey })
         .from(schema.users)
         .where(eq(schema.users.id, user.id))
         .limit(1)
