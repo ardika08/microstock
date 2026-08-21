@@ -28,7 +28,7 @@ function checkFairUse(userId: string): boolean {
   return true
 }
 
-async function callOpenAI(apiKey: string, assetBrief: string, model: string) {
+async function callOpenAI(apiKey: *** assetBrief: string, model: string) {
   const systemPrompt = `You are a professional microstock contributor specializing in analyzing images and writing accurate metadata based SOLELY on what you see in the image. 
 
 CRITICAL RULES:
@@ -97,7 +97,7 @@ DO NOT guess:
   const response = await fetch(OPENAI_ENDPOINT, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: *** ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -164,7 +164,7 @@ DO NOT guess:
     
     return metadata
     
-  } catch (parseError) {
+  } catch (parseError: any) {
     console.error('[generate] JSON parse error:', parseError.message)
     console.error('[generate] Raw content received:', rawContent.substring(0, 500))
     throw new Error(`Parsing metadata gagal: ${parseError.message}. Response: ${jsonStr.substring(0, 200)}`)
@@ -200,7 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Asset brief wajib diisi.' })
   }
 
-  let apiKey: string
+  let apiKey: ***
   let model: string
 
   // Credit-based plans: server provides API key
@@ -226,7 +226,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       apiKey = String(userApiKey)
     } else {
       const dbUserWithKey = await db
-        .select({ openaiApiKey: schema.users.openaiApiKey })
+        .select({ openaiApiKey: schema...iKey })
         .from(schema.users)
         .where(eq(schema.users.id, user.id))
         .limit(1)

@@ -180,7 +180,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       openaiRes = await fetch(OPENAI_ENDPOINT, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: *** ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -217,7 +217,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let rawContent = content
     
     // Try regex first for fenced code blocks
-    const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```)
+    const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/)
     if (fenced && fenced[1]) {
       rawContent = fenced[1]
     }
@@ -270,7 +270,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         creditsRemaining: user.planType === 'lifetime' || user.planType === 'starter' ? null : (user.credits ?? 0) - 1,
       })
       
-    } catch (parseError) {
+    } catch (parseError: any) {
       console.error('[extension/generate] JSON parse error:', parseError.message)
       console.error('[extension/generate] Raw content received:', rawContent.substring(0, 500))
       throw new Error(`Parsing metadata gagal: ${parseError.message}. Response: ${jsonStr.substring(0, 200)}`)
