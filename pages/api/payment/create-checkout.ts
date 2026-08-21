@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '../auth/[...nextauth]'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-const MAYAR_API_KEY = process.env.MAYAR_API_KEY!
+const MAYAR_API_KEY = process.env.MAYAR_API_KEY || process.env.APIKEY_MAYAR!
 const MAYAR_API_URL = 'https://api.mayar.id'
 
 // Product definitions — full credit-only model (no subscription)

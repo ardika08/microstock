@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const rawBody = await getRawBody(req)
 
   // ✅ Validate webhook secret token — reject unauthorized requests
-  const WEBHOOK_SECRET = process.env.MAYAR_WEBHOOK_SECRET
+  const WEBHOOK_SECRET = process.env.MAYAR_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET
   if (WEBHOOK_SECRET) {
     const signature = req.headers['x-callback-token'] || req.headers['x-webhook-token'] || req.headers['authorization']
     if (!signature || signature !== WEBHOOK_SECRET) {
