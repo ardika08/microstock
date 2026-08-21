@@ -28,7 +28,7 @@ function checkFairUse(userId: string): boolean {
   return true
 }
 
-async function callOpenAI(apiKey: *** assetBrief: string, model: string) {
+async function callOpenAI(apiKey: string, assetBrief: string, model: string) {
   const systemPrompt = `You are a professional microstock contributor specializing in analyzing images and writing accurate metadata based SOLELY on what you see in the image. 
 
 CRITICAL RULES:
@@ -97,7 +97,7 @@ DO NOT guess:
   const response = await fetch(OPENAI_ENDPOINT, {
     method: 'POST',
     headers: {
-      Authorization: *** ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -200,7 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Asset brief wajib diisi.' })
   }
 
-  let apiKey: ***
+  let apiKey: string
   let model: string
 
   // Credit-based plans: server provides API key
