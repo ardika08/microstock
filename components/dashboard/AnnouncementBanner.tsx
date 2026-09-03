@@ -45,7 +45,7 @@ export default function AnnouncementBanner() {
             Update v{LATEST_VERSION}:
           </span>{" "}
           <span className="text-gray-300">
-            {changelog[0]?.title} — {changelog[0]?.changes[0]?.text}
+            {changelog[0]?.title} — Workflow Shutterstock kini memakai toolbar ringan dengan Generate AI dan Run Batch.
           </span>
         </div>
         <Link

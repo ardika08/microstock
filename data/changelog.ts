@@ -11,6 +11,20 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "1.6.0",
+    date: "3 Sep 2026",
+    title: "Shutterstock Toolbar Autofill",
+    type: "minor",
+    changes: [
+      { type: "new", text: "Toolbar ringan Shutterstock dengan tombol Generate AI dan Run Batch" },
+      { type: "new", text: "Generate AI memproses asset aktif tanpa membuka sidebar" },
+      { type: "improvement", text: "Workflow Shutterstock tidak lagi menggeser layout halaman" },
+      { type: "improvement", text: "Progress batch dan tombol Stop untuk mengontrol proses autofill" },
+      { type: "improvement", text: "Pengisian title, description, category, dan keyword lebih akurat" },
+      { type: "fix", text: "Adobe Stock tetap menggunakan panel seperti sebelumnya" },
+    ]
+  },
+  {
     version: "1.5.0",
     date: "19 Jul 2026",
     title: "Image to Prompt",
