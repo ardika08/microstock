@@ -1545,9 +1545,16 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       :host(.asaf-shutterstock-toolbar) .asaf-footer {
-        margin-top: 8px;
-        max-width: 360px;
-        text-align: right;
+        position: absolute;
+        left: calc(100% + 8px);
+        top: 50%;
+        transform: translateY(-50%);
+        width: max-content;
+        max-width: 260px;
+        margin: 0;
+        text-align: left;
+        white-space: nowrap;
+        pointer-events: none;
       }
 
       .asaf-panel {
@@ -2152,23 +2159,21 @@ function createFloatingPanel(settings: AppSettings) {
       return
     }
 
-    const firstCard = getAssetCards()[0]
-    if (firstCard && !isShutterstockUploadPage()) {
-      setFooterStatus(root, "Mulai dari file pertama...", "muted")
-      const movedToFirst = await clickAssetCardAndWait(firstCard)
-      if (!movedToFirst) {
-        setFooterStatus(root, "Gagal memilih file pertama", "error")
-        return
-      }
-      await waitForAssetFormReady()
-      await wait(500)
-    } else if (isShutterstockUploadPage()) {
-      setFooterStatus(root, "Memakai file aktif Shutterstock...", "muted")
-      await waitForAssetFormReady()
-      await wait(500)
-    }
-
     for (let index = 0; index < totalAssets && !stopRequested && index < 50; index += 1) {
+      const cardsBeforeAsset = getAssetCards()
+      const targetCard = cardsBeforeAsset[index]
+      if (targetCard) {
+        const selectedCard = getExplicitSelectedAssetCard(cardsBeforeAsset)
+        if (selectedCard !== targetCard) {
+          setFooterStatus(root, `Memilih file ${index + 1}/${totalAssets}...`, "muted")
+          const moved = await clickAssetCardAndWait(targetCard)
+          if (!moved) {
+            batchError = `Gagal memilih file ${index + 1}/${totalAssets}`
+            setFooterStatus(root, batchError, "error")
+            break
+          }
+        }
+      }
       await waitForAssetFormReady()
 
       setLoadingPreview(root, processed + 1, totalAssets)
@@ -2200,32 +2205,6 @@ function createFloatingPanel(settings: AppSettings) {
         break
       }
 
-      // Side panel doesn't block the thumbnail grid, just pause pointer events
-      host.style.pointerEvents = "none"
-      await wait(300)
-
-      const cards = getAssetCards()
-      const nextCard = isShutterstockUploadPage()
-        ? cards[processed]
-        : (() => {
-            const selectedCard = getExplicitSelectedAssetCard(cards)
-            const selectedIndex = selectedCard ? cards.indexOf(selectedCard) : processed - 1
-            return cards[selectedIndex + 1] || cards[processed]
-          })()
-
-      if (!nextCard) {
-        batchError = `File berikutnya tidak ditemukan setelah ${processed}/${totalAssets}`
-        setFooterStatus(root, batchError, "error")
-        break
-      }
-
-      const moved = await clickAssetCardAndWait(nextCard)
-      host.style.pointerEvents = "auto"
-      if (!moved) {
-        batchError = `Gagal pindah ke file ${processed + 1}/${totalAssets}`
-        setFooterStatus(root, batchError, "error")
-        break
-      }
     }
 
     if (completedAll) {
