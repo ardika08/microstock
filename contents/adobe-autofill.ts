@@ -1448,9 +1448,9 @@ function createFloatingPanel(settings: AppSettings) {
   }
   host.style.position = "fixed"
   host.style.right = isShutterstockToolbar ? "auto" : "0"
-  host.style.left = isShutterstockToolbar ? "50%" : "auto"
-  host.style.top = isShutterstockToolbar ? "8px" : "0"
-  host.style.transform = isShutterstockToolbar ? "translateX(-50%)" : "none"
+  host.style.left = isShutterstockToolbar ? "12px" : "auto"
+  host.style.top = isShutterstockToolbar ? "10px" : "0"
+  host.style.transform = "none"
   host.style.width = isShutterstockToolbar ? "auto" : panelWidthCss()
   host.style.height = isShutterstockToolbar ? "auto" : "100vh"
   host.style.zIndex = "2147483647"
