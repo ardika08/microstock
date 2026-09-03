@@ -1456,9 +1456,32 @@ function createFloatingPanel(settings: AppSettings) {
   if (isShutterstockToolbar) {
     const titleField = document.querySelector<HTMLElement>(SHUTTERSTOCK_SELECTORS.title)
     const titleRect = titleField?.getBoundingClientRect()
-    if (titleRect && titleRect.width > 0 && titleRect.height > 0) {
-      host.style.left = `${Math.max(8, titleRect.left)}px`
-      host.style.top = `${Math.max(8, titleRect.top - 48)}px`
+    let anchorRect = titleRect
+
+    // Shutterstock renders the active filename as a heading, not an input.
+    // Find the visible heading/text node and use its card/panel position as anchor.
+    if (!anchorRect || anchorRect.width === 0 || anchorRect.height === 0) {
+      const activeFileName = getShutterstockActiveFileName()
+      const filenameElement = activeFileName
+        ? Array.from(document.querySelectorAll<HTMLElement>("h1, h2, h3, h4, p, strong, div"))
+            .find((element) => {
+              const text = (element.textContent || "").trim()
+              const rect = element.getBoundingClientRect()
+              return text === activeFileName && rect.width > 120 && rect.height > 0 && isVisible(element)
+            })
+        : null
+      const filenameCard = filenameElement?.parentElement?.parentElement || filenameElement
+      anchorRect = filenameCard?.getBoundingClientRect()
+    }
+
+    if (anchorRect && anchorRect.width > 0 && anchorRect.height > 0) {
+      const toolbarWidth = 250
+      const left = Math.min(
+        Math.max(8, anchorRect.left),
+        Math.max(8, window.innerWidth - toolbarWidth - 8)
+      )
+      host.style.left = `${left}px`
+      host.style.top = `${Math.max(8, anchorRect.top - 48)}px`
     }
   }
   host.style.width = isShutterstockToolbar ? "auto" : panelWidthCss()
