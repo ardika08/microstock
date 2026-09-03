@@ -1872,6 +1872,41 @@ function createFloatingPanel(settings: AppSettings) {
     </section>
   `
 
+  if (isShutterstockToolbar) {
+    // Shutterstock must never show the Adobe-style sidebar. Keep only the action row.
+    const panelElement = root.querySelector<HTMLElement>("[data-asaf-panel]")
+    const sectionElement = root.querySelector<HTMLElement>(".asaf-section")
+    const actionsElement = root.querySelector<HTMLElement>(".asaf-actions")
+    const footerElement = root.querySelector<HTMLElement>("[data-asaf-footer]")
+    if (panelElement) {
+      panelElement.style.width = "max-content"
+      panelElement.style.height = "auto"
+      panelElement.style.minWidth = "0"
+      panelElement.style.background = "transparent"
+      panelElement.style.border = "0"
+      panelElement.style.boxShadow = "none"
+      panelElement.style.overflow = "visible"
+    }
+    if (sectionElement) {
+      sectionElement.style.padding = "0"
+    }
+    if (actionsElement) {
+      actionsElement.style.display = "flex"
+      actionsElement.style.gap = "8px"
+      actionsElement.style.margin = "0"
+    }
+    if (footerElement) {
+      footerElement.style.marginTop = "8px"
+      footerElement.style.maxWidth = "360px"
+      footerElement.style.textAlign = "right"
+    }
+    root.querySelectorAll<HTMLElement>("[data-asaf-panel] > *, .asaf-section > .asaf-stack > *").forEach((element) => {
+      if (element !== actionsElement && element !== footerElement && !element.contains(actionsElement)) {
+        element.style.display = "none"
+      }
+    })
+  }
+
   document.documentElement.appendChild(host)
 
   // Close button & backdrop click — only when not running
