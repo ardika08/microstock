@@ -1418,11 +1418,14 @@ function createFloatingPanel(settings: AppSettings) {
   const platform = getCurrentPlatform(settings)
   const platformLabel =
     platform === "shutterstock" ? "Shutterstock" : "Adobe Stock"
+  const isShutterstockToolbar = platform === "shutterstock"
 
-  // Body shift — push Adobe page content to the left
-  document.documentElement.style.setProperty("--asaf-panel-width", panelWidthCss())
-  document.documentElement.style.setProperty("--asaf-content-shift", contentShiftCss())
-  document.documentElement.classList.add("asaf-panel-active")
+  // Only Adobe gets the sidebar body shift; Shutterstock keeps its native layout.
+  if (!isShutterstockToolbar) {
+    document.documentElement.style.setProperty("--asaf-panel-width", panelWidthCss())
+    document.documentElement.style.setProperty("--asaf-content-shift", contentShiftCss())
+    document.documentElement.classList.add("asaf-panel-active")
+  }
 
   if (!document.getElementById(PANEL_STYLE_ID)) {
     const layoutStyle = document.createElement("style")
@@ -1440,11 +1443,14 @@ function createFloatingPanel(settings: AppSettings) {
 
   // Side panel — fixed right, solid dark
   const host = createElement("div", { id: PANEL_HOST_ID })
+  if (isShutterstockToolbar) {
+    host.classList.add("asaf-shutterstock-toolbar")
+  }
   host.style.position = "fixed"
-  host.style.right = "0"
-  host.style.top = "0"
-  host.style.width = panelWidthCss()
-  host.style.height = "100vh"
+  host.style.right = isShutterstockToolbar ? "16px" : "0"
+  host.style.top = isShutterstockToolbar ? "16px" : "0"
+  host.style.width = isShutterstockToolbar ? "auto" : panelWidthCss()
+  host.style.height = isShutterstockToolbar ? "auto" : "100vh"
   host.style.zIndex = "2147483647"
   host.style.pointerEvents = "auto"
   const root = host.attachShadow({ mode: "open" })
@@ -1457,6 +1463,46 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       * { box-sizing: border-box; }
+
+      :host(:not(.asaf-shutterstock-toolbar)) [data-asaf-batch] {
+        display: none;
+      }
+
+      :host(.asaf-shutterstock-toolbar) .asaf-panel {
+        width: auto;
+        height: auto;
+        min-width: 0;
+        overflow: visible;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      :host(.asaf-shutterstock-toolbar) .asaf-header,
+      :host(.asaf-shutterstock-toolbar) .asaf-section > .asaf-stack > *:not(.asaf-actions):not(.asaf-footer) {
+        display: none;
+      }
+
+      :host(.asaf-shutterstock-toolbar) .asaf-section {
+        padding: 0;
+      }
+
+      :host(.asaf-shutterstock-toolbar) .asaf-actions {
+        display: flex;
+        gap: 8px;
+        margin: 0;
+      }
+
+      :host(.asaf-shutterstock-toolbar) .asaf-button {
+        white-space: nowrap;
+        min-height: 42px;
+      }
+
+      :host(.asaf-shutterstock-toolbar) .asaf-footer {
+        margin-top: 8px;
+        max-width: 360px;
+        text-align: right;
+      }
 
       .asaf-panel {
         position: relative;
@@ -1814,7 +1860,8 @@ function createFloatingPanel(settings: AppSettings) {
           </div>
 
           <div class="asaf-actions">
-            <button class="asaf-button" data-asaf-generate type="button">⚡ Generate</button>
+            <button class="asaf-button" data-asaf-generate type="button">⚡ Generate AI</button>
+            <button class="asaf-button asaf-button-secondary" data-asaf-batch type="button">▶ Run Batch</button>
             <button class="asaf-button asaf-button-secondary" data-asaf-stop type="button">Stop</button>
           </div>
 
@@ -1851,6 +1898,7 @@ function createFloatingPanel(settings: AppSettings) {
 
   const panel = root.querySelector<HTMLElement>("[data-asaf-panel]")
   const generateButton = root.querySelector<HTMLButtonElement>("[data-asaf-generate]")
+  const batchButton = root.querySelector<HTMLButtonElement>("[data-asaf-batch]")
   const stopButton = root.querySelector<HTMLButtonElement>("[data-asaf-stop]")
   const footer = root.querySelector<HTMLDivElement>("[data-asaf-footer]")
   let stopRequested = false
@@ -2125,7 +2173,7 @@ function createFloatingPanel(settings: AppSettings) {
     }
   }
 
-  async function handleStart() {
+  async function handleStart(mode: "single" | "batch" = "batch") {
     if (isRunning) {
       return
     }
@@ -2141,8 +2189,12 @@ function createFloatingPanel(settings: AppSettings) {
         throw new Error("Extension belum aktif. Buka popup extension untuk aktivasi.")
       }
 
-      // ✅ Tidak perlu cek API key — generate via server Autofillstock
-      await processBatch(settings)
+      if (mode === "single") {
+        await processCurrentAsset(settings)
+        setFooterStatus(root, "Metadata aset aktif berhasil diisi", "success")
+      } else {
+        await processBatch(settings)
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Generate metadata gagal."
@@ -2154,40 +2206,14 @@ function createFloatingPanel(settings: AppSettings) {
     }
   }
 
-  if (generateButton) {
-    generateButton.disabled = false
-    generateButton.onclick = handleStart
-
-    for (const eventName of ["pointerdown", "mousedown", "touchstart", "click"]) {
-      generateButton.addEventListener(
-        eventName,
-        (event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          handleStart()
-        },
-        { capture: true }
-      )
-    }
+  function bindActionButton(button: HTMLButtonElement | null, mode: "single" | "batch") {
+    if (!button) return
+    button.disabled = false
+    button.onclick = () => handleStart(mode)
   }
 
-  root.addEventListener(
-    "pointerdown",
-    (event) => {
-      const isStartButton = event.composedPath().some((item) => {
-        return item instanceof HTMLElement && item.hasAttribute("data-asaf-generate")
-      })
-
-      if (!isStartButton) {
-        return
-      }
-
-      event.preventDefault()
-      event.stopPropagation()
-      handleStart()
-    },
-    true
-  )
+  bindActionButton(generateButton, "single")
+  bindActionButton(batchButton, "batch")
 
   stopButton?.addEventListener("click", () => {
     stopRequested = true
