@@ -1447,8 +1447,10 @@ function createFloatingPanel(settings: AppSettings) {
     host.classList.add("asaf-shutterstock-toolbar")
   }
   host.style.position = "fixed"
-  host.style.right = isShutterstockToolbar ? "16px" : "0"
-  host.style.top = isShutterstockToolbar ? "16px" : "0"
+  host.style.right = isShutterstockToolbar ? "auto" : "0"
+  host.style.left = isShutterstockToolbar ? "50%" : "auto"
+  host.style.top = isShutterstockToolbar ? "8px" : "0"
+  host.style.transform = isShutterstockToolbar ? "translateX(-50%)" : "none"
   host.style.width = isShutterstockToolbar ? "auto" : panelWidthCss()
   host.style.height = isShutterstockToolbar ? "auto" : "100vh"
   host.style.zIndex = "2147483647"
@@ -1494,8 +1496,19 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       :host(.asaf-shutterstock-toolbar) .asaf-button {
+        width: auto;
         white-space: nowrap;
-        min-height: 42px;
+        min-height: 32px;
+        border-radius: 8px;
+        font-size: 11px;
+        padding: 8px 11px;
+        box-shadow: 0 3px 12px rgba(16,185,129,0.16);
+      }
+
+      :host(.asaf-shutterstock-toolbar) .asaf-button-secondary {
+        background: #3b1720;
+        color: #fecaca;
+        box-shadow: none;
       }
 
       :host(.asaf-shutterstock-toolbar) .asaf-footer {
