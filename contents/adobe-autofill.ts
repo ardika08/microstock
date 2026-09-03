@@ -1451,6 +1451,16 @@ function createFloatingPanel(settings: AppSettings) {
   host.style.left = isShutterstockToolbar ? "12px" : "auto"
   host.style.top = isShutterstockToolbar ? "10px" : "0"
   host.style.transform = "none"
+
+  // Shutterstock toolbar sits directly above the metadata filename, not at the page corner.
+  if (isShutterstockToolbar) {
+    const titleField = document.querySelector<HTMLElement>(SHUTTERSTOCK_SELECTORS.title)
+    const titleRect = titleField?.getBoundingClientRect()
+    if (titleRect && titleRect.width > 0 && titleRect.height > 0) {
+      host.style.left = `${Math.max(8, titleRect.left)}px`
+      host.style.top = `${Math.max(8, titleRect.top - 48)}px`
+    }
+  }
   host.style.width = isShutterstockToolbar ? "auto" : panelWidthCss()
   host.style.height = isShutterstockToolbar ? "auto" : "100vh"
   host.style.zIndex = "2147483647"
