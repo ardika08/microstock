@@ -2032,15 +2032,23 @@ function createFloatingPanel(settings: AppSettings) {
     }
   }
 
-  async function processCurrentAsset(settings: Awaited<ReturnType<typeof getSettings>>) {
+  async function processCurrentAsset(
+    settings: Awaited<ReturnType<typeof getSettings>>,
+    targetCard?: HTMLElement
+  ) {
     const brief = readPageBrief()
+    const targetFileName = targetCard
+      ? targetCard.querySelector<HTMLElement>(SHUTTERSTOCK_SELECTORS.assetMedia)
+          ?.getAttribute("data-testid")?.replace(/^card-media-/, "").trim()
+      : ""
     const filename = isShutterstockUploadPage()
-      ? getShutterstockActiveFileName() || document.title || "unknown"
+      ? targetFileName || getShutterstockActiveFileName() || document.title || "unknown"
       : document.title || "unknown"
     const platform = getCurrentPlatform(settings)
     
-    // Extract thumbnail and convert to base64 or use blob URL for vision API
-    const thumbnailUrl = extractAssetThumbnail()
+    // For Shutterstock batch, use the target card's thumbnail directly.
+    // Reading the globally selected card can still return the previous asset while the SPA updates.
+    const thumbnailUrl = extractAssetThumbnail(targetCard || undefined)
     let assetBrief: string | ArrayBuffer | null = brief
     
     if (thumbnailUrl) {
@@ -2179,7 +2187,7 @@ function createFloatingPanel(settings: AppSettings) {
       setLoadingPreview(root, processed + 1, totalAssets)
 
       try {
-        await processCurrentAsset(settings)
+        await processCurrentAsset(settings, targetCard)
       } catch (assetError) {
         const message =
           assetError instanceof Error ? assetError.message : "Generate metadata gagal."
