@@ -24,7 +24,9 @@ CRITICAL RULES:
 3. If something is unclear, use generic terms like "abstract background", "blurred foreground"
 4. Description must be factual - no assumptions about context outside frame
 5. If image contains text, quote it exactly as shown
-6. Keywords MUST match what's actually visible
+- Keywords MUST match what's actually visible
+- Do not begin every title or description with generic phrases such as "A close-up", "An abstract", or "A beautiful". Use them only when the image clearly supports that wording.
+- Identify the dominant visible subject, action, composition, colors, and distinctive visual features before writing metadata.
 
 DO NOT guess:
 - The photographer's intent

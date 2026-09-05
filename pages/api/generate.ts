@@ -38,6 +38,8 @@ CRITICAL RULES:
 4. Description must be factual - no assumptions about context outside frame
 5. If image contains text, quote it exactly as shown
 6. Keywords MUST match what's actually visible
+7. Do not begin every title or description with generic phrases such as "A close-up", "An abstract", or "A beautiful". Use them only when the image clearly supports that wording.
+8. Identify the dominant visible subject, action, composition, colors, and distinctive visual features before writing metadata.
 
 DO NOT guess:
 - The photographer's intent
