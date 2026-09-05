@@ -300,7 +300,7 @@ export default function Popup() {
         ) : (
           /* ─── Ready state: control center ─────────────────────────────────── */
           <>
-            {/* ── Generate AI (single) + Run Batch + Stop ─────────────────────── */}
+            {/* ── Generate AI (always visible) ──────────────────────────────── */}
             <div className="flex items-center gap-2.5">
               <button
                 className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
@@ -311,8 +311,34 @@ export default function Popup() {
                 <Zap className="h-4 w-4" />
                 Generate AI
               </button>
+              {isRunning && (
+                <button
+                  className="flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold transition-all"
+                  onClick={handleStop}
+                  style={{ background: "#3b1720", color: "#fecaca", border: "1px solid rgba(254,202,202,0.15)" }}
+                >
+                  <Square className="h-3.5 w-3.5" />
+                  Stop
+                </button>
+              )}
+            </div>
+
+            {/* Auto Mode toggle — when ON, show Run Batch button */}
+            <label className="flex items-center gap-3 cursor-pointer rounded-xl p-3 w-full" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <input type="checkbox" className="sr-only peer" checked={autoMode} onChange={(e) => handleAutoModeToggle(e.target.checked)} />
+              <div className="w-10 h-5 rounded-full peer transition-all peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-4 after:w-4 after:transition-all after:bg-white relative"
+                style={{ background: autoMode ? "linear-gradient(135deg, #10b981, #06b6d4)" : "rgba(255,255,255,0.1)" }}
+              />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-slate-200">Auto Mode</p>
+                <p className="text-[10px] text-slate-500">Aktifkan untuk memproses semua asset sekaligus</p>
+              </div>
+            </label>
+
+            {/* Run Batch — only visible when Auto Mode is ON */}
+            {autoMode && (
               <button
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 disabled={isBusy || isRunning || !isOnStockPage}
                 onClick={handleRunBatch}
                 style={{ background: "linear-gradient(135deg, #8B0000, #6B1d1d)", color: "#fff", boxShadow: "0 4px 20px rgba(139,0,0,0.25)" }}
@@ -324,28 +350,7 @@ export default function Popup() {
                 )}
                 {isRunning ? "Running..." : "Run Batch"}
               </button>
-              <button
-                className="flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold transition-all disabled:opacity-40"
-                disabled={!isRunning}
-                onClick={handleStop}
-                style={{ background: "#3b1720", color: "#fecaca", border: "1px solid rgba(254,202,202,0.15)" }}
-              >
-                <Square className="h-3.5 w-3.5" />
-                Stop
-              </button>
-            </div>
-
-            {/* Auto Mode toggle */}
-            <label className="flex items-center gap-3 cursor-pointer rounded-xl p-3" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <input type="checkbox" className="sr-only peer" checked={autoMode} onChange={(e) => handleAutoModeToggle(e.target.checked)} />
-              <div className="w-10 h-5 rounded-full peer transition-all peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-4 after:w-4 after:transition-all after:bg-white relative"
-                style={{ background: autoMode ? "linear-gradient(135deg, #10b981, #06b6d4)" : "rgba(255,255,255,0.1)" }}
-              />
-              <div>
-                <p className="text-xs font-semibold text-slate-200">Auto Mode</p>
-                <p className="text-[10px] text-slate-500">Otomatis isi semua asset yang terdeteksi</p>
-              </div>
-            </label>
+            )}
 
             {/* ── Credit / Usage bar ─────────────────────────────────────────── */}
             <div className="rounded-xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
