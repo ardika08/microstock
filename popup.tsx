@@ -300,8 +300,17 @@ export default function Popup() {
         ) : (
           /* ─── Ready state: control center ─────────────────────────────────── */
           <>
-            {/* ── Run Batch + Auto Mode ─────────────────────────────────────── */}
+            {/* ── Generate AI (single) + Run Batch + Stop ─────────────────────── */}
             <div className="flex items-center gap-2.5">
+              <button
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={isBusy || isRunning || !isOnStockPage}
+                onClick={() => sendToTab({ type: "RUN_SINGLE_GENERATE" })}
+                style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)", color: "#022c22", boxShadow: "0 4px 20px rgba(16,185,129,0.25)" }}
+              >
+                <Zap className="h-4 w-4" />
+                Generate AI
+              </button>
               <button
                 className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 disabled={isBusy || isRunning || !isOnStockPage}
