@@ -2353,11 +2353,63 @@ async function ensureController() {
   return activeController
 }
 
+// Compact inline metadata controls (no sidebar/panel). These mirror the
+// competitor workflow while keeping Autofillstock styling.
+function mountInlineMetadataTools() {
+  if (!isUploadSubmitPage() || document.getElementById("asaf-inline-meta-tools")) return
+  const titleField = queryFirst(FIELD_SELECTORS.title)
+  const keywordField = queryKeywordField()
+  const anchor = titleField || keywordField
+  if (!anchor || !anchor.parentElement) return
+
+  const host = document.createElement("div")
+  host.id = "asaf-inline-meta-tools"
+  host.style.cssText = "display:flex;align-items:center;gap:8px;margin:8px 0 10px;font-family:Inter,system-ui,sans-serif;"
+  host.innerHTML = `
+    <button data-inline-single type="button" style="background:#101827;color:#f5c85b;border:1px solid #8c6b2c;border-radius:7px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer">✦ Title AI</button>
+    <button data-inline-keyword type="button" style="background:#101827;color:#f5c85b;border:1px solid #8c6b2c;border-radius:7px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer">✦ Keyword AI</button>
+    <label style="display:inline-flex;align-items:center;gap:6px;color:#806d45;font-size:11px;font-weight:700;cursor:pointer">
+      <input data-inline-auto type="checkbox" style="accent-color:#c99b3b" /> AI Auto Mode
+    </label>
+    <button data-inline-batch type="button" hidden style="background:#fffaf0;color:#9a7628;border:1px solid #c9a44d;border-radius:7px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer">▶ Run Batch</button>
+    <span data-inline-status style="color:#b56a7a;font-size:10px"></span>
+  `
+  anchor.parentElement.insertBefore(host, anchor)
+
+  const status = host.querySelector<HTMLElement>("[data-inline-status]")
+  const single = host.querySelector<HTMLButtonElement>("[data-inline-single]")
+  const keyword = host.querySelector<HTMLButtonElement>("[data-inline-keyword]")
+  const auto = host.querySelector<HTMLInputElement>("[data-inline-auto]")
+  const batch = host.querySelector<HTMLButtonElement>("[data-inline-batch]")
+  const run = (kind: "single" | "batch") => {
+    if (status) status.textContent = "Generating..."
+    ensureController().then((controller) => {
+      const task = kind === "single" ? controller?.runSingle() : controller?.runBatch()
+      return task
+    }).then(() => {
+      if (status) status.textContent = "Ready"
+    }).catch((error) => {
+      if (status) status.textContent = error instanceof Error ? error.message : "Failed"
+    })
+  }
+  single?.addEventListener("click", () => run("single"))
+  keyword?.addEventListener("click", () => run("single"))
+  auto?.addEventListener("change", () => {
+    if (batch) batch.hidden = !auto.checked
+  })
+  batch?.addEventListener("click", () => run("batch"))
+}
+
 // Headless bootstrap — no MutationObserver, no panel sync, no layout shift.
 // The popup drives everything via messages.
 ensureController().catch((err) => {
   console.error("[autofillstock] controller init failed:", err)
 })
+
+// Add compact controls above Adobe metadata fields only.
+if (!isShutterstockUploadPage()) {
+  mountInlineMetadataTools()
+}
 
 chrome.runtime.onMessage.addListener(
   (message: AutofillMessage, _sender, sendResponse) => {
