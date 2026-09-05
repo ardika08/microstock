@@ -12,6 +12,7 @@ const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
 
 const navItems = [
   { href: "/dashboard/generate", icon: Sparkles, label: "Generate" },
+  { href: "/dashboard/image-generator", icon: Sparkles, label: "Image Generator" },
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard/history", icon: History, label: "History" },
   { href: "/dashboard/usage", icon: BarChart3, label: "Usage" },
