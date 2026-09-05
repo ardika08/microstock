@@ -93,7 +93,10 @@ export default function ImageGeneratorPage() {
     const generateSingleImage = async (promptText: string, ratio: string): Promise<string> => {
         if (!apiKey) throw new Error("API Key masih kosong! Silakan isi API Key Gemini Anda di sidebar.");
 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
+        // Gemini 2.5 Flash Image is the supported image-generation model.
+        // The previous Gemini 3.1 preview model can report quota=0 for many API keys.
+        const model = 'gemini-2.5-flash-image';
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
         let parts: any[] = [{ text: promptText }];
         
         if (activeTab === 'image' && referenceBase64 && referenceMime) {
