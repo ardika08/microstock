@@ -2079,13 +2079,13 @@ function createFloatingPanel(settings: AppSettings) {
           const blob = await response.blob()
           const blobUrl = URL.createObjectURL(blob)
           
-          // For server-side, we need to pass the blob URL and handle it there
-          // But since we're calling through server API, we'll keep original text brief
-          // and note in the prompt to use filename/category hints
-          assetBrief = `DATA_URL:${blobUrl}|TEXT_ONLY:Brief based on filename + context`
+            // The backend cannot fetch a browser-only blob URL. Keep the original
+          // thumbnail data URL attempt as the only valid vision input.
+          URL.revokeObjectURL(blobUrl)
+          throw new Error("Thumbnail aset tidak dapat dibaca. Generate dibatalkan agar metadata tidak generik.")
         } catch (fallbackErr) {
-          console.log("[autofillstock] Failed both methods, using text-only:", fallbackErr)
-          assetBrief = brief
+          console.error("[autofillstock] Thumbnail fetch failed:", fallbackErr)
+          throw new Error("Gambar aset tidak dapat dibaca. Refresh halaman lalu coba lagi.")
         }
       }
     }
