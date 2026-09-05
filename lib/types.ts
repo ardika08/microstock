@@ -30,3 +30,15 @@ export type AutofillMessage =
   | {
       type: "ADOBESTOCK_PANEL_SYNC"
     }
+  | {
+      type: "RUN_SINGLE_GENERATE"
+    }
+  | {
+      type: "RUN_BATCH_GENERATE"
+    }
+  | {
+      type: "STOP_GENERATE"
+    }
+  | {
+      type: "GET_RUN_STATUS"
+    }

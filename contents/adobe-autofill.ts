@@ -1061,6 +1061,27 @@ function getSelectedAssetIndex(cards = getAssetCards()) {
   return selectedIndex >= 0 ? selectedIndex : 0
 }
 
+// ── Stable asset identity for batch processing ──────────────────────────────
+// Builds a unique string per asset card so we can re-find it after SPA rerenders.
+function getAssetIdentity(card: HTMLElement, fallbackIndex: number): string {
+  // Shutterstock: data-testid on media element
+  const media = card.querySelector<HTMLElement>(SHUTTERSTOCK_SELECTORS.assetMedia)
+  if (media) {
+    const testid = media.getAttribute("data-testid") || ""
+    if (testid) return `ss:${testid}`
+  }
+
+  // Adobe: try filename text from the card
+  const cardText = (card.textContent || "").trim().slice(0, 120)
+  if (cardText.length > 5) {
+    return `adobe:${cardText}`
+  }
+
+  // Fallback: position + size signature
+  const rect = card.getBoundingClientRect()
+  return `pos:${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.width)},${Math.round(rect.height)}:${fallbackIndex}`
+}
+
 function extractAssetThumbnail(card = getSelectedAssetCard()) {
   if (!card) {
     return ""
@@ -1411,37 +1432,15 @@ function writeMetadataToPanel(root: ShadowRoot, metadata: MetadataResult) {
 }
 
 function createFloatingPanel(settings: AppSettings) {
-  if (!shouldShowPanel(settings) || document.getElementById(PANEL_HOST_ID)) {
-    return
-  }
-
+  // Headless controller: build the shadow tree in memory to keep all
+  // generate/batch logic intact, but NEVER attach it to the page. The popup
+  // is the only UI now — no on-page panel, toolbar, or layout shift.
   const platform = getCurrentPlatform(settings)
   const platformLabel =
     platform === "shutterstock" ? "Shutterstock" : "Adobe Stock"
   const isShutterstockToolbar = platform === "shutterstock"
 
-  // Only Adobe gets the sidebar body shift; Shutterstock keeps its native layout.
-  if (!isShutterstockToolbar) {
-    document.documentElement.style.setProperty("--asaf-panel-width", panelWidthCss())
-    document.documentElement.style.setProperty("--asaf-content-shift", contentShiftCss())
-    document.documentElement.classList.add("asaf-panel-active")
-  }
-
-  if (!document.getElementById(PANEL_STYLE_ID)) {
-    const layoutStyle = document.createElement("style")
-    layoutStyle.id = PANEL_STYLE_ID
-    layoutStyle.textContent = `
-      html.asaf-panel-active body {
-        width: calc(100vw - var(--asaf-content-shift, ${contentShiftCss()})) !important;
-        max-width: calc(100vw - var(--asaf-content-shift, ${contentShiftCss()})) !important;
-        margin-right: var(--asaf-content-shift, ${contentShiftCss()}) !important;
-        overflow-x: hidden !important;
-      }
-    `
-    document.head.appendChild(layoutStyle)
-  }
-
-  // Side panel — fixed right, solid dark
+  // Detached host — not added to the DOM.
   const host = createElement("div", { id: PANEL_HOST_ID })
   if (isShutterstockToolbar) {
     host.classList.add("asaf-shutterstock-toolbar")
@@ -1960,15 +1959,12 @@ function createFloatingPanel(settings: AppSettings) {
     })
   }
 
-  document.documentElement.appendChild(host)
-
-  // Close button & backdrop click — only when not running
+  // Headless: host stays detached from the DOM. No append, no close/backdrop UI.
   const closeBtn = root.querySelector<HTMLButtonElement>("[data-asaf-close]")
   const backdrop = root.querySelector<HTMLDivElement>("[data-asaf-backdrop]")
 
   function minimizePanel() {
-    if (isRunning) return // don't close during generate
-    host.style.display = "none"
+    // no-op: headless controller has no visible panel to minimise
   }
 
   if (closeBtn) closeBtn.addEventListener("click", minimizePanel)
@@ -1979,7 +1975,7 @@ function createFloatingPanel(settings: AppSettings) {
   if (origSync) {
     origSync.addListener((msg: any) => {
       if (msg?.type === "ADOBESTOCK_PANEL_SYNC") {
-        host.style.display = "grid"
+        // headless: nothing to re-show
       }
     })
   }
@@ -2144,61 +2140,94 @@ function createFloatingPanel(settings: AppSettings) {
 
   async function processBatch(settings: Awaited<ReturnType<typeof getSettings>>) {
     let processed = 0
+    let successCount = 0
+    let failedCount = 0
     let completedAll = false
     let batchError = ""
     const platform = getCurrentPlatform(settings)
+
+    // ── Stable asset identity snapshot ──────────────────────────────────────
+    // Take snapshot once before processing. Each entry gets an identity string
+    // so we can re-find the right card after SPA rerenders.
     const initialCards = getAssetCards()
     const expectedAssets = getExpectedAssetCount()
     const totalAssets = expectedAssets || Math.max(initialCards.length, 1)
     stopRequested = false
-    setFooterStatus(
-      root,
-      `Terdeteksi ${totalAssets}/${totalAssets} file`,
-      "muted"
-    )
+    setFooterStatus(root, `Terdeteksi ${totalAssets} file`, "muted")
     await wait(500)
 
-    if (initialCards.length === 0) {
+    // Build identity map: { identity, card }
+    type SnapshotEntry = { identity: string; card: HTMLElement }
+    const snapshot: SnapshotEntry[] = initialCards.map((card, i) => {
+      const identity = getAssetIdentity(card, i)
+      return { identity, card }
+    })
+
+    if (snapshot.length === 0) {
       setLoadingPreview(root, 1, 1)
-      await processCurrentAsset(settings)
-      processed = 1
-      setFooterStatus(root, "1 file selesai", "success")
+      try {
+        await processCurrentAsset(settings)
+        successCount = 1
+        processed = 1
+        setFooterStatus(root, "1 file selesai", "success")
+      } catch (e) {
+        failedCount = 1
+        processed = 1
+        setFooterStatus(root, "1 file gagal", "error")
+      }
       await notifyBatchComplete(processed, platform)
       return
     }
 
-    for (let index = 0; index < totalAssets && !stopRequested && index < 50; index += 1) {
-      const cardsBeforeAsset = getAssetCards()
-      const targetCard = cardsBeforeAsset[index]
-      if (targetCard) {
-        const selectedCard = getExplicitSelectedAssetCard(cardsBeforeAsset)
-        if (selectedCard !== targetCard) {
-          setFooterStatus(root, `Memilih file ${index + 1}/${totalAssets}...`, "muted")
-          const moved = await clickAssetCardAndWait(targetCard)
-          if (!moved) {
-            batchError = `Gagal memilih file ${index + 1}/${totalAssets}`
-            setFooterStatus(root, batchError, "error")
-            break
-          }
+    // ── Process each snapshot entry ────────────────────────────────────────
+    for (let index = 0; index < snapshot.length && !stopRequested && index < 50; index += 1) {
+      const entry = snapshot[index]
+
+      // Re-find the target card after potential SPA rerender
+      const freshCards = getAssetCards()
+      let targetCard = freshCards.find((c) => getAssetIdentity(c, index) === entry.identity)
+
+      // Fallback: if identity match fails, try positional match
+      if (!targetCard) {
+        targetCard = freshCards[index] || null
+      }
+
+      if (!targetCard) {
+        batchError = `File ${index + 1}/${totalAssets} tidak ditemukan setelah rerender`
+        setFooterStatus(root, batchError, "error")
+        failedCount++
+        processed++
+        continue
+      }
+
+      // Click target if not already selected
+      const selectedCard = getExplicitSelectedAssetCard(freshCards)
+      if (selectedCard !== targetCard) {
+        setFooterStatus(root, `Memilih file ${index + 1}/${totalAssets}...`, "muted")
+        const moved = await clickAssetCardAndWait(targetCard)
+        if (!moved) {
+          batchError = `Gagal memilih file ${index + 1}/${totalAssets}`
+          setFooterStatus(root, batchError, "error")
+          failedCount++
+          processed++
+          continue
         }
       }
-      await waitForAssetFormReady()
 
+      await waitForAssetFormReady()
       setLoadingPreview(root, processed + 1, totalAssets)
 
       try {
         await processCurrentAsset(settings, targetCard)
+        successCount++
       } catch (assetError) {
         const message =
           assetError instanceof Error ? assetError.message : "Generate metadata gagal."
-        // Don't throw — skip this file and continue batch
-        setFooterStatus(root, `File ${processed + 1} gagal: ${message}. Lanjut...`, "error")
+        setFooterStatus(root, `File ${index + 1} gagal: ${message}. Lanjut...`, "error")
         await wait(1500)
-        // Still count as processed to move to next file
-        processed += 1
-        continue
+        failedCount++
       }
-      processed += 1
+      processed++
 
       if (processed >= totalAssets) {
         completedAll = true
@@ -2212,21 +2241,24 @@ function createFloatingPanel(settings: AppSettings) {
       if (stopRequested) {
         break
       }
-
     }
 
-    if (completedAll) {
-      setFooterStatus(root, `${processed} file selesai`, "success")
+    // ── Accurate batch accounting ──────────────────────────────────────────
+    const summary = `${successCount} berhasil, ${failedCount} gagal`
+    if (completedAll && failedCount === 0) {
+      setFooterStatus(root, `${successCount} file selesai`, "success")
+    } else if (completedAll && failedCount > 0) {
+      setFooterStatus(root, summary, "error")
     } else if (!stopRequested && batchError) {
       setFooterStatus(root, batchError, "error")
     } else if (stopRequested) {
-      setFooterStatus(root, `${processed}/${totalAssets} file diproses`, "muted")
+      setFooterStatus(root, `Stopped: ${summary}`, "muted")
     } else {
-      setFooterStatus(root, `${processed}/${totalAssets} file diproses`, "error")
+      setFooterStatus(root, summary, "error")
     }
 
     if (footer) {
-      if (completedAll) {
+      if (completedAll && failedCount === 0) {
         footer.textContent = "Ready"
         footer.dataset.type = "success"
       } else if (stopRequested) {
@@ -2235,7 +2267,7 @@ function createFloatingPanel(settings: AppSettings) {
       }
     }
 
-    if (!stopRequested && completedAll) {
+    if (!stopRequested && completedAll && failedCount === 0) {
       showCompletionModal(processed, platform)
       await notifyBatchComplete(processed, platform)
     }
@@ -2292,72 +2324,103 @@ function createFloatingPanel(settings: AppSettings) {
     setFooterStatus(root, "Stopping...", "muted")
   })
 
-  if (!settings.panel_enabled) {
-    removeFloatingPanel()
+  // Register the headless controller so the popup can drive it via messages.
+  activeController = {
+    runSingle: () => handleStart("single"),
+    runBatch: () => handleStart("batch"),
+    stop: () => {
+      stopRequested = true
+    },
+    isRunning: () => isRunning
   }
 }
 
-async function syncFloatingPanel() {
-  const settings = await getSettings()
+// ── Headless controller registry (driven by the popup) ──────────────────────
+type RunController = {
+  runSingle: () => Promise<void>
+  runBatch: () => Promise<void>
+  stop: () => void
+  isRunning: () => boolean
+}
 
-  if (shouldShowPanel(settings)) {
+let activeController: RunController | null = null
+
+async function ensureController() {
+  if (!activeController) {
+    const settings = await getSettings()
     createFloatingPanel(settings)
-  } else {
-    removeFloatingPanel()
   }
+  return activeController
 }
 
-syncFloatingPanel()
-
-let syncTimer: number | undefined
-const observer = new MutationObserver(() => {
-  window.clearTimeout(syncTimer)
-  syncTimer = window.setTimeout(syncFloatingPanel, 400)
-})
-
-observer.observe(document.documentElement, {
-  childList: true,
-  subtree: true
-})
-
-chrome.storage?.onChanged?.addListener((changes, areaName) => {
-  if (areaName !== "local") {
-    return
-  }
-
-  if (changes.panel_enabled || changes.selected_microstock) {
-    syncFloatingPanel()
-  }
+// Headless bootstrap — no MutationObserver, no panel sync, no layout shift.
+// The popup drives everything via messages.
+ensureController().catch((err) => {
+  console.error("[autofillstock] controller init failed:", err)
 })
 
 chrome.runtime.onMessage.addListener(
   (message: AutofillMessage, _sender, sendResponse) => {
+    // Legacy sync — no-op in headless mode, just acknowledge.
     if (message?.type === "ADOBESTOCK_PANEL_SYNC") {
-      syncFloatingPanel()
+      sendResponse({ ok: true })
+      return true
+    }
+
+    // Legacy autofill from metadata payload (still supported)
+    if (message?.type === "ADOBESTOCK_AUTOFILL_METADATA") {
+      autofill(message.payload)
+        .then((results) => sendResponse({ ok: true, results }))
+        .catch((error) =>
+          sendResponse({
+            ok: false,
+            error: error instanceof Error ? error.message : "Auto-fill gagal."
+          })
+        )
+      return true
+    }
+
+    // New command-driven messages from popup
+    if (message?.type === "RUN_SINGLE_GENERATE") {
+      ensureController()
+        .then((c) => c?.runSingle())
         .then(() => sendResponse({ ok: true }))
         .catch((error) =>
           sendResponse({
             ok: false,
-            error: error instanceof Error ? error.message : "Sync panel gagal."
+            error: error instanceof Error ? error.message : "Generate gagal."
           })
         )
-
       return true
     }
 
-    if (message?.type !== "ADOBESTOCK_AUTOFILL_METADATA") {
-      return false
+    if (message?.type === "RUN_BATCH_GENERATE") {
+      ensureController()
+        .then((c) => c?.runBatch())
+        .then(() => sendResponse({ ok: true }))
+        .catch((error) =>
+          sendResponse({
+            ok: false,
+            error: error instanceof Error ? error.message : "Batch gagal."
+          })
+        )
+      return true
     }
 
-    autofill(message.payload)
-      .then((results) => sendResponse({ ok: true, results }))
-      .catch((error) =>
-        sendResponse({
-          ok: false,
-          error: error instanceof Error ? error.message : "Auto-fill gagal."
-        })
-      )
+    if (message?.type === "STOP_GENERATE") {
+      activeController?.stop()
+      sendResponse({ ok: true })
+      return true
+    }
 
-    return true
+    if (message?.type === "GET_RUN_STATUS") {
+      sendResponse({
+        ok: true,
+        running: activeController?.isRunning() ?? false
+      })
+      return true
+    }
+
+    return false
   }
 )

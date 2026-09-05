@@ -1,36 +1,35 @@
-import "./style.css"
+"use client"
 
 import iconUrl from "data-base64:~assets/icon.png"
 import {
   AlertCircle,
   CheckCircle2,
-  ExternalLink,
   Loader2,
-  RefreshCw,
-  Zap
+  Play,
+  Square,
+  Zap,
+  Crown,
+  Clock,
+  Settings as SettingsIcon,
+  LogOut,
+  CreditCard,
+  ExternalLink,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 
 import { validateActivationCode } from "~/lib/activation"
 import { getSettings, updateSettings } from "~/lib/storage"
-import type { AppSettings, AutofillMessage, MicrostockPlatform } from "~/lib/types"
+import type { AppSettings, MicrostockPlatform } from "~/lib/types"
 
-type BusyState = "idle" | "activating" | "syncing-panel"
+type BusyState = "idle" | "activating" | "running"
 type Notice = { type: "success" | "error"; title: string; message: string } | null
 
-const MICROSTOCKS: Array<{
-  id: MicrostockPlatform
-  label: string
-  enabled: boolean
-}> = [
-  { id: "adobe_stock", label: "Adobe Stock", enabled: true },
-  { id: "shutterstock", label: "Shutterstock", enabled: true },
-  { id: "vecteezy", label: "Vecteezy", enabled: false },
-  { id: "pond5", label: "Pond5", enabled: false },
-  { id: "getty_images", label: "Getty", enabled: false }
+const PLATFORMS: Array<{ id: MicrostockPlatform; label: string }> = [
+  { id: "adobe_stock", label: "Adobe Stock" },
+  { id: "shutterstock", label: "Shutterstock" },
 ]
 
-function isSupportedMicrostockUrl(url?: string) {
+function isSupportedUrl(url?: string) {
   if (!url) return false
   try {
     const host = new URL(url).host
@@ -45,399 +44,404 @@ function isSupportedMicrostockUrl(url?: string) {
   }
 }
 
-async function syncActiveTabPanel() {
-  if (typeof chrome === "undefined" || !chrome.tabs) return
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!tab?.id || !isSupportedMicrostockUrl(tab.url)) return
-
-  const message: AutofillMessage = { type: "ADOBESTOCK_PANEL_SYNC" }
-  try {
-    await chrome.tabs.sendMessage(tab.id, message)
-  } catch (error) {
-    const isExpectedDisconnect =
-      error instanceof Error &&
-      (error.message.includes("Could not establish connection") ||
-        error.message.includes("Receiving end does not exist"))
-    if (!isExpectedDisconnect) {
-      console.error("[syncActiveTabPanel] Unexpected error:", error)
-    }
-  }
-}
-
 export default function Popup() {
   const [settings, setSettings] = useState<AppSettings>({
     activation_status: false,
     panel_enabled: false,
     selected_microstock: "adobe_stock",
-    usage_count: 0
+    usage_count: 0,
   })
   const [activationCode, setActivationCode] = useState("")
   const [busy, setBusy] = useState<BusyState>("idle")
   const [notice, setNotice] = useState<Notice>(null)
+  const [autoMode, setAutoMode] = useState(false)
+  const [isRunning, setIsRunning] = useState(false)
+  const [activeTabUrl, setActiveTabUrl] = useState("")
+  const [creditRemaining, setCreditRemaining] = useState<number | null>(null)
+  const [creditTotal, setCreditTotal] = useState<number | null>(null)
+  const [planType, setPlanType] = useState<string>("free")
 
   const isBusy = busy !== "idle"
   const isReady = settings.activation_status
+  const isOnStockPage = isSupportedUrl(activeTabUrl)
 
+  // Load settings on mount
   useEffect(() => {
     getSettings().then((stored) => {
       setSettings(stored)
       setActivationCode(stored.activation_code || "")
+      setAutoMode(stored.panel_enabled || false)
+    })
+    // Check active tab
+    if (typeof chrome !== "undefined" && chrome.tabs) {
+      chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+        setActiveTabUrl(tab?.url || "")
+      })
+    }
+    // Fetch credit info from dashboard
+    fetch("https://autofillstock.my.id/api/user/me", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          setCreditRemaining(data.credits ?? null)
+          setCreditTotal(data.creditsUsed ? data.credits + data.creditsUsed : null)
+          setPlanType(data.planType || "free")
+        }
+      })
+      .catch(() => {})
+    // Poll run status
+    const statusInterval = setInterval(() => {
+      if (typeof chrome !== "undefined" && chrome.tabs) {
+        chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+          if (!tab?.id) return
+          chrome.tabs
+            .sendMessage(tab.id, { type: "GET_RUN_STATUS" })
+            .then((res: any) => setIsRunning(res?.running ?? false))
+            .catch(() => {})
+        })
+      }
+    }, 1000)
+    return () => clearInterval(statusInterval)
+  }, [])
+
+  const sendToTab = useCallback((message: any) => {
+    if (typeof chrome === "undefined" || !chrome.tabs) return Promise.reject(new Error("No chrome.tabs"))
+    return chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+      if (!tab?.id) throw new Error("No active tab")
+      if (!isSupportedUrl(tab.url)) throw new Error("Buka halaman Adobe Stock atau Shutterstock dulu.")
+      return chrome.tabs.sendMessage(tab.id, message)
     })
   }, [])
 
   async function handleActivate() {
     setBusy("activating")
     setNotice(null)
-
     try {
       await validateActivationCode(activationCode.trim())
-      const nextSettings = {
-        activation_status: true,
-        activation_code: activationCode.trim()
-      }
-
-      await updateSettings(nextSettings)
-      setSettings((current) => ({ ...current, ...nextSettings }))
-      setNotice({
-        type: "success",
-        title: "Aktivasi berhasil",
-        message:
-          "Extension siap digunakan. Untuk paket One-time, atur API key di dashboard autofillstock.my.id."
-      })
+      const next = { activation_status: true, activation_code: activationCode.trim() }
+      await updateSettings(next)
+      setSettings((c) => ({ ...c, ...next }))
+      setNotice({ type: "success", title: "Aktivasi berhasil", message: "Extension siap digunakan." })
     } catch (error) {
       setNotice({
         type: "error",
         title: "Aktivasi gagal",
-        message:
-          error instanceof Error ? error.message : "Kode aktivasi tidak valid."
+        message: error instanceof Error ? error.message : "Kode tidak valid.",
       })
     } finally {
       setBusy("idle")
     }
   }
 
-  async function handlePanelToggle(enabled: boolean) {
-    setBusy("syncing-panel")
+  async function handleRunBatch() {
     setNotice(null)
-
+    setBusy("running")
     try {
-      if (!isReady) {
-        throw new Error("Aktivasi diperlukan sebelum mengaktifkan panel.")
-      }
-
-      const nextSettings = {
-        panel_enabled: enabled,
-        selected_microstock: settings.selected_microstock
-      }
-
-      await updateSettings(nextSettings)
-      setSettings((current) => ({ ...current, ...nextSettings }))
-      await syncActiveTabPanel()
+      await sendToTab({ type: "RUN_BATCH_GENERATE" })
     } catch (error) {
       setNotice({
         type: "error",
-        title: "Gagal mengubah panel",
-        message: error instanceof Error ? error.message : "Coba ulangi lagi."
+        title: "Tidak dapat menjalankan batch",
+        message: error instanceof Error ? error.message : "Kirim ke tab gagal.",
       })
     } finally {
       setBusy("idle")
     }
   }
 
-  async function handleMicrostockSelect(platform: MicrostockPlatform) {
-    const microstock = MICROSTOCKS.find((item) => item.id === platform)
-    if (!microstock?.enabled) {
-      setNotice({
-        type: "error",
-        title: "Coming soon",
-        message: "Platform ini belum aktif."
-      })
-      return
-    }
-
-    await updateSettings({ selected_microstock: platform })
-    setSettings((current) => ({ ...current, selected_microstock: platform }))
-    await syncActiveTabPanel()
+  async function handleStop() {
+    try {
+      await sendToTab({ type: "STOP_GENERATE" })
+    } catch {}
   }
 
-  const activePlatformLabel =
-    MICROSTOCKS.find((p) => p.id === settings.selected_microstock)?.label || "Adobe Stock"
+  async function handleMicrostockSelect(platform: MicrostockPlatform) {
+    await updateSettings({ selected_microstock: platform })
+    setSettings((c) => ({ ...c, selected_microstock: platform }))
+  }
+
+  async function handleAutoModeToggle(enabled: boolean) {
+    setAutoMode(enabled)
+    await updateSettings({ panel_enabled: enabled })
+  }
+
+  const planLabel = (() => {
+    switch (planType) {
+      case "lifetime": return "LIFETIME"
+      case "intro": return "INTRO"
+      case "basic": return "BASIC"
+      case "value": return "VALUE"
+      case "topup": return "TOP UP"
+      default: return "FREE"
+    }
+  })()
+
+  const creditLabel = planType === "lifetime"
+    ? "∞ Unlimited"
+    : creditRemaining !== null && creditTotal !== null
+    ? `${creditRemaining} / ${creditTotal}`
+    : creditRemaining !== null
+    ? `${creditRemaining}`
+    : "—"
+
+  const creditPct = creditRemaining !== null && creditTotal && creditTotal > 0
+    ? Math.min(100, Math.round((creditRemaining / creditTotal) * 100))
+    : 0
+
+  const openDashboard = (path: string) => {
+    window.open(`https://autofillstock.my.id${path}`, "_blank")
+  }
 
   return (
     <main
-      className="min-h-[520px] w-[400px] p-0 text-white overflow-hidden"
+      className="min-h-[560px] w-[400px] p-0 text-white overflow-hidden"
       style={{
         background: "linear-gradient(145deg, #0a0e1a 0%, #0d1520 40%, #0a1015 100%)",
       }}
     >
-      {/* Faux-glass noise overlay */}
+      {/* ── Header: Account + Plan badge ──────────────────────────────────── */}
       <div
-        className="pointer-events-none fixed inset-0 opacity-[0.015]"
+        className="relative px-5 pt-5 pb-4"
         style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          background: "linear-gradient(135deg, rgba(26,26,62,0.6) 0%, rgba(15,40,71,0.5) 50%, rgba(10,22,40,0.4) 100%)",
         }}
-      />
-      {/* Glass container */}
-      <div className="relative overflow-hidden rounded-none">
-        {/* Header gradient — soft, translucent */}
-        <div
-          className="relative px-6 pt-6 pb-5"
-          style={{
-            background: "linear-gradient(135deg, rgba(26,26,62,0.6) 0%, rgba(15,40,71,0.5) 50%, rgba(10,22,40,0.4) 100%)",
-          }}
-        >
-          {/* Soft glow accents */}
-          <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse at 25% 15%, rgba(102,126,234,0.15) 0%, transparent 55%)" }} />
-          <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(ellipse at 80% 80%, rgba(16,185,129,0.1) 0%, transparent 50%)" }} />
-
-          <div className="relative z-10 flex items-center gap-4">
-            <img
-              alt="Autofillstock"
-              className="h-14 w-14 rounded-2xl border border-white/10 shadow-lg"
-              src={iconUrl}
-              style={{ boxShadow: "0 8px 32px rgba(102,126,234,0.2)" }}
-            />
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-white" style={{ letterSpacing: "-0.02em" }}>
-                AUTOFILLSTOCK
-              </h1>
-              <p className="text-[11px] font-medium tracking-[0.15em] text-slate-400 uppercase mt-0.5">
-                Creative Tools
-              </p>
-            </div>
+      >
+        <div className="absolute inset-0 opacity-25" style={{ background: "radial-gradient(ellipse at 25% 15%, rgba(102,126,234,0.15) 0%, transparent 55%)" }} />
+        <div className="relative z-10 flex items-center gap-3">
+          <img alt="Autofillstock" className="h-12 w-12 rounded-2xl border border-white/10" src={iconUrl} />
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold tracking-tight text-white" style={{ letterSpacing: "-0.02em" }}>
+              AUTOFILLSTOCK
+            </h1>
+            <p className="text-[10px] font-medium tracking-[0.15em] text-slate-400 uppercase">
+              Creative Tools
+            </p>
           </div>
-
-          {/* Status badge */}
-          {isReady && (
-            <div className="relative z-10 mt-4">
-              <span className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold"
-                style={{
-                  background: "rgba(16,185,129,0.12)",
-                  border: "1px solid rgba(16,185,129,0.25)",
-                  color: "#6ee7b7"
-                }}>
-                <span className="h-2 w-2 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 6px rgba(52,211,153,0.5)" }} />
-                ACTIVE: {activePlatformLabel.toUpperCase()}
-              </span>
-            </div>
-          )}
+          <span
+            className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+            style={{
+              background: planType === "free" ? "rgba(100,116,139,0.15)" : "rgba(16,185,129,0.12)",
+              border: `1px solid ${planType === "free" ? "rgba(100,116,139,0.3)" : "rgba(16,185,129,0.25)"}`,
+              color: planType === "free" ? "#94a3b8" : "#6ee7b7",
+            }}
+          >
+            {planLabel}
+          </span>
         </div>
 
-        {/* Platform tabs */}
-        {isReady && (
-          <div className="flex border-b border-white/[0.06] bg-[#0d1117]">
-            {MICROSTOCKS.filter((p) => p.enabled).map((platform) => {
-              const selected = settings.selected_microstock === platform.id
-              return (
-                <button
-                  key={platform.id}
-                  className="flex-1 py-3 text-xs font-semibold transition-all relative"
-                  style={{
-                    color: selected ? "#e2e8f0" : "#64748b",
-                    background: selected ? "rgba(255,255,255,0.03)" : "transparent"
-                  }}
-                  disabled={isBusy}
-                  onClick={() => handleMicrostockSelect(platform.id)}
-                  type="button"
-                >
-                  {platform.label}
-                  {selected && (
-                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-emerald-400" />
-                  )}
-                </button>
-              )
-            })}
+        {/* Status */}
+        <div className="relative z-10 mt-3">
+          {isOnStockPage ? (
+            <span className="inline-flex items-center gap-2 text-[11px] font-semibold text-emerald-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 6px rgba(52,211,153,0.5)" }} />
+              ACTIVE: {settings.selected_microstock === "shutterstock" ? "SHUTTERSTOCK" : "ADOBE STOCK"}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+              <span className="h-2 w-2 rounded-full bg-slate-600" />
+              Buka halaman Adobe Stock / Shutterstock
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Body ─────────────────────────────────────────────────────────────── */}
+      <div className="p-5 space-y-4">
+        {/* Notice */}
+        {notice && (
+          <div
+            className="rounded-xl p-3 text-sm flex items-start gap-2.5"
+            style={{
+              background: notice.type === "error" ? "rgba(239,68,68,0.08)" : "rgba(16,185,129,0.08)",
+              border: `1px solid ${notice.type === "error" ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.2)"}`,
+            }}
+          >
+            {notice.type === "error" ? (
+              <AlertCircle className="h-4 w-4 mt-0.5 text-red-400 shrink-0" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-400 shrink-0" />
+            )}
+            <div>
+              <p className="font-semibold text-xs" style={{ color: notice.type === "error" ? "#fca5a5" : "#6ee7b7" }}>
+                {notice.title}
+              </p>
+              <p className="text-[11px] mt-0.5 text-slate-400 leading-relaxed">{notice.message}</p>
+            </div>
           </div>
         )}
 
-        {/* Body */}
-        <div className="p-5 space-y-4">
-          {/* Notice */}
-          {notice && (
-            <div
-              className="rounded-xl p-3.5 text-sm flex items-start gap-3"
-              style={{
-                background: notice.type === "error" ? "rgba(239,68,68,0.08)" : "rgba(16,185,129,0.08)",
-                border: `1px solid ${notice.type === "error" ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.2)"}`
-              }}
+        {/* ─── Activation (if not ready) ─────────────────────────────────────── */}
+        {!isReady ? (
+          <div className="rounded-2xl p-5 space-y-4" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                Activation Code
+              </label>
+              <input
+                type="text"
+                value={activationCode}
+                onChange={(e) => setActivationCode(e.target.value)}
+                placeholder="ASAF-XXXXXX-XXXXXX"
+                className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition-all focus:ring-2 focus:ring-emerald-500/30"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)" }}
+              />
+            </div>
+            <button
+              className="w-full flex items-center justify-center gap-2.5 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-50"
+              disabled={isBusy || !activationCode.trim()}
+              onClick={handleActivate}
+              style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)", color: "#022c22" }}
             >
-              {notice.type === "error" ? (
-                <AlertCircle className="h-4 w-4 mt-0.5 text-red-400 shrink-0" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-400 shrink-0" />
-              )}
+              {busy === "activating" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+              Validate & Activate
+            </button>
+            <p className="text-center text-[11px] text-slate-600">Ambil kode di dashboard → Settings</p>
+          </div>
+        ) : (
+          /* ─── Ready state: control center ─────────────────────────────────── */
+          <>
+            {/* ── Run Batch + Auto Mode ─────────────────────────────────────── */}
+            <div className="flex items-center gap-2.5">
+              <button
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={isBusy || isRunning || !isOnStockPage}
+                onClick={handleRunBatch}
+                style={{ background: "linear-gradient(135deg, #8B0000, #6B1d1d)", color: "#fff", boxShadow: "0 4px 20px rgba(139,0,0,0.25)" }}
+              >
+                {isRunning ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+                {isRunning ? "Running..." : "Run Batch"}
+              </button>
+              <button
+                className="flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold transition-all disabled:opacity-40"
+                disabled={!isRunning}
+                onClick={handleStop}
+                style={{ background: "#3b1720", color: "#fecaca", border: "1px solid rgba(254,202,202,0.15)" }}
+              >
+                <Square className="h-3.5 w-3.5" />
+                Stop
+              </button>
+            </div>
+
+            {/* Auto Mode toggle */}
+            <label className="flex items-center gap-3 cursor-pointer rounded-xl p-3" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <input type="checkbox" className="sr-only peer" checked={autoMode} onChange={(e) => handleAutoModeToggle(e.target.checked)} />
+              <div className="w-10 h-5 rounded-full peer transition-all peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-4 after:w-4 after:transition-all after:bg-white relative"
+                style={{ background: autoMode ? "linear-gradient(135deg, #10b981, #06b6d4)" : "rgba(255,255,255,0.1)" }}
+              />
               <div>
-                <p className="font-semibold text-xs" style={{ color: notice.type === "error" ? "#fca5a5" : "#6ee7b7" }}>
-                  {notice.title}
-                </p>
-                <p className="text-[11px] mt-1 text-slate-400 leading-relaxed">{notice.message}</p>
+                <p className="text-xs font-semibold text-slate-200">Auto Mode</p>
+                <p className="text-[10px] text-slate-500">Otomatis isi semua asset yang terdeteksi</p>
               </div>
-            </div>
-          )}
+            </label>
 
-          {!settings.activation_status ? (
-            /* ─── Activation state ─── */
-            <div className="space-y-4">
-              <div
-                className="rounded-2xl p-5 space-y-4"
-                style={{
-                  background: "rgba(255,255,255,0.025)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  boxShadow: "0 4px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04)"
-                }}
-              >
-                <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                    Activation Code
-                  </label>
-                  <input
-                    type="text"
-                    value={activationCode}
-                    onChange={(e) => setActivationCode(e.target.value)}
-                    placeholder="ASAF-XXXXXX-XXXXXX"
-                    className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition-all focus:ring-2 focus:ring-emerald-500/30"
+            {/* ── Credit / Usage bar ─────────────────────────────────────────── */}
+            <div className="rounded-xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Kredit Tersisa</span>
+                <span className="text-sm font-bold text-white">{creditLabel}</span>
+              </div>
+              {planType !== "lifetime" && creditTotal !== null && creditTotal > 0 && (
+                <div className="h-1.5 w-full rounded-full bg-slate-700 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
                     style={{
-                      background: "rgba(255,255,255,0.025)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      boxShadow: "inset 0 1px 2px rgba(0,0,0,0.15)"
+                      width: `${creditPct}%`,
+                      background: creditPct < 20 ? "linear-gradient(90deg, #ef4444, #f87171)" : "linear-gradient(90deg, #10b981, #06b6d4)",
                     }}
                   />
                 </div>
-
-                <button
-                  className="w-full flex items-center justify-center gap-2.5 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={isBusy || !activationCode.trim()}
-                  onClick={handleActivate}
-                  style={{
-                    background: "linear-gradient(135deg, #10b981, #06b6d4)",
-                    color: "#022c22",
-                    boxShadow: "0 4px 20px rgba(16,185,129,0.25)"
-                  }}
-                  type="button"
-                >
-                  {busy === "activating" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Zap className="h-4 w-4" />
-                  )}
-                  Validate & Activate
-                </button>
-              </div>
-
-              <p className="text-center text-[11px] text-slate-600">
-                Ambil kode di dashboard → Settings
-              </p>
+              )}
             </div>
-          ) : (
-            /* ─── Ready state ─── */
-            <div className="space-y-4">
-              {/* Panel toggle — glass card */}
-              <div
-                className="rounded-2xl p-4 flex items-center justify-between gap-3"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)"
-                }}
-              >
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Auto Panel</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Tampil otomatis di halaman upload
-                  </p>
-                </div>
-                <label className="relative inline-flex cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={settings.panel_enabled}
-                    disabled={busy === "syncing-panel"}
-                    onChange={(e) => handlePanelToggle(e.target.checked)}
-                  />
-                  <div className="w-11 h-6 rounded-full peer transition-all peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-5 after:w-5 after:transition-all after:bg-white"
-                    style={{
-                      background: settings.panel_enabled
-                        ? "linear-gradient(135deg, #10b981, #06b6d4)"
-                        : "rgba(255,255,255,0.1)"
-                    }}
-                  />
-                </label>
-              </div>
 
-              {/* Auto-select options */}
-              <div
-                className="rounded-2xl p-4 space-y-3"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)"
-                }}
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                  Auto-Selection
-                </p>
-                {[
-                  "Auto-select file type (Photo/Illustration)",
-                  "Auto-select file category",
-                  "Auto-enable 'Created with AI tools'",
-                  "Auto-select 'People & property are fictional'"
-                ].map((label, i) => (
-                  <label key={i} className="flex items-center gap-3 cursor-pointer group">
-                    <span className="flex items-center justify-center w-5 h-5 rounded-md border transition-all"
+            {/* ── Open Platform grid ─────────────────────────────────────────── */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Open Platform</p>
+              <div className="grid grid-cols-2 gap-2">
+                {PLATFORMS.map((p) => {
+                  const selected = settings.selected_microstock === p.id
+                  return (
+                    <button
+                      key={p.id}
+                      disabled={isBusy}
+                      onClick={() => handleMicrostockSelect(p.id)}
+                      className="rounded-xl py-2.5 text-xs font-semibold transition-all relative"
                       style={{
-                        background: "rgba(16,185,129,0.15)",
-                        borderColor: "rgba(16,185,129,0.4)"
+                        background: selected ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)",
+                        border: `1px solid ${selected ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.06)"}`,
+                        color: selected ? "#6ee7b7" : "#94a3b8",
                       }}
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    </span>
-                    <span className="text-[12px] text-slate-300 group-hover:text-slate-100 transition-colors">
-                      {label}
-                    </span>
-                  </label>
-                ))}
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                <button
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold transition-all"
-                  onClick={() => syncActiveTabPanel()}
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "#94a3b8"
-                  }}
-                  type="button"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Sync Panel
-                </button>
-                <button
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold transition-all"
-                  onClick={() =>
-                    window.open("https://autofillstock.my.id/dashboard", "_blank")
-                  }
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "#94a3b8"
-                  }}
-                  type="button"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Dashboard
-                </button>
-              </div>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-600">
-                <span>Usage: {settings.usage_count || 0}</span>
-                <span>autofillstock.my.id</span>
+                      {selected && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+                      {p.label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
-          )}
-        </div>
+
+            {/* ── Upgrade card ─────────────────────────────────────────────── */}
+            {planType === "free" && (
+              <button
+                onClick={() => openDashboard("/dashboard/billing")}
+                className="w-full flex items-center gap-3 rounded-xl p-4 transition-all hover:opacity-90"
+                style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(16,185,129,0.04))", border: "1px solid rgba(139,92,246,0.2)" }}
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "rgba(139,92,246,0.12)" }}>
+                  <Crown className="w-4 h-4 text-violet-400" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-xs font-bold text-slate-100">Upgrade to Pro</p>
+                  <p className="text-[10px] text-slate-500">Buka semua fitur tanpa batas</p>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+              </button>
+            )}
+
+            {/* ── Footer nav ────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <button
+                onClick={() => openDashboard("/dashboard/history")}
+                className="flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all hover:bg-white/5"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span className="text-[10px] font-medium text-slate-500">History</span>
+              </button>
+              <button
+                onClick={() => openDashboard("/dashboard/settings")}
+                className="flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all hover:bg-white/5"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <SettingsIcon className="w-4 h-4 text-slate-400" />
+                <span className="text-[10px] font-medium text-slate-500">Settings</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (typeof chrome !== "undefined" && chrome.runtime) {
+                    chrome.storage.local.clear()
+                  }
+                  window.open("https://autofillstock.my.id/auth/login", "_blank")
+                  window.close()
+                }}
+                className="flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all hover:bg-white/5"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <LogOut className="w-4 h-4 text-slate-400" />
+                <span className="text-[10px] font-medium text-slate-500">Logout</span>
+              </button>
+            </div>
+
+            {/* Brand footer */}
+            <div className="flex items-center justify-between pt-1 text-[10px] text-slate-600">
+              <span>Usage: {settings.usage_count || 0}</span>
+              <span>autofillstock.my.id</span>
+            </div>
+          </>
+        )}
       </div>
     </main>
   )
