@@ -12,7 +12,6 @@ import {
   Clock,
   Settings as SettingsIcon,
   LogOut,
-  CreditCard,
   ExternalLink,
 } from "lucide-react"
 import { useEffect, useState, useCallback } from "react"
@@ -65,20 +64,17 @@ export default function Popup() {
   const isReady = settings.activation_status
   const isOnStockPage = isSupportedUrl(activeTabUrl)
 
-  // Load settings on mount
   useEffect(() => {
     getSettings().then((stored) => {
       setSettings(stored)
       setActivationCode(stored.activation_code || "")
       setAutoMode(stored.panel_enabled || false)
     })
-    // Check active tab
     if (typeof chrome !== "undefined" && chrome.tabs) {
       chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
         setActiveTabUrl(tab?.url || "")
       })
     }
-    // Fetch credit info from dashboard
     fetch("https://autofillstock.my.id/api/user/me", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -89,7 +85,6 @@ export default function Popup() {
         }
       })
       .catch(() => {})
-    // Poll run status
     const statusInterval = setInterval(() => {
       if (typeof chrome !== "undefined" && chrome.tabs) {
         chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
@@ -192,65 +187,64 @@ export default function Popup() {
     window.open(`https://autofillstock.my.id${path}`, "_blank")
   }
 
+  // ── Shared card style ────────────────────────────────────────────────────────
+  const cardStyle = {
+    background: "rgba(255,255,255,0.025)",
+    border: "1px solid rgba(255,255,255,0.07)",
+  } as const
+
   return (
     <main
-      className="min-h-[560px] w-[400px] p-0 text-white overflow-hidden"
+      className="w-[380px] text-white"
       style={{
-        background: "linear-gradient(145deg, #0a0e1a 0%, #0d1520 40%, #0a1015 100%)",
+        background: "linear-gradient(160deg, #0c1220 0%, #0a0f1a 100%)",
+        fontFamily: "Inter, system-ui, -apple-system, sans-serif",
       }}
     >
-      {/* ── Header: Account + Plan badge ──────────────────────────────────── */}
+      {/* ══ Header ══════════════════════════════════════════════════════════════ */}
       <div
-        className="relative px-5 pt-5 pb-4"
+        className="px-4 py-4 flex items-center gap-3"
         style={{
-          background: "linear-gradient(135deg, rgba(26,26,62,0.6) 0%, rgba(15,40,71,0.5) 50%, rgba(10,22,40,0.4) 100%)",
+          background: "linear-gradient(135deg, rgba(30,35,60,0.6) 0%, rgba(15,40,71,0.4) 100%)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        <div className="absolute inset-0 opacity-25" style={{ background: "radial-gradient(ellipse at 25% 15%, rgba(102,126,234,0.15) 0%, transparent 55%)" }} />
-        <div className="relative z-10 flex items-center gap-3">
-          <img alt="Autofillstock" className="h-12 w-12 rounded-2xl border border-white/10" src={iconUrl} />
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold tracking-tight text-white" style={{ letterSpacing: "-0.02em" }}>
-              AUTOFILLSTOCK
-            </h1>
-            <p className="text-[10px] font-medium tracking-[0.15em] text-slate-400 uppercase">
-              Creative Tools
-            </p>
-          </div>
-          <span
-            className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-            style={{
-              background: planType === "free" ? "rgba(100,116,139,0.15)" : "rgba(16,185,129,0.12)",
-              border: `1px solid ${planType === "free" ? "rgba(100,116,139,0.3)" : "rgba(16,185,129,0.25)"}`,
-              color: planType === "free" ? "#94a3b8" : "#6ee7b7",
-            }}
-          >
-            {planLabel}
-          </span>
+        <img alt="Autofillstock" className="h-10 w-10 rounded-xl border border-white/10 shrink-0" src={iconUrl} />
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base font-bold text-white leading-tight tracking-tight">AUTOFILLSTOCK</h1>
+          <p className="text-[10px] text-slate-500 leading-tight mt-0.5">Creative Tools</p>
         </div>
-
-        {/* Status */}
-        <div className="relative z-10 mt-3">
-          {isOnStockPage ? (
-            <span className="inline-flex items-center gap-2 text-[11px] font-semibold text-emerald-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 6px rgba(52,211,153,0.5)" }} />
-              ACTIVE: {settings.selected_microstock === "shutterstock" ? "SHUTTERSTOCK" : "ADOBE STOCK"}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-2 text-[11px] font-semibold text-slate-500">
-              <span className="h-2 w-2 rounded-full bg-slate-600" />
-              Buka halaman Adobe Stock / Shutterstock
-            </span>
-          )}
-        </div>
+        <span
+          className="text-[9px] font-bold px-2 py-1 rounded-full tracking-wide shrink-0"
+          style={{
+            background: planType === "free" ? "rgba(100,116,139,0.15)" : "rgba(16,185,129,0.1)",
+            border: `1px solid ${planType === "free" ? "rgba(100,116,139,0.25)" : "rgba(16,185,129,0.2)"}`,
+            color: planType === "free" ? "#94a3b8" : "#6ee7b7",
+          }}
+        >
+          {planLabel}
+        </span>
       </div>
 
-      {/* ── Body ─────────────────────────────────────────────────────────────── */}
-      <div className="p-5 space-y-4">
+      {/* ══ Status bar ═════════════════════════════════════════════════════════ */}
+      <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+        <span
+          className="h-1.5 w-1.5 rounded-full shrink-0"
+          style={{ background: isOnStockPage ? "#34d399" : "#475569", boxShadow: isOnStockPage ? "0 0 5px rgba(52,211,153,0.5)" : "none" }}
+        />
+        <span className="text-[11px] font-semibold" style={{ color: isOnStockPage ? "#6ee7b7" : "#64748b" }}>
+          {isOnStockPage
+            ? `ACTIVE: ${settings.selected_microstock === "shutterstock" ? "SHUTTERSTOCK" : "ADOBE STOCK"}`
+            : "Buka halaman Adobe Stock / Shutterstock"}
+        </span>
+      </div>
+
+      {/* ══ Body ═══════════════════════════════════════════════════════════════ */}
+      <div className="p-4 flex flex-col gap-3">
         {/* Notice */}
         {notice && (
           <div
-            className="rounded-xl p-3 text-sm flex items-start gap-2.5"
+            className="rounded-lg p-3 flex items-start gap-2.5"
             style={{
               background: notice.type === "error" ? "rgba(239,68,68,0.08)" : "rgba(16,185,129,0.08)",
               border: `1px solid ${notice.type === "error" ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.2)"}`,
@@ -261,20 +255,20 @@ export default function Popup() {
             ) : (
               <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-400 shrink-0" />
             )}
-            <div>
-              <p className="font-semibold text-xs" style={{ color: notice.type === "error" ? "#fca5a5" : "#6ee7b7" }}>
+            <div className="min-w-0">
+              <p className="font-semibold text-[11px]" style={{ color: notice.type === "error" ? "#fca5a5" : "#6ee7b7" }}>
                 {notice.title}
               </p>
-              <p className="text-[11px] mt-0.5 text-slate-400 leading-relaxed">{notice.message}</p>
+              <p className="text-[10px] mt-0.5 text-slate-400 leading-relaxed">{notice.message}</p>
             </div>
           </div>
         )}
 
-        {/* ─── Activation (if not ready) ─────────────────────────────────────── */}
+        {/* ─── Not activated: login card ─────────────────────────────────────────── */}
         {!isReady ? (
-          <div className="rounded-2xl p-5 space-y-4" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="rounded-xl p-4 flex flex-col gap-3" style={cardStyle}>
             <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 Activation Code
               </label>
               <input
@@ -282,12 +276,12 @@ export default function Popup() {
                 value={activationCode}
                 onChange={(e) => setActivationCode(e.target.value)}
                 placeholder="ASAF-XXXXXX-XXXXXX"
-                className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 outline-none transition-all focus:ring-2 focus:ring-emerald-500/30"
-                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)" }}
+                className="w-full rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none focus:ring-1 focus:ring-emerald-500/40"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
               />
             </div>
             <button
-              className="w-full flex items-center justify-center gap-2.5 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-bold transition-all disabled:opacity-50"
               disabled={isBusy || !activationCode.trim()}
               onClick={handleActivate}
               style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)", color: "#022c22" }}
@@ -295,25 +289,26 @@ export default function Popup() {
               {busy === "activating" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
               Validate & Activate
             </button>
-            <p className="text-center text-[11px] text-slate-600">Ambil kode di dashboard → Settings</p>
+            <p className="text-center text-[10px] text-slate-600">Ambil kode di dashboard → Settings</p>
           </div>
         ) : (
-          /* ─── Ready state: control center ─────────────────────────────────── */
+          /* ─── Activated: control center ────────────────────────────────────────── */
           <>
-            {/* ── Generate AI (always visible) ──────────────────────────────── */}
-            <div className="flex items-center gap-2.5">
+
+            {/* ── Action row: Generate AI + Stop ─────────────────────────────── */}
+            <div className="flex gap-2">
               <button
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 disabled={isBusy || isRunning || !isOnStockPage}
                 onClick={() => sendToTab({ type: "RUN_SINGLE_GENERATE" })}
-                style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)", color: "#022c22", boxShadow: "0 4px 20px rgba(16,185,129,0.25)" }}
+                style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)", color: "#022c22" }}
               >
                 <Zap className="h-4 w-4" />
                 Generate AI
               </button>
               {isRunning && (
                 <button
-                  className="flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-sm font-semibold transition-all"
+                  className="flex items-center justify-center rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-all"
                   onClick={handleStop}
                   style={{ background: "#3b1720", color: "#fecaca", border: "1px solid rgba(254,202,202,0.15)" }}
                 >
@@ -323,57 +318,67 @@ export default function Popup() {
               )}
             </div>
 
-            {/* Auto Mode toggle — when ON, show Run Batch button */}
-            <label className="flex items-center gap-3 cursor-pointer rounded-xl p-3 w-full" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <input type="checkbox" className="sr-only peer" checked={autoMode} onChange={(e) => handleAutoModeToggle(e.target.checked)} />
-              <div className="w-10 h-5 rounded-full peer transition-all peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:rounded-full after:h-4 after:w-4 after:transition-all after:bg-white relative"
-                style={{ background: autoMode ? "linear-gradient(135deg, #10b981, #06b6d4)" : "rgba(255,255,255,0.1)" }}
-              />
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-slate-200">Auto Mode</p>
-                <p className="text-[10px] text-slate-500">Aktifkan untuk memproses semua asset sekaligus</p>
-              </div>
-            </label>
+            {/* ── Auto Mode + Run Batch in one card ──────────────────────────── */}
+            <div className="rounded-xl overflow-hidden" style={cardStyle}>
+              <label className="flex items-center gap-3 px-3.5 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={autoMode}
+                  onChange={(e) => handleAutoModeToggle(e.target.checked)}
+                />
+                {/* Toggle switch */}
+                <div
+                  className="relative w-9 h-4.5 rounded-full shrink-0 transition-colors"
+                  style={{ height: "18px", background: autoMode ? "linear-gradient(135deg, #10b981, #06b6d4)" : "rgba(255,255,255,0.12)" }}
+                >
+                  <div
+                    className="absolute top-0.5 left-0.5 h-3.5 w-3.5 rounded-full bg-white transition-transform"
+                    style={{ transform: autoMode ? "translateX(18px)" : "translateX(0)" }}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-semibold text-slate-200 leading-tight">Auto Mode</p>
+                  <p className="text-[9px] text-slate-500 leading-tight mt-0.5">Proses semua asset sekaligus</p>
+                </div>
+              </label>
+              {autoMode && (
+                <div className="px-3.5 pb-3.5">
+                  <button
+                    className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={isBusy || isRunning || !isOnStockPage}
+                    onClick={handleRunBatch}
+                    style={{ background: "linear-gradient(135deg, #7f1d1d, #991b1b)", color: "#fff" }}
+                  >
+                    {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                    {isRunning ? "Running..." : "Run Batch"}
+                  </button>
+                </div>
+              )}
+            </div>
 
-            {/* Run Batch — only visible when Auto Mode is ON */}
-            {autoMode && (
-              <button
-                className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                disabled={isBusy || isRunning || !isOnStockPage}
-                onClick={handleRunBatch}
-                style={{ background: "linear-gradient(135deg, #8B0000, #6B1d1d)", color: "#fff", boxShadow: "0 4px 20px rgba(139,0,0,0.25)" }}
-              >
-                {isRunning ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-                {isRunning ? "Running..." : "Run Batch"}
-              </button>
-            )}
-
-            {/* ── Credit / Usage bar ─────────────────────────────────────────── */}
-            <div className="rounded-xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Kredit Tersisa</span>
-                <span className="text-sm font-bold text-white">{creditLabel}</span>
+            {/* ── Credit bar ─────────────────────────────────────────────────── */}
+            <div className="rounded-xl px-3.5 py-3" style={cardStyle}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Kredit Tersisa</span>
+                <span className="text-[13px] font-bold text-white">{creditLabel}</span>
               </div>
               {planType !== "lifetime" && creditTotal !== null && creditTotal > 0 && (
-                <div className="h-1.5 w-full rounded-full bg-slate-700 overflow-hidden">
+                <div className="h-1 w-full rounded-full bg-slate-800 overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${creditPct}%`,
-                      background: creditPct < 20 ? "linear-gradient(90deg, #ef4444, #f87171)" : "linear-gradient(90deg, #10b981, #06b6d4)",
+                      background: creditPct < 20 ? "#ef4444" : "linear-gradient(90deg, #10b981, #06b6d4)",
                     }}
                   />
                 </div>
               )}
             </div>
 
-            {/* ── Open Platform grid ─────────────────────────────────────────── */}
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Open Platform</p>
+            {/* ── Platform grid ──────────────────────────────────────────────── */}
+            <div className="rounded-xl px-3.5 py-3" style={cardStyle}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2.5">Open Platform</p>
               <div className="grid grid-cols-2 gap-2">
                 {PLATFORMS.map((p) => {
                   const selected = settings.selected_microstock === p.id
@@ -382,14 +387,17 @@ export default function Popup() {
                       key={p.id}
                       disabled={isBusy}
                       onClick={() => handleMicrostockSelect(p.id)}
-                      className="rounded-xl py-2.5 text-xs font-semibold transition-all relative"
+                      className="rounded-lg py-2 text-[11px] font-semibold transition-all flex items-center justify-center gap-1.5"
                       style={{
-                        background: selected ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)",
-                        border: `1px solid ${selected ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.06)"}`,
+                        background: selected ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${selected ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.06)"}`,
                         color: selected ? "#6ee7b7" : "#94a3b8",
                       }}
                     >
-                      {selected && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ background: selected ? "#34d399" : "rgba(148,163,184,0.3)" }}
+                      />
                       {p.label}
                     </button>
                   )
@@ -397,41 +405,41 @@ export default function Popup() {
               </div>
             </div>
 
-            {/* ── Upgrade card ─────────────────────────────────────────────── */}
+            {/* ── Upgrade card (free only) ───────────────────────────────────── */}
             {planType === "free" && (
               <button
                 onClick={() => openDashboard("/dashboard/billing")}
-                className="w-full flex items-center gap-3 rounded-xl p-4 transition-all hover:opacity-90"
+                className="w-full flex items-center gap-3 rounded-xl px-3.5 py-3 transition-all hover:opacity-90"
                 style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(16,185,129,0.04))", border: "1px solid rgba(139,92,246,0.2)" }}
               >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "rgba(139,92,246,0.12)" }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
                   <Crown className="w-4 h-4 text-violet-400" />
                 </div>
-                <div className="flex-1 text-left">
-                  <p className="text-xs font-bold text-slate-100">Upgrade to Pro</p>
-                  <p className="text-[10px] text-slate-500">Buka semua fitur tanpa batas</p>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-[12px] font-bold text-slate-100 leading-tight">Upgrade to Pro</p>
+                  <p className="text-[9px] text-slate-500 leading-tight mt-0.5">Unlimited · QRIS · Bank Transfer</p>
                 </div>
-                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               </button>
             )}
 
             {/* ── Footer nav ────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => openDashboard("/dashboard/history")}
-                className="flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all hover:bg-white/5"
-                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+                className="flex flex-col items-center gap-1 py-2.5 rounded-lg transition-all hover:bg-white/5"
+                style={cardStyle}
               >
                 <Clock className="w-4 h-4 text-slate-400" />
-                <span className="text-[10px] font-medium text-slate-500">History</span>
+                <span className="text-[9px] font-medium text-slate-500">History</span>
               </button>
               <button
                 onClick={() => openDashboard("/dashboard/settings")}
-                className="flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all hover:bg-white/5"
-                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+                className="flex flex-col items-center gap-1 py-2.5 rounded-lg transition-all hover:bg-white/5"
+                style={cardStyle}
               >
                 <SettingsIcon className="w-4 h-4 text-slate-400" />
-                <span className="text-[10px] font-medium text-slate-500">Settings</span>
+                <span className="text-[9px] font-medium text-slate-500">Settings</span>
               </button>
               <button
                 onClick={() => {
@@ -441,19 +449,18 @@ export default function Popup() {
                   window.open("https://autofillstock.my.id/auth/login", "_blank")
                   window.close()
                 }}
-                className="flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all hover:bg-white/5"
-                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+                className="flex flex-col items-center gap-1 py-2.5 rounded-lg transition-all hover:bg-white/5"
+                style={cardStyle}
               >
                 <LogOut className="w-4 h-4 text-slate-400" />
-                <span className="text-[10px] font-medium text-slate-500">Logout</span>
+                <span className="text-[9px] font-medium text-slate-500">Logout</span>
               </button>
             </div>
 
             {/* Brand footer */}
-            <div className="flex items-center justify-between pt-1 text-[10px] text-slate-600">
-              <span>Usage: {settings.usage_count || 0}</span>
-              <span>autofillstock.my.id</span>
-            </div>
+            <p className="text-center text-[9px] text-slate-600 pt-0.5">
+              autofillstock.my.id · Usage: {settings.usage_count || 0}
+            </p>
           </>
         )}
       </div>
