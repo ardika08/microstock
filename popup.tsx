@@ -331,28 +331,17 @@ export default function Popup() {
         ) : (
           /* ─── ACTIVATED: CONTROL CENTER ────────────────────────────────────── */
           <>
-            {/* ── Quick Actions — only on stock pages (Automeda pattern) ──────── */}
+            {/* ── Quick Actions — only on stock pages ─────────────────────────── */}
             {isOnStockPage && (
               <div className={`rounded-xl p-3.5 flex flex-col gap-3 ${cardBg}`}>
-                {/* Run Batch */}
+                {/* Generate AI (single) — always available */}
                 <button
                   className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   disabled={isBusy || isRunning}
-                  onClick={handleRunBatch}
+                  onClick={() => sendToTab({ type: "RUN_SINGLE_GENERATE" })}
                   style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)", color: "#022c22" }}
                 >
-                  {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                  {isRunning ? "Running..." : "▶ Run Batch"}
-                </button>
-
-                {/* Generate AI (single) */}
-                <button
-                  className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  disabled={isBusy || isRunning}
-                  onClick={() => sendToTab({ type: "RUN_SINGLE_GENERATE" })}
-                  style={{ background: "rgba(255,255,255,0.04)", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.1)" }}
-                >
-                  <Zap className="h-3.5 w-3.5 text-emerald-400" />
+                  <Zap className="h-4 w-4" />
                   Generate AI
                 </button>
 
@@ -368,7 +357,7 @@ export default function Popup() {
                   </button>
                 )}
 
-                {/* Auto Mode — Adobe Stock only (Automeda pattern) */}
+                {/* Auto Mode toggle — gates Run Batch visibility (Adobe Stock only) */}
                 {platform.isAdobe && (
                   <label className="flex items-center gap-3 pt-1 cursor-pointer">
                     <input
@@ -377,7 +366,6 @@ export default function Popup() {
                       checked={autoMode}
                       onChange={(e) => handleAutoModeToggle(e.target.checked)}
                     />
-                    {/* Toggle switch */}
                     <div
                       className="relative w-9 h-5 rounded-full shrink-0 transition-colors"
                       style={{ background: autoMode ? "linear-gradient(135deg, #10b981, #06b6d4)" : "rgba(255,255,255,0.12)" }}
@@ -389,9 +377,22 @@ export default function Popup() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-semibold text-slate-200 leading-tight">AI Auto Mode</p>
-                      <p className="text-[9px] text-slate-500 leading-tight mt-0.5">Proses semua asset sekaligus</p>
+                      <p className="text-[9px] text-slate-500 leading-tight mt-0.5">Aktifkan untuk memproses semua asset sekaligus</p>
                     </div>
                   </label>
+                )}
+
+                {/* Run Batch — only visible when Auto Mode is ON */}
+                {autoMode && platform.isAdobe && (
+                  <button
+                    className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={isBusy || isRunning}
+                    onClick={handleRunBatch}
+                    style={{ background: "linear-gradient(135deg, #7f1d1d, #991b1b)", color: "#fff" }}
+                  >
+                    {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                    {isRunning ? "Running..." : "▶ Run Batch"}
+                  </button>
                 )}
               </div>
             )}
