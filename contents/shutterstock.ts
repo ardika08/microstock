@@ -207,7 +207,8 @@ async function fetchMetadata(
   imageUrl: string,
   base64Image: string | null,
   filename: string,
-  existingTitle: string
+  existingTitle: string,
+  recentTitles: string[] = []
 ): Promise<any> {
   const settings = await chrome.storage.local.get(['activation_code'])
   if (!settings.activation_code) {
@@ -222,6 +223,7 @@ async function fetchMetadata(
       activationCode: settings.activation_code,
       filename,
       platform: 'shutterstock',
+      recentTitles,
     }
 
     // Prefer base64 (fallback) — server fetches imageUrl if base64 not available
@@ -260,15 +262,16 @@ async function fetchMetadataWithRetry(
   imageUrl: string,
   base64Image: string | null,
   filename: string,
-  existingTitle: string
+  existingTitle: string,
+  recentTitles: string[] = []
 ): Promise<any> {
-  let result = await fetchMetadata(imageUrl, base64Image, filename, existingTitle)
+  let result = await fetchMetadata(imageUrl, base64Image, filename, existingTitle, recentTitles)
   let attempts = 1
   while (!result?.ok && !PERMANENT_ERRORS.includes(result?.error) && attempts < 3) {
     const rateLimited = isRateLimitError(result)
     debugLog(`fetchMetadataWithRetry attempt ${attempts} FAILED — waiting ${rateLimited ? RATE_LIMIT_RETRY_MS : 800}ms`)
     await wait(rateLimited ? RATE_LIMIT_RETRY_MS : 800)
-    result = await fetchMetadata(imageUrl, base64Image, filename, existingTitle)
+    result = await fetchMetadata(imageUrl, base64Image, filename, existingTitle, recentTitles)
     attempts++
   }
   return result
@@ -570,7 +573,7 @@ async function handleGenerate(): Promise<void> {
     // Tetap kirim request — server akan fetch imageUrl jika base64 null
     const filename = getFilename()
     const existingTitle = getFieldValue('description')
-    const result = await fetchMetadataWithRetry(thumbUrl, base64, filename, existingTitle)
+    const result = await fetchMetadataWithRetry(thumbUrl, base64, filename, existingTitle, [])
 
     if (!result.ok) {
       const errMap: Record<string, string> = {
@@ -700,7 +703,7 @@ async function runBatchStep(): Promise<void> {
     // Generate metadata
     const filename = getFilename()
     const existingTitle = getFieldValue('description')
-    const result = await fetchMetadataWithRetry(thumbUrl, base64, filename, existingTitle)
+    const result = await fetchMetadataWithRetry(thumbUrl, base64, filename, existingTitle, batchRecentTitles)
 
     if (!result.ok) {
       batchFailCount++

@@ -14,7 +14,7 @@ const SHUTTERSTOCK_CATEGORIES_STR = [
   "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation"
 ].join(', ')
 
-async function generateOpenAIPrompt(contentType: string, platformHint: string): Promise<{systemPrompt: string; userInstruction: string}> {
+async function generateOpenAIPrompt(contentType: string, platformHint: string, recentTitles: string[] = []): Promise<{systemPrompt: string; userInstruction: string}> {
   const isShutterstock = platformHint === 'Shutterstock'
 
   const jsonFormat = isShutterstock
@@ -26,6 +26,11 @@ async function generateOpenAIPrompt(contentType: string, platformHint: string): 
     `- file_type: "photo" atau "illustration" berdasarkan analisis visual gambar`,
   ] : []
 
+  // Anti-duplikasi: jika ada recentTitles, tampilkan sebagai contoh yang harus dihindari
+  const antiDuplication = recentTitles.length > 0
+    ? `\n\nCRITICAL — VARIETY REQUIREMENT:\nThe following descriptions have ALREADY been used for other assets in this batch. Do NOT produce descriptions that start the same way or use the same opening structure. Vary your sentence structure, opening word, and phrasing significantly:\n${recentTitles.map((t, i) => `${i + 1}. "${t}"`).join('\n')}`
+    : ''
+
   return {
     systemPrompt: `You are a professional microstock contributor specializing in analyzing images and writing accurate metadata based SOLELY on what you see in the image. 
 
@@ -36,8 +41,15 @@ CRITICAL RULES:
 4. Description must be factual - no assumptions about context outside frame
 5. If image contains text, quote it exactly as shown
 - Keywords MUST match what's actually visible
-- Do not begin every title or description with generic phrases such as "A close-up", "An abstract", or "A beautiful". Use them only when the image clearly supports that wording.
-- Identify the dominant visible subject, action, composition, colors, and distinctive visual features before writing metadata.
+- IDENTIFY the dominant visible subject, action, composition, colors, and distinctive visual features before writing metadata.
+
+SENTENCE STRUCTURE — CRITICAL:
+- Do NOT start descriptions with "A" or "An" followed by an adjective. This produces repetitive, generic-sounding descriptions.
+- BAD examples (DO NOT DO THIS): "A swirling abstract pattern...", "A vibrant abstract background...", "A complex geometric pattern...", "An abstract image featuring...", "A close-up of...", "A beautiful sunset over..."
+- GOOD examples: "Swirling abstract patterns blend green and blue hues into a spiral effect.", "Vibrant wavy lines in yellow and orange create a dynamic background.", "Interlocking circles, squares, and hexagons form a symmetrical geometric design on a dark background."
+- Start with the SUBJECT or ACTION directly — not with an article ("A/An/The").
+- Vary sentence structure: start with the subject, a color, a shape, an action verb, or a spatial description.
+- Each description must read differently from the last — never reuse the same opening phrase pattern.
 
 DO NOT guess:
 - The photographer's intent
@@ -52,13 +64,14 @@ DO NOT guess:
       '',
       'SPECIFIC REQUIREMENTS:',
       `- title: 5-15 words, under 180 chars, describes MAIN subject VISIBLE in image`,
-      `- description: ONE sentence ONLY, 120-190 chars, FACTUAL description of what you ACTUALLY SEE`,
+      `- description: ONE sentence ONLY, 120-190 chars, FACTUAL description of what you ACTUALLY SEE. Do NOT start with "A", "An", or "The" — start directly with the subject or action.`,
       `- keywords: 45-49 unique search terms ALL BASED ON VISIBLE ELEMENTS in the image`,
       `- category: Choose from: ${SHUTTERSTOCK_CATEGORIES_STR}`,
       ...shutterstockExtras,
       '',
       `IMPORTANT: For ${contentType}, focus on VISIBLE details only - style, composition, colors, elements present.`,
       'IF IMAGE IS BLURRY/DARK/UNCLEAR: Use honest language like "blurred", "dim lighting", "out of focus" - DO NOT invent precise details.',
+      antiDuplication,
       ''
     ].filter(Boolean).join('\n')
   }
@@ -91,7 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { activationCode, assetBrief, imageUrl, filename, platform } = req.body
+  const { activationCode, assetBrief, imageUrl, filename, platform, recentTitles } = req.body
 
   if (!activationCode || typeof activationCode !== 'string') {
     return res.status(401).json({ error: 'Kode aktivasi diperlukan.' })
@@ -197,7 +210,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const platformHint = platform?.includes('shutterstock') ? 'Shutterstock' : 'Adobe Stock'
     
     // Generate optimized prompt with strict hallucination prevention
-    const { systemPrompt, userInstruction } = await generateOpenAIPrompt(contentType, platformHint)
+    const { systemPrompt, userInstruction } = await generateOpenAIPrompt(contentType, platformHint, Array.isArray(recentTitles) ? recentTitles : [])
 
     const userMessage = isBase64Image
       ? {
