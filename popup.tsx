@@ -474,17 +474,13 @@ export default function Popup() {
                   </button>
                 )}
 
-                {/* Run Batch — Vecteezy (single button, no Auto Mode gate) */}
+                {/* Vecteezy: Run Batch TIDAK ada di popup — tombolnya ada di
+                    halaman contributor (injected content script). Popup hanya
+                    pegang setting (AI-generated toggle) + Stop. */}
                 {platform.isVecteezy && (
-                  <button
-                    className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    disabled={isBusy || isRunning}
-                    onClick={handleRunBatch}
-                    style={{ background: "linear-gradient(135deg, #7f1d1d, #991b1b)", color: "#fff" }}
-                  >
-                    {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                    {isRunning ? "Running..." : "▶ Run Batch"}
-                  </button>
+                  <p className="text-[10px] text-slate-500 leading-snug text-center">
+                    Tombol <span className="font-semibold text-slate-300">▶ Run Batch</span> ada di halaman portfolio Vecteezy, di samping grid toggle.
+                  </p>
                 )}
               </div>
             )}
