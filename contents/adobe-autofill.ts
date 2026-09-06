@@ -2048,41 +2048,43 @@ function createFloatingPanel(settings: AppSettings) {
     let assetBrief: string | ArrayBuffer | null = brief
     
     if (thumbnailUrl) {
-      // Try to convert to base64 first, fallback to blob URL if CORS blocks
+      // Fetch thumbnail as binary blob — like competitor approach.
+      // Use FileReader for robust base64 conversion (no stack overflow on large images).
       try {
-        // Use fetch with no-cors mode hint and try blob URL approach
-        const response = await fetch(thumbnailUrl)
-        
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 60_000) // 60s timeout like competitor
+
+        const response = await fetch(thumbnailUrl, { signal: controller.signal })
+        clearTimeout(timeout)
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`)
         }
-        
+
         const blob = await response.blob()
-        const arrayBuffer = await blob.arrayBuffer()
-        const uint8Array = new Uint8Array(arrayBuffer)
-        const bytes = String.fromCharCode(...uint8Array)
-        const binary = btoa(bytes)
-        const extension = thumbnailUrl.split('.').pop()?.toLowerCase() || 'jpg'
-        
-        // If successful, use base64 data URL
-        assetBrief = `data:image/${extension};base64,${binary}`
-      } catch (err) {
-        console.log("[autofillstock] Base64 failed, using blob URL:", err)
-        
-        // Fallback: create blob URL that extension service worker can access
-        try {
-          const response = await fetch(thumbnailUrl)
-          const blob = await response.blob()
-          const blobUrl = URL.createObjectURL(blob)
-          
-            // The backend cannot fetch a browser-only blob URL. Keep the original
-          // thumbnail data URL attempt as the only valid vision input.
-          URL.revokeObjectURL(blobUrl)
-          throw new Error("Thumbnail aset tidak dapat dibaca. Generate dibatalkan agar metadata tidak generik.")
-        } catch (fallbackErr) {
-          console.error("[autofillstock] Thumbnail fetch failed:", fallbackErr)
-          throw new Error("Gambar aset tidak dapat dibaca. Refresh halaman lalu coba lagi.")
+
+        if (blob.size === 0) {
+          throw new Error("Thumbnail kosong (0 bytes)")
         }
+
+        // ✅ FileReader — handles large images without stack overflow
+        // (String.fromCharCode(...uint8Array) fails for >100KB arrays)
+        assetBrief = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            const result = reader.result
+            if (typeof result === "string" && result.startsWith("data:image/")) {
+              resolve(result)
+            } else {
+              reject(new Error("FileReader tidak menghasilkan data URL valid"))
+            }
+          }
+          reader.onerror = () => reject(new Error("FileReader error"))
+          reader.readAsDataURL(blob)
+        })
+      } catch (err) {
+        console.error("[autofillstock] Thumbnail fetch/convert failed:", err)
+        throw new Error("Gambar aset tidak dapat dibaca. Refresh halaman lalu coba lagi.")
       }
     }
     
@@ -2138,7 +2140,10 @@ function createFloatingPanel(settings: AppSettings) {
     return metadata
   }
 
-  async function processBatch(settings: Awaited<ReturnType<typeof getSettings>>) {
+  async function processBatch(
+    settings: Awaited<ReturnType<typeof getSettings>>,
+    fillMode: "all" | "empty" = "all"
+  ) {
     let processed = 0
     let successCount = 0
     let failedCount = 0
@@ -2204,6 +2209,8 @@ function createFloatingPanel(settings: AppSettings) {
       const selectedCard = getExplicitSelectedAssetCard(freshCards)
       if (selectedCard !== targetCard) {
         setFooterStatus(root, `Memilih file ${index + 1}/${totalAssets}...`, "muted")
+        // ✅ Competitor pattern: scrollIntoView center + click before extracting thumbnail
+        targetCard.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" })
         const moved = await clickAssetCardAndWait(targetCard)
         if (!moved) {
           batchError = `Gagal memilih file ${index + 1}/${totalAssets}`
@@ -2215,6 +2222,25 @@ function createFloatingPanel(settings: AppSettings) {
       }
 
       await waitForAssetFormReady()
+
+      // ✅ "Fill empty only" mode — skip assets that already have title + keywords
+      // (adopted from competitor: skip if both fields already filled >10 words)
+      if (fillMode === "empty") {
+        const titleField = queryFirst(FIELD_SELECTORS.title)
+        const keywordField = queryKeywordField()
+        const titleVal = (titleField as HTMLTextAreaElement | HTMLInputElement)?.value?.trim() || ""
+        const keywordVal = (keywordField as HTMLTextAreaElement | HTMLInputElement)?.value?.trim() || ""
+        const titleWords = titleVal.split(/\s+/).filter((w) => w.length > 0).length
+        const keywordWords = keywordVal.split(/\s+/).filter((w) => w.length > 0).length
+
+        if (titleVal !== "" && keywordVal !== "" && titleWords >= 10 && keywordWords >= 10) {
+          setFooterStatus(root, `File ${index + 1}/${totalAssets} sudah berisi — skip`, "muted")
+          await wait(500)
+          processed++
+          continue
+        }
+      }
+
       setLoadingPreview(root, processed + 1, totalAssets)
 
       try {
