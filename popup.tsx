@@ -28,17 +28,19 @@ type Notice = { type: "success" | "error"; title: string; message: string } | nu
 const PLATFORMS: Array<{ id: MicrostockPlatform; label: string; url: string }> = [
   { id: "adobe_stock", label: "Adobe Stock", url: "https://contributor.stock.adobe.com/uploads" },
   { id: "shutterstock", label: "Shutterstock", url: "https://submit.shutterstock.com/upload" },
+  { id: "vecteezy", label: "Vecteezy", url: "https://contributors.vecteezy.com/portfolio" },
 ]
 
-function detectPlatform(url?: string): { isAdobe: boolean; isShutter: boolean; isStock: boolean } {
-  if (!url) return { isAdobe: false, isShutter: false, isStock: false }
+function detectPlatform(url?: string): { isAdobe: boolean; isShutter: boolean; isVecteezy: boolean; isStock: boolean } {
+  if (!url) return { isAdobe: false, isShutter: false, isVecteezy: false, isStock: false }
   try {
     const host = new URL(url).host
     const isAdobe = host.includes("stock.adobe.com") || host.includes("contributor.stock.adobe.com")
     const isShutter = host.includes("submit.shutterstock.com") || host.includes("contributor-accounts.shutterstock.com")
-    return { isAdobe, isShutter, isStock: isAdobe || isShutter }
+    const isVecteezy = host.includes("contributors.vecteezy.com")
+    return { isAdobe, isShutter, isVecteezy, isStock: isAdobe || isShutter || isVecteezy }
   } catch {
-    return { isAdobe: false, isShutter: false, isStock: false }
+    return { isAdobe: false, isShutter: false, isVecteezy: false, isStock: false }
   }
 }
 
@@ -60,12 +62,13 @@ export default function Popup() {
   const [planType, setPlanType] = useState<string>("free")
   const [userData, setUserData] = useState<{ name?: string; email?: string; avatar?: string } | null>(null)
   const [contentScriptReady, setContentScriptReady] = useState(false)
+  const [vzAiGenerated, setVzAiGenerated] = useState(false)
 
   const platform = detectPlatform(activeTabUrl)
   const isBusy = busy !== "idle"
   const isReady = settings.activation_status
   const isOnStockPage = platform.isStock
-  const activePlatformLabel = platform.isAdobe ? "Adobe Stock" : platform.isShutter ? "Shutterstock" : null
+  const activePlatformLabel = platform.isAdobe ? "Adobe Stock" : platform.isShutter ? "Shutterstock" : platform.isVecteezy ? "Vecteezy" : null
 
   // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -73,6 +76,7 @@ export default function Popup() {
       setSettings(stored)
       setActivationCode(stored.activation_code || "")
       setAutoMode(stored.panel_enabled || false)
+      setVzAiGenerated(stored.vzAiGenerated || false)
     })
 
     if (typeof chrome !== "undefined" && chrome.tabs) {
@@ -119,7 +123,7 @@ export default function Popup() {
     return chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
       if (!tab?.id) throw new Error("No active tab")
       if (!detectPlatform(tab.url).isStock)
-        throw new Error("Buka halaman Adobe Stock atau Shutterstock dulu.")
+        throw new Error("Buka halaman Adobe Stock, Shutterstock, atau Vecteezy dulu.")
       return chrome.tabs.sendMessage(tab.id, message).catch(() => {
         // Content script not loaded — likely tab was open before extension install
         throw new Error("Extension belum aktif di tab ini. Refresh halaman Adobe Stock, lalu buka popup lagi.")
@@ -181,6 +185,11 @@ export default function Popup() {
   async function handleAutoModeToggle(enabled: boolean) {
     setAutoMode(enabled)
     await updateSettings({ panel_enabled: enabled })
+  }
+
+  async function handleVzAiGeneratedToggle(enabled: boolean) {
+    setVzAiGenerated(enabled)
+    await updateSettings({ vzAiGenerated: enabled })
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -398,6 +407,31 @@ export default function Popup() {
                   </button>
                 )}
 
+                {/* Auto mark AI-generated — Vecteezy only */}
+                {platform.isVecteezy && (
+                  <label className="flex items-center gap-3 pt-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={vzAiGenerated}
+                      onChange={(e) => handleVzAiGeneratedToggle(e.target.checked)}
+                    />
+                    <div
+                      className="relative w-9 h-5 rounded-full shrink-0 transition-colors"
+                      style={{ background: vzAiGenerated ? "linear-gradient(135deg, #10b981, #06b6d4)" : "rgba(255,255,255,0.12)" }}
+                    >
+                      <div
+                        className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+                        style={{ transform: vzAiGenerated ? "translateX(16px)" : "translateX(0)" }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold text-slate-200 leading-tight">Auto mark AI-generated</p>
+                      <p className="text-[9px] text-slate-500 leading-tight mt-0.5">Centang otomatis + pilih AI tool (Midjourney dulu)</p>
+                    </div>
+                  </label>
+                )}
+
                 {/* Auto Mode toggle — gates Run Batch visibility (Adobe Stock only) */}
                 {platform.isAdobe && (
                   <label className="flex items-center gap-3 pt-1 cursor-pointer">
@@ -425,6 +459,19 @@ export default function Popup() {
 
                 {/* Run Batch — only visible when Auto Mode is ON */}
                 {autoMode && platform.isAdobe && (
+                  <button
+                    className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={isBusy || isRunning}
+                    onClick={handleRunBatch}
+                    style={{ background: "linear-gradient(135deg, #7f1d1d, #991b1b)", color: "#fff" }}
+                  >
+                    {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                    {isRunning ? "Running..." : "▶ Run Batch"}
+                  </button>
+                )}
+
+                {/* Run Batch — Vecteezy (single button, no Auto Mode gate) */}
+                {platform.isVecteezy && (
                   <button
                     className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     disabled={isBusy || isRunning}

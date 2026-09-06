@@ -16,10 +16,19 @@ const SHUTTERSTOCK_CATEGORIES_STR = [
 
 async function generateOpenAIPrompt(contentType: string, platformHint: string, recentTitles: string[] = []): Promise<{systemPrompt: string; userInstruction: string}> {
   const isShutterstock = platformHint === 'Shutterstock'
+  const isVecteezy = platformHint === 'Vecteezy'
 
-  const jsonFormat = isShutterstock
-    ? `{"title":"...","description":"...","keywords":[...],"category":"...","category2":"...","file_type":"..."}`
-    : `{"title":"...","description":"...","keywords":[...],"category":"..."}`
+  const jsonFormat = isVecteezy
+    ? `{"title":"...","description":"...","keywords":["...","..."]}`
+    : isShutterstock
+      ? `{"title":"...","description":"...","keywords":[...],"category":"...","category2":"...","file_type":"..."}`
+      : `{"title":"...","description":"...","keywords":[...],"category":"..."}`
+
+  const vecteezyExtras = isVecteezy ? [
+    `- title: MINIMUM 3 words (site rule). 5-10 words ideal. Must describe the subject directly.`,
+    `- keywords: 25-45 unique terms. STRICT RULES: no dashes, periods, or parentheses (use spaces instead, e.g. "snow like" not "snow-like"). FORBIDDEN generic terms: "photo", "photos", "video", "videos", "vector", "vectors", "png", "psd", "ai generated", "generative ai" — the site rejects these.`,
+    `- description: optional short summary (used only for Bundle assets).`,
+  ] : []
 
   const shutterstockExtras = isShutterstock ? [
     `- category2: Pilih kategori sekunder yang LEBIH LUAS dari category. Harus berbeda dari category. Pilih dari: ${SHUTTERSTOCK_CATEGORIES_STR}`,
@@ -63,10 +72,11 @@ DO NOT guess:
       `Return EXACTLY valid JSON only: ${jsonFormat}`,
       '',
       'SPECIFIC REQUIREMENTS:',
-      `- title: 5-15 words, under 180 chars, describes MAIN subject VISIBLE in image`,
+      `- title: 5-15 words, under 180 chars, describes MAIN subject VISIBLE in image. Do NOT start with "A", "An", or "The".`,
       `- description: ONE sentence ONLY, 120-190 chars, FACTUAL description of what you ACTUALLY SEE. Do NOT start with "A", "An", or "The" — start directly with the subject or action.`,
       `- keywords: 45-49 unique search terms ALL BASED ON VISIBLE ELEMENTS in the image`,
-      `- category: Choose from: ${SHUTTERSTOCK_CATEGORIES_STR}`,
+      ...(isVecteezy ? [] : [`- category: Choose from: ${SHUTTERSTOCK_CATEGORIES_STR}`]),
+      ...vecteezyExtras,
       ...shutterstockExtras,
       '',
       `IMPORTANT: For ${contentType}, focus on VISIBLE details only - style, composition, colors, elements present.`,
@@ -91,7 +101,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const isExtension = origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')
   const isAdobeStock = origin.includes('stock.adobe.com')
   const isShutterstock = origin.includes('shutterstock.com')
-  const isAllowed = isExtension || isAdobeStock || isShutterstock || origin === ALLOWED_ORIGIN
+  const isVecteezy = origin.includes('vecteezy.com')
+  const isAllowed = isExtension || isAdobeStock || isShutterstock || isVecteezy || origin === ALLOWED_ORIGIN
 
   if (origin && !isAllowed) {
     return res.status(403).json({ error: 'Forbidden' })
@@ -207,7 +218,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const isVectorContent = briefStr.toLowerCase().includes('file type: vector') ||
       /\.(eps|svg|ai)$/i.test(filename || '')
     const contentType = isVideoContent ? 'video' : isVectorContent ? 'vector/illustration' : 'photo/image'
-    const platformHint = platform?.includes('shutterstock') ? 'Shutterstock' : 'Adobe Stock'
+    const platformHint = platform?.includes('shutterstock') ? 'Shutterstock' : platform?.includes('vecteezy') ? 'Vecteezy' : 'Adobe Stock'
     
     // Generate optimized prompt with strict hallucination prevention
     const { systemPrompt, userInstruction } = await generateOpenAIPrompt(contentType, platformHint, Array.isArray(recentTitles) ? recentTitles : [])

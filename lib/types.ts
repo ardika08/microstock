@@ -20,6 +20,7 @@ export type AppSettings = {
   selected_microstock: MicrostockPlatform
   usage_count: number
   last_generated?: string
+  vzAiGenerated?: boolean
 }
 
 export type AutofillMessage =
