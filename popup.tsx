@@ -13,8 +13,10 @@ import {
   Settings as SettingsIcon,
   LogOut,
   ExternalLink,
+  Image as ImageIcon,
 } from "lucide-react"
 import { useEffect, useState, useCallback } from "react"
+import "~/style.css"
 
 import { validateActivationCode } from "~/lib/activation"
 import { getSettings, updateSettings } from "~/lib/storage"
@@ -23,23 +25,20 @@ import type { AppSettings, MicrostockPlatform } from "~/lib/types"
 type BusyState = "idle" | "activating" | "running"
 type Notice = { type: "success" | "error"; title: string; message: string } | null
 
-const PLATFORMS: Array<{ id: MicrostockPlatform; label: string }> = [
-  { id: "adobe_stock", label: "Adobe Stock" },
-  { id: "shutterstock", label: "Shutterstock" },
+const PLATFORMS: Array<{ id: MicrostockPlatform; label: string; url: string }> = [
+  { id: "adobe_stock", label: "Adobe Stock", url: "https://contributor.stock.adobe.com/uploads" },
+  { id: "shutterstock", label: "Shutterstock", url: "https://submit.shutterstock.com/upload" },
 ]
 
-function isSupportedUrl(url?: string) {
-  if (!url) return false
+function detectPlatform(url?: string): { isAdobe: boolean; isShutter: boolean; isStock: boolean } {
+  if (!url) return { isAdobe: false, isShutter: false, isStock: false }
   try {
     const host = new URL(url).host
-    return (
-      host.includes("stock.adobe.com") ||
-      host.includes("contributor.stock.adobe.com") ||
-      host.includes("submit.shutterstock.com") ||
-      host.includes("contributor-accounts.shutterstock.com")
-    )
+    const isAdobe = host.includes("stock.adobe.com") || host.includes("contributor.stock.adobe.com")
+    const isShutter = host.includes("submit.shutterstock.com") || host.includes("contributor-accounts.shutterstock.com")
+    return { isAdobe, isShutter, isStock: isAdobe || isShutter }
   } catch {
-    return false
+    return { isAdobe: false, isShutter: false, isStock: false }
   }
 }
 
@@ -59,32 +58,41 @@ export default function Popup() {
   const [creditRemaining, setCreditRemaining] = useState<number | null>(null)
   const [creditTotal, setCreditTotal] = useState<number | null>(null)
   const [planType, setPlanType] = useState<string>("free")
+  const [userData, setUserData] = useState<{ name?: string; email?: string; avatar?: string } | null>(null)
 
+  const platform = detectPlatform(activeTabUrl)
   const isBusy = busy !== "idle"
   const isReady = settings.activation_status
-  const isOnStockPage = isSupportedUrl(activeTabUrl)
+  const isOnStockPage = platform.isStock
+  const activePlatformLabel = platform.isAdobe ? "Adobe Stock" : platform.isShutter ? "Shutterstock" : null
 
+  // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     getSettings().then((stored) => {
       setSettings(stored)
       setActivationCode(stored.activation_code || "")
       setAutoMode(stored.panel_enabled || false)
     })
+
     if (typeof chrome !== "undefined" && chrome.tabs) {
       chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
         setActiveTabUrl(tab?.url || "")
       })
     }
+
+    // Fetch user data — refresh every popup open (like Automeda)
     fetch("https://autofillstock.my.id/api/user/me", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data) {
-          setCreditRemaining(data.credits ?? null)
-          setCreditTotal(data.creditsUsed ? data.credits + data.creditsUsed : null)
-          setPlanType(data.planType || "free")
-        }
+        if (!data) return
+        setUserData({ name: data.name, email: data.email, avatar: data.image })
+        setCreditRemaining(data.credits ?? null)
+        setCreditTotal(data.creditsUsed ? data.credits + data.creditsUsed : null)
+        setPlanType(data.planType || "free")
       })
       .catch(() => {})
+
+    // Poll run status
     const statusInterval = setInterval(() => {
       if (typeof chrome !== "undefined" && chrome.tabs) {
         chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
@@ -103,7 +111,8 @@ export default function Popup() {
     if (typeof chrome === "undefined" || !chrome.tabs) return Promise.reject(new Error("No chrome.tabs"))
     return chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
       if (!tab?.id) throw new Error("No active tab")
-      if (!isSupportedUrl(tab.url)) throw new Error("Buka halaman Adobe Stock atau Shutterstock dulu.")
+      if (!detectPlatform(tab.url).isStock)
+        throw new Error("Buka halaman Adobe Stock atau Shutterstock dulu.")
       return chrome.tabs.sendMessage(tab.id, message)
     })
   }, [])
@@ -150,9 +159,13 @@ export default function Popup() {
     } catch {}
   }
 
-  async function handleMicrostockSelect(platform: MicrostockPlatform) {
-    await updateSettings({ selected_microstock: platform })
-    setSettings((c) => ({ ...c, selected_microstock: platform }))
+  async function handleMicrostockSelect(p: typeof PLATFORMS[number]) {
+    await updateSettings({ selected_microstock: p.id })
+    setSettings((c) => ({ ...c, selected_microstock: p.id }))
+    if (typeof chrome !== "undefined" && chrome.tabs) {
+      chrome.tabs.create({ url: p.url })
+      window.close()
+    }
   }
 
   async function handleAutoModeToggle(enabled: boolean) {
@@ -160,23 +173,26 @@ export default function Popup() {
     await updateSettings({ panel_enabled: enabled })
   }
 
+  // ── Derived ───────────────────────────────────────────────────────────────
   const planLabel = (() => {
     switch (planType) {
-      case "lifetime": return "LIFETIME"
-      case "intro": return "INTRO"
-      case "basic": return "BASIC"
-      case "value": return "VALUE"
-      case "topup": return "TOP UP"
-      default: return "FREE"
+      case "lifetime": return "Pro ∞"
+      case "intro": return "Pro"
+      case "basic": return "Pro"
+      case "value": return "Pro"
+      case "topup": return "Pro"
+      default: return "Free"
     }
   })()
+
+  const isPro = planType !== "free"
 
   const creditLabel = planType === "lifetime"
     ? "∞ Unlimited"
     : creditRemaining !== null && creditTotal !== null
     ? `${creditRemaining} / ${creditTotal}`
     : creditRemaining !== null
-    ? `${creditRemaining}`
+    ? `${creditRemaining} credits`
     : "—"
 
   const creditPct = creditRemaining !== null && creditTotal && creditTotal > 0
@@ -187,61 +203,83 @@ export default function Popup() {
     window.open(`https://autofillstock.my.id${path}`, "_blank")
   }
 
-  // ── Shared card style ────────────────────────────────────────────────────────
-  const cardStyle = {
-    background: "rgba(255,255,255,0.025)",
-    border: "1px solid rgba(255,255,255,0.07)",
-  } as const
+  // ── Shared styles ─────────────────────────────────────────────────────────
+  const cardBg = "bg-white/[0.03] border border-white/[0.07]"
 
   return (
     <main
-      className="w-[380px] text-white"
+      className="w-[360px] text-slate-200 font-sans antialiased"
       style={{
-        background: "linear-gradient(160deg, #0c1220 0%, #0a0f1a 100%)",
+        background: "linear-gradient(165deg, #0a0e1a 0%, #0d1220 50%, #0a0f1c 100%)",
         fontFamily: "Inter, system-ui, -apple-system, sans-serif",
       }}
     >
-      {/* ══ Header ══════════════════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════════════════
+           HEADER — User profile + plan badge (Automeda style)
+           ════════════════════════════════════════════════════════════════════════ */}
       <div
-        className="px-4 py-4 flex items-center gap-3"
-        style={{
-          background: "linear-gradient(135deg, rgba(30,35,60,0.6) 0%, rgba(15,40,71,0.4) 100%)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
+        className="px-4 py-4 flex items-center gap-3 border-b border-white/[0.06]"
+        style={{ background: "rgba(255,255,255,0.015)" }}
       >
-        <img alt="Autofillstock" className="h-10 w-10 rounded-xl border border-white/10 shrink-0" src={iconUrl} />
-        <div className="flex-1 min-w-0">
-          <h1 className="text-base font-bold text-white leading-tight tracking-tight">AUTOFILLSTOCK</h1>
-          <p className="text-[10px] text-slate-500 leading-tight mt-0.5">Creative Tools</p>
+        {/* Avatar */}
+        <div className="h-9 w-9 rounded-full overflow-hidden shrink-0 border border-white/10 flex items-center justify-center bg-slate-800">
+          {userData?.avatar ? (
+            <img src={userData.avatar} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-sm font-bold text-emerald-400">
+              {(userData?.name || userData?.email || "A")[0]?.toUpperCase()}
+            </span>
+          )}
         </div>
+
+        {/* Name + email */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold text-white truncate leading-tight">
+            {userData?.name || "Ardika Yudha"}
+          </p>
+          <p className="text-[10px] text-slate-500 truncate leading-tight mt-0.5">
+            {userData?.email || "—"}
+          </p>
+        </div>
+
+        {/* Plan badge */}
         <span
           className="text-[9px] font-bold px-2 py-1 rounded-full tracking-wide shrink-0"
           style={{
-            background: planType === "free" ? "rgba(100,116,139,0.15)" : "rgba(16,185,129,0.1)",
-            border: `1px solid ${planType === "free" ? "rgba(100,116,139,0.25)" : "rgba(16,185,129,0.2)"}`,
-            color: planType === "free" ? "#94a3b8" : "#6ee7b7",
+            background: isPro ? "rgba(16,185,129,0.12)" : "rgba(100,116,139,0.12)",
+            border: `1px solid ${isPro ? "rgba(16,185,129,0.25)" : "rgba(100,116,139,0.2)"}`,
+            color: isPro ? "#6ee7b7" : "#94a3b8",
           }}
         >
           {planLabel}
         </span>
       </div>
 
-      {/* ══ Status bar ═════════════════════════════════════════════════════════ */}
-      <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+      {/* ════════════════════════════════════════════════════════════════════════
+           STATUS BAR — Active platform indicator (Automeda style)
+           ════════════════════════════════════════════════════════════════════════ */}
+      <div className="px-4 py-2.5 flex items-center gap-2 border-b border-white/[0.04]">
         <span
           className="h-1.5 w-1.5 rounded-full shrink-0"
-          style={{ background: isOnStockPage ? "#34d399" : "#475569", boxShadow: isOnStockPage ? "0 0 5px rgba(52,211,153,0.5)" : "none" }}
+          style={{
+            background: isOnStockPage ? "#34d399" : "#475569",
+            boxShadow: isOnStockPage ? "0 0 6px rgba(52,211,153,0.6)" : "none",
+          }}
         />
-        <span className="text-[11px] font-semibold" style={{ color: isOnStockPage ? "#6ee7b7" : "#64748b" }}>
-          {isOnStockPage
-            ? `ACTIVE: ${settings.selected_microstock === "shutterstock" ? "SHUTTERSTOCK" : "ADOBE STOCK"}`
-            : "Buka halaman Adobe Stock / Shutterstock"}
+        <span className="text-[11px] font-medium" style={{ color: isOnStockPage ? "#6ee7b7" : "#64748b" }}>
+          {activePlatformLabel ? (
+            <>Active on <strong className="font-semibold">{activePlatformLabel}</strong></>
+          ) : (
+            "Open a stock platform to begin"
+          )}
         </span>
       </div>
 
-      {/* ══ Body ═══════════════════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════════════════
+           BODY
+           ════════════════════════════════════════════════════════════════════════ */}
       <div className="p-4 flex flex-col gap-3">
-        {/* Notice */}
+        {/* ── Notice ─────────────────────────────────────────────────────────── */}
         {notice && (
           <div
             className="rounded-lg p-3 flex items-start gap-2.5"
@@ -264,9 +302,9 @@ export default function Popup() {
           </div>
         )}
 
-        {/* ─── Not activated: login card ─────────────────────────────────────────── */}
+        {/* ─── NOT ACTIVATED ─────────────────────────────────────────────────── */}
         {!isReady ? (
-          <div className="rounded-xl p-4 flex flex-col gap-3" style={cardStyle}>
+          <div className={`rounded-xl p-4 flex flex-col gap-3 ${cardBg}`}>
             <div>
               <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 Activation Code
@@ -276,8 +314,7 @@ export default function Popup() {
                 value={activationCode}
                 onChange={(e) => setActivationCode(e.target.value)}
                 placeholder="ASAF-XXXXXX-XXXXXX"
-                className="w-full rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none focus:ring-1 focus:ring-emerald-500/40"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+                className="w-full rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none focus:ring-1 focus:ring-emerald-500/40 bg-white/[0.03] border border-white/[0.08]"
               />
             </div>
             <button
@@ -292,111 +329,117 @@ export default function Popup() {
             <p className="text-center text-[10px] text-slate-600">Ambil kode di dashboard → Settings</p>
           </div>
         ) : (
-          /* ─── Activated: control center ────────────────────────────────────────── */
+          /* ─── ACTIVATED: CONTROL CENTER ────────────────────────────────────── */
           <>
-
-            {/* ── Action row: Generate AI + Stop ─────────────────────────────── */}
-            <div className="flex gap-2">
-              <button
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                disabled={isBusy || isRunning || !isOnStockPage}
-                onClick={() => sendToTab({ type: "RUN_SINGLE_GENERATE" })}
-                style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)", color: "#022c22" }}
-              >
-                <Zap className="h-4 w-4" />
-                Generate AI
-              </button>
-              {isRunning && (
+            {/* ── Quick Actions — only on stock pages (Automeda pattern) ──────── */}
+            {isOnStockPage && (
+              <div className={`rounded-xl p-3.5 flex flex-col gap-3 ${cardBg}`}>
+                {/* Run Batch */}
                 <button
-                  className="flex items-center justify-center rounded-lg px-4 py-2.5 text-[13px] font-semibold transition-all"
-                  onClick={handleStop}
-                  style={{ background: "#3b1720", color: "#fecaca", border: "1px solid rgba(254,202,202,0.15)" }}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={isBusy || isRunning}
+                  onClick={handleRunBatch}
+                  style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)", color: "#022c22" }}
                 >
-                  <Square className="h-3.5 w-3.5" />
-                  Stop
+                  {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                  {isRunning ? "Running..." : "▶ Run Batch"}
                 </button>
-              )}
-            </div>
 
-            {/* ── Auto Mode + Run Batch in one card ──────────────────────────── */}
-            <div className="rounded-xl overflow-hidden" style={cardStyle}>
-              <label className="flex items-center gap-3 px-3.5 py-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={autoMode}
-                  onChange={(e) => handleAutoModeToggle(e.target.checked)}
-                />
-                {/* Toggle switch */}
-                <div
-                  className="relative w-9 h-4.5 rounded-full shrink-0 transition-colors"
-                  style={{ height: "18px", background: autoMode ? "linear-gradient(135deg, #10b981, #06b6d4)" : "rgba(255,255,255,0.12)" }}
+                {/* Generate AI (single) */}
+                <button
+                  className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={isBusy || isRunning}
+                  onClick={() => sendToTab({ type: "RUN_SINGLE_GENERATE" })}
+                  style={{ background: "rgba(255,255,255,0.04)", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
-                  <div
-                    className="absolute top-0.5 left-0.5 h-3.5 w-3.5 rounded-full bg-white transition-transform"
-                    style={{ transform: autoMode ? "translateX(18px)" : "translateX(0)" }}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-semibold text-slate-200 leading-tight">Auto Mode</p>
-                  <p className="text-[9px] text-slate-500 leading-tight mt-0.5">Proses semua asset sekaligus</p>
-                </div>
-              </label>
-              {autoMode && (
-                <div className="px-3.5 pb-3.5">
-                  <button
-                    className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    disabled={isBusy || isRunning || !isOnStockPage}
-                    onClick={handleRunBatch}
-                    style={{ background: "linear-gradient(135deg, #7f1d1d, #991b1b)", color: "#fff" }}
-                  >
-                    {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                    {isRunning ? "Running..." : "Run Batch"}
-                  </button>
-                </div>
-              )}
-            </div>
+                  <Zap className="h-3.5 w-3.5 text-emerald-400" />
+                  Generate AI
+                </button>
 
-            {/* ── Credit bar ─────────────────────────────────────────────────── */}
-            <div className="rounded-xl px-3.5 py-3" style={cardStyle}>
+                {/* Stop — only when running */}
+                {isRunning && (
+                  <button
+                    className="w-full flex items-center justify-center gap-2 rounded-lg py-2 text-[12px] font-semibold transition-all"
+                    onClick={handleStop}
+                    style={{ background: "rgba(239,68,68,0.1)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.2)" }}
+                  >
+                    <Square className="h-3 w-3" />
+                    Stop
+                  </button>
+                )}
+
+                {/* Auto Mode — Adobe Stock only (Automeda pattern) */}
+                {platform.isAdobe && (
+                  <label className="flex items-center gap-3 pt-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={autoMode}
+                      onChange={(e) => handleAutoModeToggle(e.target.checked)}
+                    />
+                    {/* Toggle switch */}
+                    <div
+                      className="relative w-9 h-5 rounded-full shrink-0 transition-colors"
+                      style={{ background: autoMode ? "linear-gradient(135deg, #10b981, #06b6d4)" : "rgba(255,255,255,0.12)" }}
+                    >
+                      <div
+                        className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+                        style={{ transform: autoMode ? "translateX(16px)" : "translateX(0)" }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold text-slate-200 leading-tight">AI Auto Mode</p>
+                      <p className="text-[9px] text-slate-500 leading-tight mt-0.5">Proses semua asset sekaligus</p>
+                    </div>
+                  </label>
+                )}
+              </div>
+            )}
+
+            {/* ── Usage / Credit bar (Automeda style) ─────────────────────────── */}
+            <div className={`rounded-xl px-3.5 py-3 ${cardBg}`}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Kredit Tersisa</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  {planType === "lifetime" ? "Usage" : "Kredit Tersisa"}
+                </span>
                 <span className="text-[13px] font-bold text-white">{creditLabel}</span>
               </div>
               {planType !== "lifetime" && creditTotal !== null && creditTotal > 0 && (
-                <div className="h-1 w-full rounded-full bg-slate-800 overflow-hidden">
+                <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${creditPct}%`,
-                      background: creditPct < 20 ? "#ef4444" : "linear-gradient(90deg, #10b981, #06b6d4)",
+                      background: creditPct < 20
+                        ? "linear-gradient(90deg, #ef4444, #f87171)"
+                        : "linear-gradient(90deg, #10b981, #06b6d4)",
                     }}
                   />
                 </div>
               )}
             </div>
 
-            {/* ── Platform grid ──────────────────────────────────────────────── */}
-            <div className="rounded-xl px-3.5 py-3" style={cardStyle}>
+            {/* ── Open Platform grid (Automeda style) ─────────────────────────── */}
+            <div className={`rounded-xl px-3.5 py-3 ${cardBg}`}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2.5">Open Platform</p>
               <div className="grid grid-cols-2 gap-2">
                 {PLATFORMS.map((p) => {
                   const selected = settings.selected_microstock === p.id
+                  const isActive = (p.id === "adobe_stock" && platform.isAdobe) || (p.id === "shutterstock" && platform.isShutter)
                   return (
                     <button
                       key={p.id}
-                      disabled={isBusy}
-                      onClick={() => handleMicrostockSelect(p.id)}
+                      onClick={() => handleMicrostockSelect(p)}
                       className="rounded-lg py-2 text-[11px] font-semibold transition-all flex items-center justify-center gap-1.5"
                       style={{
-                        background: selected ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.03)",
-                        border: `1px solid ${selected ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.06)"}`,
-                        color: selected ? "#6ee7b7" : "#94a3b8",
+                        background: isActive ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${isActive ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.06)"}`,
+                        color: isActive ? "#6ee7b7" : "#94a3b8",
                       }}
                     >
                       <span
                         className="h-1.5 w-1.5 rounded-full shrink-0"
-                        style={{ background: selected ? "#34d399" : "rgba(148,163,184,0.3)" }}
+                        style={{ background: isActive ? "#34d399" : "rgba(148,163,184,0.3)" }}
                       />
                       {p.label}
                     </button>
@@ -405,12 +448,15 @@ export default function Popup() {
               </div>
             </div>
 
-            {/* ── Upgrade card (free only) ───────────────────────────────────── */}
-            {planType === "free" && (
+            {/* ── Upgrade card — free only (Automeda pattern) ─────────────────── */}
+            {!isPro && (
               <button
                 onClick={() => openDashboard("/dashboard/billing")}
                 className="w-full flex items-center gap-3 rounded-xl px-3.5 py-3 transition-all hover:opacity-90"
-                style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(16,185,129,0.04))", border: "1px solid rgba(139,92,246,0.2)" }}
+                style={{
+                  background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(16,185,129,0.04))",
+                  border: "1px solid rgba(139,92,246,0.2)",
+                }}
               >
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
                   <Crown className="w-4 h-4 text-violet-400" />
@@ -423,20 +469,18 @@ export default function Popup() {
               </button>
             )}
 
-            {/* ── Footer nav ────────────────────────────────────────────────── */}
+            {/* ── Footer nav (Automeda style) ─────────────────────────────────── */}
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => openDashboard("/dashboard/history")}
-                className="flex flex-col items-center gap-1 py-2.5 rounded-lg transition-all hover:bg-white/5"
-                style={cardStyle}
+                className={`flex flex-col items-center gap-1 py-2.5 rounded-lg transition-all hover:bg-white/5 ${cardBg}`}
               >
                 <Clock className="w-4 h-4 text-slate-400" />
                 <span className="text-[9px] font-medium text-slate-500">History</span>
               </button>
               <button
                 onClick={() => openDashboard("/dashboard/settings")}
-                className="flex flex-col items-center gap-1 py-2.5 rounded-lg transition-all hover:bg-white/5"
-                style={cardStyle}
+                className={`flex flex-col items-center gap-1 py-2.5 rounded-lg transition-all hover:bg-white/5 ${cardBg}`}
               >
                 <SettingsIcon className="w-4 h-4 text-slate-400" />
                 <span className="text-[9px] font-medium text-slate-500">Settings</span>
@@ -449,8 +493,7 @@ export default function Popup() {
                   window.open("https://autofillstock.my.id/auth/login", "_blank")
                   window.close()
                 }}
-                className="flex flex-col items-center gap-1 py-2.5 rounded-lg transition-all hover:bg-white/5"
-                style={cardStyle}
+                className={`flex flex-col items-center gap-1 py-2.5 rounded-lg transition-all hover:bg-white/5 ${cardBg}`}
               >
                 <LogOut className="w-4 h-4 text-slate-400" />
                 <span className="text-[9px] font-medium text-slate-500">Logout</span>
