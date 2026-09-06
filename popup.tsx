@@ -384,16 +384,20 @@ export default function Popup() {
             {/* ── Quick Actions — only on stock pages ─────────────────────────── */}
             {isOnStockPage && (
               <div className={`rounded-xl p-3.5 flex flex-col gap-3 ${cardBg}`}>
-                {/* Generate AI (single) — always available */}
-                <button
-                  className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  disabled={isBusy || isRunning}
-                  onClick={() => sendToTab({ type: "RUN_SINGLE_GENERATE" })}
-                  style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)", color: "#022c22" }}
-                >
-                  <Zap className="h-4 w-4" />
-                  Generate AI
-                </button>
+                {/* Generate AI (single) — Adobe/Shutterstock only.
+                    Vecteezy tidak punya konsep aset aktif di viewer, jadi single generate
+                    ambigu — batch adalah satu-satunya aksi di sana. */}
+                {!platform.isVecteezy && (
+                  <button
+                    className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={isBusy || isRunning}
+                    onClick={() => sendToTab({ type: "RUN_SINGLE_GENERATE" })}
+                    style={{ background: "linear-gradient(135deg, #10b981, #06b6d4)", color: "#022c22" }}
+                  >
+                    <Zap className="h-4 w-4" />
+                    Generate AI
+                  </button>
+                )}
 
                 {/* Stop — only when running */}
                 {isRunning && (

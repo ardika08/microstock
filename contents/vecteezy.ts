@@ -770,53 +770,11 @@ async function runAutoFillMode(): Promise<void> {
   }
 }
 
-// ── Inline button injection ───────────────────────────────────────────────
-
-let injectDebounceTimer: ReturnType<typeof setTimeout> | null = null
-function scheduleInject(): void {
-  if (injectDebounceTimer) return
-  injectDebounceTimer = setTimeout(() => {
-    injectDebounceTimer = null
-    tryInject()
-  }, 250)
-}
-
-function tryInject(): void {
-  if (!settings.vz_enabled) return
-  if (document.getElementById('asaf-vz-btn')) return
-
-  const anchor = document.querySelector('[data-testid="grid-size-toggles"]') as HTMLElement | null
-  if (!anchor?.parentElement) return
-
-  const btn = document.createElement('button')
-  btn.id = 'asaf-vz-btn'
-  btn.type = 'button'
-  btn.style.cssText = `
-    background: linear-gradient(135deg, #10b981, #06b6d4);
-    color: #022c22;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.15s;
-    margin-right: 8px;
-    font-family: Inter, system-ui, sans-serif;
-  `
-  btn.textContent = '▶ Run Batch'
-  btn.addEventListener('click', () => {
-    if (!running) runAutoFillMode()
-  })
-  anchor.parentElement.insertBefore(btn, anchor)
-}
-
-// ── Bootstrap ─────────────────────────────────────────────────────────────
-
-const domObserver = new MutationObserver(scheduleInject)
-domObserver.observe(document.body, { childList: true, subtree: true })
-window.addEventListener('pagehide', () => domObserver.disconnect())
-refreshSettingsCache().then(tryInject)
+// ── Catatan desain ────────────────────────────────────────────────────────
+// Tidak ada tombol inline di halaman — popup adalah SATU-SATUNYA trigger
+// (Run Batch + Generate AI). Alasan: dua tombol di dua tempat untuk aksi
+// yang sama bikin user bingung mana yang valid; pola popup-only juga sudah
+// terbukti di Adobe Stock.
 
 // Single generate — pilih resource pertama yang unfilled, proses HANYA itu.
 async function runSingleGenerate(): Promise<void> {
