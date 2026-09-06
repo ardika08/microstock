@@ -1,6 +1,6 @@
 // ─── Autofillstock · content/vecteezy.ts ──────────────────────────────
 // Vecteezy metadata generation — adopsi pola Automeda:
-// - 1 tombol inline "Generate AI" — auto-scan SEMUA resource unfilled via API Vecteezy
+// - 1 tombol inline "Run Batch" — auto-scan SEMUA resource unfilled via API Vecteezy
 //   (grid virtualized → DOM-scan tidak reliable, enumerasi via /api/v1/resources)
 // - Tag input keywords (satu kata per komando: koma → Enter fallback)
 // - Prohibited terms sanitasi (keyword & title) sesuai aturan Vecteezy
@@ -758,7 +758,7 @@ function tryInject(): void {
     margin-right: 8px;
     font-family: Inter, system-ui, sans-serif;
   `
-  btn.textContent = '✦ Generate AI'
+  btn.textContent = '▶ Run Batch'
   btn.addEventListener('click', () => {
     if (!running) runAutoFillMode()
   })
