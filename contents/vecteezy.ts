@@ -47,18 +47,18 @@ const AI_TOOL_PRIORITY = ['midjourney', 'stable_diffusion', 'dall_e', 'other']
 
 // ── State ────────────────────────────────────────────────────────────────
 
-interface VzSettings { vz_enabled: boolean; vz_ai_generated: boolean }
-let settings: VzSettings = { vz_enabled: true, vz_ai_generated: false }
+interface VzSettings { vz_enabled: boolean; vzAiGenerated: boolean }
+let settings: VzSettings = { vz_enabled: true, vzAiGenerated: false }
 let running = false
 let recentTitles: string[] = [] // TITLE (bukan description) — anti-duplikasi batch
 let prohibitedTermsCache: string[] | null = null
 
 function refreshSettingsCache(): Promise<VzSettings> {
   return new Promise((r) =>
-    chrome.storage.local.get(['vz_enabled', 'vz_ai_generated'], (s) => {
+    chrome.storage.local.get(['vz_enabled', 'vzAiGenerated'], (s) => {
       settings = {
         vz_enabled: s.vz_enabled !== false,
-        vz_ai_generated: !!s.vz_ai_generated,
+        vzAiGenerated: !!s.vzAiGenerated,
       }
       r(settings)
     })
@@ -67,7 +67,7 @@ function refreshSettingsCache(): Promise<VzSettings> {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return
-  if ('vz_enabled' in changes || 'vz_ai_generated' in changes) refreshSettingsCache()
+  if ('vz_enabled' in changes || 'vzAiGenerated' in changes) refreshSettingsCache()
 })
 
 function debugLog(...args: any[]) {
@@ -485,7 +485,7 @@ async function applyAiGeneratedFlag(): Promise<void> {
   if (!section) return
   const checkbox = section.querySelector('input[type="checkbox"][value="ai_generated"]') as HTMLInputElement | null
   if (!checkbox) return
-  if (!settings.vz_ai_generated) return // toggle OFF — biarkan state apa adanya
+  if (!settings.vzAiGenerated) return // toggle OFF — biarkan state apa adanya
   if (checkbox.checked) return // sudah diset
 
   checkbox.click()

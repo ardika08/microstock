@@ -302,14 +302,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       const metadata = JSON.parse(jsonStr)
       
-      // Validate structure
-      if (!metadata.title || !metadata.description || !Array.isArray(metadata.keywords) || !metadata.category) {
+      // Validate structure — Vecteezy TIDAK pakai category (title+keywords saja),
+      // Adobe/Shutterstock wajib category
+      const isVecteezyPlatform = platform === 'vecteezy'
+      const requiredMissing = isVecteezyPlatform
+        ? (!metadata.title || !Array.isArray(metadata.keywords))
+        : (!metadata.title || !metadata.description || !Array.isArray(metadata.keywords) || !metadata.category)
+      if (requiredMissing) {
         console.error('[extension/generate] Invalid metadata structure:', metadata)
         throw new Error('Format metadata tidak lengkap (missing title/description/keywords/category)')
       }
       
-      // Validate keyword count
-      if (metadata.keywords.length < 45 || metadata.keywords.length > 49) {
+      // Validate keyword count — Vecteezy 25-45 (prompt sudah mengatur), Adobe/SS 45-49
+      if (isVecteezyPlatform) {
+        metadata.keywords = metadata.keywords.slice(0, 45)
+      } else if (metadata.keywords.length < 45 || metadata.keywords.length > 49) {
         console.warn('[extension/generate] Keyword count warning:', metadata.keywords.length, 'keywords')
         if (metadata.keywords.length < 45) {
           const extraKeywords = ['commercial', 'stock photo', 'microstock']
