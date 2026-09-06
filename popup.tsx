@@ -59,6 +59,7 @@ export default function Popup() {
   const [creditTotal, setCreditTotal] = useState<number | null>(null)
   const [planType, setPlanType] = useState<string>("free")
   const [userData, setUserData] = useState<{ name?: string; email?: string; avatar?: string } | null>(null)
+  const [contentScriptReady, setContentScriptReady] = useState(false)
 
   const platform = detectPlatform(activeTabUrl)
   const isBusy = busy !== "idle"
@@ -77,6 +78,12 @@ export default function Popup() {
     if (typeof chrome !== "undefined" && chrome.tabs) {
       chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
         setActiveTabUrl(tab?.url || "")
+        // Ping content script — check if it's loaded
+        if (tab?.id && detectPlatform(tab.url).isStock) {
+          chrome.tabs.sendMessage(tab.id, { type: "GET_RUN_STATUS" })
+            .then(() => setContentScriptReady(true))
+            .catch(() => setContentScriptReady(false))
+        }
       })
     }
 
@@ -113,7 +120,10 @@ export default function Popup() {
       if (!tab?.id) throw new Error("No active tab")
       if (!detectPlatform(tab.url).isStock)
         throw new Error("Buka halaman Adobe Stock atau Shutterstock dulu.")
-      return chrome.tabs.sendMessage(tab.id, message)
+      return chrome.tabs.sendMessage(tab.id, message).catch(() => {
+        // Content script not loaded — likely tab was open before extension install
+        throw new Error("Extension belum aktif di tab ini. Refresh halaman Adobe Stock, lalu buka popup lagi.")
+      })
     })
   }, [])
 
@@ -331,6 +341,37 @@ export default function Popup() {
         ) : (
           /* ─── ACTIVATED: CONTROL CENTER ────────────────────────────────────── */
           <>
+            {/* ── Content script not ready warning ─────────────────────────────── */}
+            {isOnStockPage && !contentScriptReady && (
+              <div
+                className="rounded-lg p-3 flex items-start gap-2.5"
+                style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}
+              >
+                <AlertCircle className="h-4 w-4 mt-0.5 text-amber-400 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-[11px] text-amber-300">Extension belum aktif</p>
+                  <p className="text-[10px] mt-0.5 text-slate-400 leading-relaxed mb-2">
+                    Tab ini dibuka sebelum extension terinstall. Refresh halaman untuk mengaktifkan.
+                  </p>
+                  <button
+                    className="text-[10px] font-bold text-amber-300 hover:text-amber-200"
+                    onClick={() => {
+                      if (typeof chrome !== "undefined" && chrome.tabs) {
+                        chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+                          if (tab?.id) {
+                            chrome.tabs.reload(tab.id)
+                            window.close()
+                          }
+                        })
+                      }
+                    }}
+                  >
+                    ↻ Refresh Tab
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── Quick Actions — only on stock pages ─────────────────────────── */}
             {isOnStockPage && (
               <div className={`rounded-xl p-3.5 flex flex-col gap-3 ${cardBg}`}>
