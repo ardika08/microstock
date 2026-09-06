@@ -14,7 +14,7 @@ const SHUTTERSTOCK_CATEGORIES_STR = [
   "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation"
 ].join(', ')
 
-async function generateOpenAIPrompt(contentType: string, platformHint: string, recentTitles: string[] = []): Promise<{systemPrompt: string; userInstruction: string}> {
+async function generateOpenAIPrompt(contentType: string, platformHint: string, recentTitles: string[] = [], filename: string = ''): Promise<{systemPrompt: string; userInstruction: string}> {
   const isShutterstock = platformHint === 'Shutterstock'
   const isVecteezy = platformHint === 'Vecteezy'
 
@@ -25,7 +25,7 @@ async function generateOpenAIPrompt(contentType: string, platformHint: string, r
       : `{"title":"...","description":"...","keywords":[...],"category":"..."}`
 
   const vecteezyExtras = isVecteezy ? [
-    `- title: MINIMUM 3 words (site rule). 5-10 words ideal. Must describe the subject directly.`,
+    `- title: MINIMUM 3 words (site rule), 5-10 words ideal. Must be SPECIFIC and CONCRETE: name the actual subject, its distinguishing visual traits (exact colors, textures, patterns, count of elements), and any notable composition detail. Generic template titles like "Vibrant Geometric Shapes in Motion", "Colorful Abstract Background", or "Beautiful Nature Landscape" are FORBIDDEN — if the title could describe thousands of other images without changing a word, it is too generic.`,
     `- keywords: 25-45 unique terms. STRICT RULES: no dashes, periods, or parentheses (use spaces instead, e.g. "snow like" not "snow-like"). FORBIDDEN generic terms: "photo", "photos", "video", "videos", "vector", "vectors", "png", "psd", "ai generated", "generative ai" — the site rejects these.`,
     `- description: optional short summary (used only for Bundle assets).`,
   ] : []
@@ -35,9 +35,12 @@ async function generateOpenAIPrompt(contentType: string, platformHint: string, r
     `- file_type: "photo" atau "illustration" berdasarkan analisis visual gambar`,
   ] : []
 
-  // Anti-duplikasi: jika ada recentTitles, tampilkan sebagai contoh yang harus dihindari
+  // Anti-duplikasi: jika ada recentTitles, tampilkan sebagai contoh yang harus dihindari.
+  // Vecteezy mengirim TITLE (bukan description) — sesuaikan label agar model tahu
+  // variasi yang diminta adalah variasi TITLE.
+  const antiDuplicationLabel = isVecteezy ? 'TITLES' : 'descriptions'
   const antiDuplication = recentTitles.length > 0
-    ? `\n\nCRITICAL — VARIETY REQUIREMENT:\nThe following descriptions have ALREADY been used for other assets in this batch. Do NOT produce descriptions that start the same way or use the same opening structure. Vary your sentence structure, opening word, and phrasing significantly:\n${recentTitles.map((t, i) => `${i + 1}. "${t}"`).join('\n')}`
+    ? `\n\nCRITICAL — VARIETY REQUIREMENT:\nThe following ${antiDuplicationLabel} have ALREADY been used for other assets in this batch. Do NOT produce another one that starts the same way, uses the same opening word, or follows the same "Adjective + Noun + prepositional phrase" template. Vary sentence structure, opening word, and phrasing significantly:\n${recentTitles.map((t, i) => `${i + 1}. "${t}"`).join('\n')}`
     : ''
 
   return {
@@ -80,6 +83,7 @@ DO NOT guess:
       ...shutterstockExtras,
       '',
       `IMPORTANT: For ${contentType}, focus on VISIBLE details only - style, composition, colors, elements present.`,
+      ...(filename ? [`The uploaded file is named "${filename}" — if the filename hints at the subject, use it as supporting context, but only describe what is actually VISIBLE in the image.`] : []),
       'IF IMAGE IS BLURRY/DARK/UNCLEAR: Use honest language like "blurred", "dim lighting", "out of focus" - DO NOT invent precise details.',
       antiDuplication,
       ''
@@ -221,7 +225,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const platformHint = platform?.includes('shutterstock') ? 'Shutterstock' : platform?.includes('vecteezy') ? 'Vecteezy' : 'Adobe Stock'
     
     // Generate optimized prompt with strict hallucination prevention
-    const { systemPrompt, userInstruction } = await generateOpenAIPrompt(contentType, platformHint, Array.isArray(recentTitles) ? recentTitles : [])
+    const { systemPrompt, userInstruction } = await generateOpenAIPrompt(contentType, platformHint, Array.isArray(recentTitles) ? recentTitles : [], filename || '')
 
     const userMessage = isBase64Image
       ? {
