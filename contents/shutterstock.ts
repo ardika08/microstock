@@ -174,11 +174,15 @@ function watchCards() {
   setTimeout(attachCardListeners, 800)
 }
 
-// ── Image extraction (fetch blob → FileReader → base64) ───────────────────
+// ── Image extraction ──────────────────────────────────────────────────────
+// Tidak fetch gambar di content script (CORS blocked).
+// Kirim imageUrl ke server — server yang fetch gambarnya.
+// Fallback: coba fetch+blob jika imageUrl tidak ada (untuk debugging)
 
 async function extractThumbnailBase64(imageUrl: string): Promise<string | null> {
+  // Hindari CORS — hanya fallback, utamanya server yang fetch
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), 10000) // shorter timeout for fallback
   try {
     const response = await fetch(imageUrl, { signal: controller.signal })
     if (!response.ok) return null
@@ -191,7 +195,7 @@ async function extractThumbnailBase64(imageUrl: string): Promise<string | null> 
       reader.readAsDataURL(blob)
     })
   } catch {
-    return null
+    return null // CORS or network — expected, server will handle
   } finally {
     clearTimeout(timer)
   }
@@ -200,7 +204,8 @@ async function extractThumbnailBase64(imageUrl: string): Promise<string | null> 
 // ── API call + retry ──────────────────────────────────────────────────────
 
 async function fetchMetadata(
-  base64Image: string,
+  imageUrl: string,
+  base64Image: string | null,
   filename: string,
   existingTitle: string
 ): Promise<any> {
@@ -213,15 +218,23 @@ async function fetchMetadata(
   const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
 
   try {
+    const body: any = {
+      activationCode: settings.activation_code,
+      filename,
+      platform: 'shutterstock',
+    }
+
+    // Prefer base64 (fallback) — server fetches imageUrl if base64 not available
+    if (base64Image) {
+      body.assetBrief = base64Image
+    } else {
+      body.imageUrl = imageUrl
+    }
+
     const response = await fetch('https://autofillstock.my.id/api/extension/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        activationCode: settings.activation_code,
-        assetBrief: base64Image,
-        filename,
-        platform: 'shutterstock',
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     })
     const data = await response.json()
@@ -244,17 +257,18 @@ function isRateLimitError(result: any): boolean {
 }
 
 async function fetchMetadataWithRetry(
-  base64Image: string,
+  imageUrl: string,
+  base64Image: string | null,
   filename: string,
   existingTitle: string
 ): Promise<any> {
-  let result = await fetchMetadata(base64Image, filename, existingTitle)
+  let result = await fetchMetadata(imageUrl, base64Image, filename, existingTitle)
   let attempts = 1
   while (!result?.ok && !PERMANENT_ERRORS.includes(result?.error) && attempts < 3) {
     const rateLimited = isRateLimitError(result)
     debugLog(`fetchMetadataWithRetry attempt ${attempts} FAILED — waiting ${rateLimited ? RATE_LIMIT_RETRY_MS : 800}ms`)
     await wait(rateLimited ? RATE_LIMIT_RETRY_MS : 800)
-    result = await fetchMetadata(base64Image, filename, existingTitle)
+    result = await fetchMetadata(imageUrl, base64Image, filename, existingTitle)
     attempts++
   }
   return result
@@ -550,15 +564,13 @@ async function handleGenerate(): Promise<void> {
       return
     }
 
+    // Coba fetch base64 sebagai fallback (mungkin CORS block)
     const base64 = await extractThumbnailBase64(thumbUrl)
-    if (!base64) {
-      showToast('Gagal mengambil gambar. Coba lagi.', 'error')
-      return
-    }
 
+    // Tetap kirim request — server akan fetch imageUrl jika base64 null
     const filename = getFilename()
     const existingTitle = getFieldValue('description')
-    const result = await fetchMetadataWithRetry(base64, filename, existingTitle)
+    const result = await fetchMetadataWithRetry(thumbUrl, base64, filename, existingTitle)
 
     if (!result.ok) {
       const errMap: Record<string, string> = {
@@ -682,18 +694,13 @@ async function runBatchStep(): Promise<void> {
       if (batchRunning) await runBatchStep()
       return
     }
+    // Coba fetch base64 (mungkin CORS block) — server fallback ke imageUrl
     const base64 = await extractThumbnailBase64(thumbUrl)
-    if (!base64) {
-      batchFailCount++
-      batchIndex++
-      if (batchRunning) await runBatchStep()
-      return
-    }
 
     // Generate metadata
     const filename = getFilename()
     const existingTitle = getFieldValue('description')
-    const result = await fetchMetadataWithRetry(base64, filename, existingTitle)
+    const result = await fetchMetadataWithRetry(thumbUrl, base64, filename, existingTitle)
 
     if (!result.ok) {
       batchFailCount++

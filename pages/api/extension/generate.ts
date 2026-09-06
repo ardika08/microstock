@@ -91,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { activationCode, assetBrief, filename, platform } = req.body
+  const { activationCode, assetBrief, imageUrl, filename, platform } = req.body
 
   if (!activationCode || typeof activationCode !== 'string') {
     return res.status(401).json({ error: 'Kode aktivasi diperlukan.' })
@@ -157,7 +157,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Generate metadata via OpenAI Vision API
-    const isBase64Image = typeof assetBrief === 'string' && assetBrief.startsWith('data:image/')
+    let isBase64Image = typeof assetBrief === 'string' && assetBrief.startsWith('data:image/')
+
+    // Jika tidak ada base64, coba fetch imageUrl di server-side (no CORS di server)
+    let serverFetchedBase64: string | null = null
+    if (!isBase64Image && imageUrl && typeof imageUrl === 'string') {
+      try {
+        console.log('[extension/generate] Fetching imageUrl server-side:', imageUrl.substring(0, 100))
+        const imgController = new AbortController()
+        const imgTimeout = setTimeout(() => imgController.abort(), 30000)
+        const imgRes = await fetch(imageUrl, { signal: imgController.signal })
+        clearTimeout(imgTimeout)
+        if (imgRes.ok) {
+          const imgBuffer = await imgRes.arrayBuffer()
+          if (imgBuffer.byteLength > 0) {
+            const base64 = Buffer.from(imgBuffer).toString('base64')
+            const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
+            serverFetchedBase64 = `data:${contentType};base64,${base64}`
+            isBase64Image = true
+            console.log('[extension/generate] Server-side image fetch OK, size:', imgBuffer.byteLength)
+          }
+        } else {
+          console.warn('[extension/generate] Server-side image fetch failed:', imgRes.status)
+        }
+      } catch (imgErr) {
+        console.warn('[extension/generate] Server-side image fetch error:', imgErr instanceof Error ? imgErr.message : imgErr)
+      }
+    }
+
+    const imageForOpenAI = serverFetchedBase64 || assetBrief
 
     // Detect file type from brief or filename
     const briefStr = typeof assetBrief === 'string' ? assetBrief : ''
@@ -176,12 +204,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           role: 'user',
           content: [
             { type: 'text', text: userInstruction },
-            { type: 'image_url', image_url: { url: assetBrief, detail: 'high' } }, // HIGH detail untuk akurasi maksimal
+            { type: 'image_url', image_url: { url: imageForOpenAI, detail: 'high' } },
           ],
         }
       : {
           role: 'user',
-          content: `${userInstruction}\n\nAsset brief: ${assetBrief || filename || 'A general commercial stock asset.'}`,
+          content: `${userInstruction}\n\nAsset brief: ${imageForOpenAI || assetBrief || filename || 'A general commercial stock asset.'}`,
         }
 
     // Text-only brief → gpt-4o for quality. Vision/base64 image → gpt-4o.
