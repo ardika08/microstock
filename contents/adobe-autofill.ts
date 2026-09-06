@@ -8,9 +8,7 @@ import type { AppSettings, AutofillMessage, MetadataResult } from "~/lib/types"
 export const config: PlasmoCSConfig = {
   matches: [
     "https://contributor.stock.adobe.com/*",
-    "https://stock.adobe.com/*",
-    "https://submit.shutterstock.com/*",
-    "https://contributor-accounts.shutterstock.com/*"
+    "https://stock.adobe.com/*"
   ],
   run_at: "document_idle"
 }

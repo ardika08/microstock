@@ -15,6 +15,17 @@ const SHUTTERSTOCK_CATEGORIES_STR = [
 ].join(', ')
 
 async function generateOpenAIPrompt(contentType: string, platformHint: string): Promise<{systemPrompt: string; userInstruction: string}> {
+  const isShutterstock = platformHint === 'Shutterstock'
+
+  const jsonFormat = isShutterstock
+    ? `{"title":"...","description":"...","keywords":[...],"category":"...","category2":"...","file_type":"..."}`
+    : `{"title":"...","description":"...","keywords":[...],"category":"..."}`
+
+  const shutterstockExtras = isShutterstock ? [
+    `- category2: Pilih kategori sekunder yang LEBIH LUAS dari category. Harus berbeda dari category. Pilih dari: ${SHUTTERSTOCK_CATEGORIES_STR}`,
+    `- file_type: "photo" atau "illustration" berdasarkan analisis visual gambar`,
+  ] : []
+
   return {
     systemPrompt: `You are a professional microstock contributor specializing in analyzing images and writing accurate metadata based SOLELY on what you see in the image. 
 
@@ -37,15 +48,16 @@ DO NOT guess:
     
     userInstruction: [
       `Generate microstock metadata for this ${contentType} asset with STRICT visual analysis.`,
-      `Return EXACTLY valid JSON only: {"title":"...","description":"...","keywords":[...],"category":"..."}`,
+      `Return EXACTLY valid JSON only: ${jsonFormat}`,
       '',
       'SPECIFIC REQUIREMENTS:',
       `- title: 5-15 words, under 180 chars, describes MAIN subject VISIBLE in image`,
       `- description: ONE sentence ONLY, 120-190 chars, FACTUAL description of what you ACTUALLY SEE`,
       `- keywords: 45-49 unique search terms ALL BASED ON VISIBLE ELEMENTS in the image`,
       `- category: Choose from: ${SHUTTERSTOCK_CATEGORIES_STR}`,
+      ...shutterstockExtras,
       '',
-      'IMPORTANT: For ${contentType}, focus on VISIBLE details only - style, composition, colors, elements present.',
+      `IMPORTANT: For ${contentType}, focus on VISIBLE details only - style, composition, colors, elements present.`,
       'IF IMAGE IS BLURRY/DARK/UNCLEAR: Use honest language like "blurred", "dim lighting", "out of focus" - DO NOT invent precise details.',
       ''
     ].filter(Boolean).join('\n')
