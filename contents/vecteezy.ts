@@ -511,6 +511,40 @@ async function applyAiGeneratedFlag(): Promise<void> {
 
 // ── API call (langsung ke server kita, sama seperti shutterstock.ts) ─────
 
+// Fetch preview SEKARANG di content script (same-origin + cookie sesi Vecteezy)
+// lalu kirim sebagai base64. Alasan: server TIDAK punya cookie sesi Vecteezy —
+// fetch server-side ke preview_url sering 403/redirect ke halaman login, dan
+// model jadi generate TANPA gambar (hallucination: "pink hues" utk aset biru).
+async function extractPreviewBase64(imageUrl: string): Promise<string | null> {
+  if (!imageUrl) return null
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15000)
+  try {
+    const response = await fetch(imageUrl, {
+      signal: controller.signal,
+      credentials: 'include',
+    })
+    if (!response.ok) {
+      debugLog(`extractPreviewBase64: status ${response.status} untuk ${imageUrl.substring(0, 80)}`)
+      return null
+    }
+    const blob = await response.blob()
+    if (blob.size === 0 || !blob.type.startsWith('image/')) return null
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch (err) {
+    debugLog('extractPreviewBase64 gagal:', err)
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+
 async function fetchMetadata(
   imageUrl: string,
   filename: string,
@@ -521,20 +555,32 @@ async function fetchMetadata(
     return { ok: false, error: 'not_logged_in' }
   }
 
+  // Base64 DULU di content script — jangan bergantung pada fetch server-side
+  // (preview Vecteezy butuh cookie sesi yang tidak dimiliki server)
+  const base64Image = await extractPreviewBase64(imageUrl)
+
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
 
   try {
+    const body: any = {
+      activationCode: st.activation_code,
+      filename,
+      platform: 'vecteezy',
+      imageUrl,
+      recentTitles,
+    }
+    if (base64Image) {
+      body.assetBrief = base64Image
+      debugLog(`fetchMetadata: base64 siap (${Math.round(base64Image.length / 1024)}KB) untuk ${filename}`)
+    } else {
+      debugLog(`fetchMetadata: TANPA base64 untuk ${filename} — server coba fetch imageUrl sendiri`)
+    }
+
     const response = await fetch('https://autofillstock.my.id/api/extension/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        activationCode: st.activation_code,
-        filename,
-        platform: 'vecteezy',
-        imageUrl,
-        recentTitles,
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     })
     const data = await response.json()

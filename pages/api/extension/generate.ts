@@ -25,7 +25,7 @@ async function generateOpenAIPrompt(contentType: string, platformHint: string, r
       : `{"title":"...","description":"...","keywords":[...],"category":"..."}`
 
   const vecteezyExtras = isVecteezy ? [
-    `- title: MINIMUM 3 words (site rule), 5-10 words ideal. Must be SPECIFIC and CONCRETE: name the actual subject, its distinguishing visual traits (exact colors, textures, patterns, count of elements), and any notable composition detail. Generic template titles like "Vibrant Geometric Shapes in Motion", "Colorful Abstract Background", or "Beautiful Nature Landscape" are FORBIDDEN — if the title could describe thousands of other images without changing a word, it is too generic.`,
+    `- title: MINIMUM 3 words (site rule), 6-12 words strongly preferred. Must be SPECIFIC and CONCRETE: name the actual subject, its distinguishing visual traits (exact colors, textures, patterns, count of elements), and any notable composition detail. Generic template titles like "Vibrant Geometric Shapes in Motion", "Colorful Abstract Background", or "Beautiful Nature Landscape" are FORBIDDEN — if the title could describe thousands of other images without changing a word, it is too generic.`,
     `- keywords: 25-45 unique terms. STRICT RULES: no dashes, periods, or parentheses (use spaces instead, e.g. "snow like" not "snow-like"). FORBIDDEN generic terms: "photo", "photos", "video", "videos", "vector", "vectors", "png", "psd", "ai generated", "generative ai" — the site rejects these.`,
     `- description: optional short summary (used only for Bundle assets).`,
   ] : []
@@ -214,6 +214,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const imageForOpenAI = serverFetchedBase64 || assetBrief
+
+    // Anti-hallucination: tanpa gambar, model hanya menebak dari filename —
+    // hasil metadata nyaris pasti tidak match asset (laporan user: aset biru
+    // dapat title "Sunset Over Rolling Hills"). Tolak request daripada karangan.
+    if (!isBase64Image) {
+      console.error('[extension/generate] Tidak ada gambar (base64/imageUrl gagal) — menolak generate text-only untuk', filename)
+      return res.status(422).json({ error: 'Gambar aset tidak bisa diambil. Buka tab portfolio Vecteezy lalu coba lagi.' })
+    }
 
     // Detect file type from brief or filename
     const briefStr = typeof assetBrief === 'string' ? assetBrief : ''
