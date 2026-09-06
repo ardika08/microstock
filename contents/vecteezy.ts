@@ -23,6 +23,8 @@ const PERMANENT_ERRORS = [
   'not_logged_in',
   'daily_limit_reached',
   'out_of_credits',
+  'no_image',
+  'Gambar aset tidak bisa diambil. Buka tab portfolio Vecteezy lalu coba lagi.',
   'Kredit habis. Silakan top up kredit.',
   'Kode aktivasi tidak valid atau sudah tidak aktif.',
 ]
@@ -511,37 +513,81 @@ async function applyAiGeneratedFlag(): Promise<void> {
 
 // ── API call (langsung ke server kita, sama seperti shutterstock.ts) ─────
 
-// Fetch preview SEKARANG di content script (same-origin + cookie sesi Vecteezy)
-// lalu kirim sebagai base64. Alasan: server TIDAK punya cookie sesi Vecteezy —
-// fetch server-side ke preview_url sering 403/redirect ke halaman login, dan
-// model jadi generate TANPA gambar (hallucination: "pink hues" utk aset biru).
-async function extractPreviewBase64(imageUrl: string): Promise<string | null> {
-  if (!imageUrl) return null
+// Fetch preview di content script lalu kirim sebagai base64. Coba berlapis:
+// 1) credentials 'omit'  — preview public CDN (ACAO:*) GAGAL kalau pakai 'include'
+// 2) credentials 'include' — preview butuh cookie sesi (same-origin)
+// 3) <img>+canvas crossOrigin anonymous — fallback terakhir (butuh ACAO:* juga)
+// Alasan keseluruhan: server TIDAK punya cookie sesi Vecteezy, jadi kalau
+// content script juga gagal, model generate TANPA gambar -> hallucination.
+async function fetchAsDataUrl(url: string, credentials: RequestCredentials): Promise<string | null> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 15000)
   try {
-    const response = await fetch(imageUrl, {
-      signal: controller.signal,
-      credentials: 'include',
-    })
+    const response = await fetch(url, { signal: controller.signal, credentials, mode: 'cors' })
     if (!response.ok) {
-      debugLog(`extractPreviewBase64: status ${response.status} untuk ${imageUrl.substring(0, 80)}`)
+      debugLog(`extractPreviewBase64: status ${response.status} (credentials=${credentials}) untuk ${url.substring(0, 100)}`)
       return null
     }
     const blob = await response.blob()
-    if (blob.size === 0 || !blob.type.startsWith('image/')) return null
-    return new Promise((resolve) => {
+    // Terima image/* dan octet-stream (beberapa CDN tidak set content-type benar)
+    if (blob.size === 0) return null
+    if (!blob.type.startsWith('image/') && !blob.type.includes('octet-stream')) {
+      debugLog(`extractPreviewBase64: content-type tidak didukung: ${blob.type}`)
+      return null
+    }
+    return await new Promise((resolve) => {
       const reader = new FileReader()
       reader.onload = () => resolve(reader.result as string)
       reader.onerror = () => resolve(null)
       reader.readAsDataURL(blob)
     })
   } catch (err) {
-    debugLog('extractPreviewBase64 gagal:', err)
+    debugLog(`extractPreviewBase64: fetch (credentials=${credentials}) gagal:`, err)
     return null
   } finally {
     clearTimeout(timer)
   }
+}
+
+function canvasExtract(url: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    const timeout = setTimeout(() => resolve(null), 15000)
+    img.onload = () => {
+      clearTimeout(timeout)
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        canvas.getContext('2d')!.drawImage(img, 0, 0)
+        resolve(canvas.toDataURL('image/jpeg', 0.9))
+      } catch {
+        resolve(null) // canvas tainted — tanpa ACAO:*
+      }
+    }
+    img.onerror = () => {
+      clearTimeout(timeout)
+      resolve(null)
+    }
+    img.src = url
+  })
+}
+
+async function extractPreviewBase64(imageUrl: string): Promise<string | null> {
+  if (!imageUrl) return null
+  debugLog(`extractPreviewBase64: mencoba ${imageUrl.substring(0, 100)}`)
+  // 1) Public CDN — paling umum, HARUS tanpa credentials (ACAO:* tolak credentials)
+  const viaOmit = await fetchAsDataUrl(imageUrl, 'omit')
+  if (viaOmit) return viaOmit
+  // 2) URL sesi (same-origin, butuh cookie)
+  const viaInclude = await fetchAsDataUrl(imageUrl, 'include')
+  if (viaInclude) return viaInclude
+  // 3) Canvas fallback
+  const viaCanvas = await canvasExtract(imageUrl)
+  if (viaCanvas) return viaCanvas
+  debugLog('extractPreviewBase64: SEMUA metode gagal untuk', imageUrl.substring(0, 100))
+  return null
 }
 
 
@@ -585,6 +631,11 @@ async function fetchMetadata(
     })
     const data = await response.json()
     if (!response.ok || data.error) {
+      // 422 = tanpa gambar (anti-hallucination) — JANGAN di-retry, langsung
+      // tandai supaya resource di-skip dengan alasan jelas (bukan 'ditelannya')
+      if (response.status === 422) {
+        return { ok: false, error: data.error || 'no_image', fatal: true }
+      }
       return { ok: false, error: data.error || 'api_error' }
     }
     return { ok: true, data: data.metadata, credits: data.creditsRemaining }
@@ -652,7 +703,11 @@ async function processResource(resource: VzResource): Promise<ProcessResult> {
   )
 
   if (!genRes?.ok) {
-    return { status: 'failed', reason: genRes?.error || 'generate_failed', filename }
+    const reason = genRes?.error || 'generate_failed'
+    if (reason.includes('Gambar aset')) {
+      showToast(`Vecteezy: ${filename} dilewati — gambar tidak bisa diambil`, 'error')
+    }
+    return { status: 'failed', reason, filename }
   }
   if (!genRes.data || typeof genRes.data.title !== 'string') {
     return { status: 'failed', reason: 'malformed_generate_response', filename }
