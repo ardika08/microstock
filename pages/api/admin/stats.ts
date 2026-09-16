@@ -3,7 +3,7 @@ import { authOptions } from '../auth/[...nextauth]'
 import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from '~/server/db/schema-pg'
-import { desc, count, sum, eq } from 'drizzle-orm'
+import { desc, count, sum, eq, gte, sql as rawSql } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
@@ -85,6 +85,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       generateByUser[uid].platforms[plat] = (generateByUser[uid].platforms[plat] ?? 0) + 1
     }
 
+    // Recent activity feed (20 terbaru dengan info user)
+    const recentActivity = generateHistory.slice(0, 20).map(g => ({
+      id: g.id,
+      platform: g.platform,
+      createdAt: g.createdAt,
+      userName: userMap[g.userId ?? '']?.name ?? '—',
+      userEmail: userMap[g.userId ?? '']?.email ?? '—',
+    }))
+
+    // User aktif hari ini & 7 hari
+    const now = new Date()
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    
+    const activeToday = new Set(
+      generateHistory
+        .filter(g => g.createdAt && new Date(g.createdAt) >= oneDayAgo)
+        .map(g => g.userId)
+    ).size
+    
+    const activeWeek = new Set(
+      generateHistory
+        .filter(g => g.createdAt && new Date(g.createdAt) >= sevenDaysAgo)
+        .map(g => g.userId)
+    ).size
+
     return res.status(200).json({
       stats: {
         totalUsers,
@@ -92,10 +118,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         totalRevenue,
         totalTransactions: successPayments.length,
         planBreakdown,
+        activeToday,
+        activeWeek,
       },
       users,
       payments: paymentsWithEmail,
       generateByUser,
+      recentActivity,
     })
   } catch (err) {
     console.error('[admin/stats]', err)

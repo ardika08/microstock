@@ -5,8 +5,8 @@ import { useRouter } from 'next/router'
 import DashboardLayout from '~/components/dashboard/DashboardLayout'
 import {
   Users, CreditCard, TrendingUp, DollarSign,
-  Crown, Zap, RefreshCw, Shield, X, Eye, Trash2,
-  Calendar, Activity, CheckCircle2, XCircle
+  Crown, Zap, RefreshCw, Shield, X, Eye, Trash2, Activity,
+  Calendar, CheckCircle2, XCircle
 } from 'lucide-react'
 
 const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
@@ -49,13 +49,29 @@ function formatRupiah(amount: number) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount)
 }
 
+function getTimeAgo(d: string | null | undefined) {
+  if (!d) return '—'
+  const now = new Date()
+  const date = new Date(d)
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  
+  if (diffMins < 1) return 'Baru saja'
+  if (diffMins < 60) return `${diffMins} menit lalu`
+  if (diffHours < 24) return `${diffHours} jam lalu`
+  if (diffDays < 7) return `${diffDays} hari lalu`
+  return formatDate(d)
+}
+
 export default function AdminPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments' | 'activity'>('overview')
   const [userPage, setUserPage] = useState(1)
   const [paymentPage, setPaymentPage] = useState(1)
   const [selectedUser, setSelectedUser] = useState<any>(null)
@@ -165,7 +181,7 @@ export default function AdminPage() {
     )
   }
 
-  const { stats, users, payments } = data ?? {}
+  const { stats, users, payments, recentActivity } = data ?? {}
 
   // Pagination helpers
   const userTotalPages = Math.ceil((users?.length ?? 0) / PAGE_SIZE)
@@ -251,10 +267,12 @@ export default function AdminPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
           {[
             { title: 'Total User', value: stats?.totalUsers ?? 0, icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10' },
             { title: 'User Berbayar', value: stats?.paidUsers ?? 0, icon: Crown, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+            { title: 'Aktif Hari Ini', value: stats?.activeToday ?? 0, icon: Zap, color: 'text-green-400', bg: 'bg-green-500/10' },
+            { title: 'Aktif 7 Hari', value: stats?.activeWeek ?? 0, icon: Activity, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
             { title: 'Total Transaksi', value: stats?.totalTransactions ?? 0, icon: CreditCard, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
             { title: 'Total Revenue', value: formatRupiah(stats?.totalRevenue ?? 0), icon: DollarSign, color: 'text-purple-400', bg: 'bg-purple-500/10' },
           ].map((s, i) => (
@@ -293,7 +311,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 border-b border-white/10">
-          {(['users', 'payments'] as const).map(tab => (
+          {(['users', 'payments', 'activity'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -303,7 +321,7 @@ export default function AdminPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-300'
               }`}
             >
-              {tab === 'users' ? `Users (${users?.length ?? 0})` : `Payments (${payments?.length ?? 0})`}
+              {tab === 'users' ? `Users (${users?.length ?? 0})` : tab === 'payments' ? `Payments (${payments?.length ?? 0})` : 'Activity'}
             </button>
           ))}
         </div>
@@ -446,6 +464,49 @@ export default function AdminPage() {
                 <div className="text-center py-12 text-gray-600">Belum ada transaksi</div>
               )}
               <Pagination page={paymentPage} totalPages={paymentTotalPages} onPage={setPaymentPage} />
+            </div>
+          </div>
+        )}
+
+        {/* Activity Feed */}
+        {activeTab === 'activity' && (
+          <div className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
+            <div className="p-4 border-b border-white/10">
+              <h3 className="text-sm font-semibold text-gray-300">Aktivitas Terbaru</h3>
+              <p className="text-xs text-gray-500 mt-1">20 generate metadata terakhir</p>
+            </div>
+            <div className="divide-y divide-white/5">
+              {(recentActivity ?? []).map((a: any) => {
+                const timeAgo = getTimeAgo(a.createdAt)
+                const platformColor: Record<string, string> = {
+                  adobe_stock: 'bg-red-500/20 text-red-400',
+                  shutterstock: 'bg-orange-500/20 text-orange-400',
+                  vecteezy: 'bg-teal-500/20 text-teal-400',
+                }
+                const platformLabel: Record<string, string> = {
+                  adobe_stock: 'Adobe Stock',
+                  shutterstock: 'Shutterstock',
+                  vecteezy: 'Vecteezy',
+                }
+                return (
+                  <div key={a.id} className="flex items-center gap-4 px-4 py-3 hover:bg-white/2 transition-colors">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                      {(a.userName ?? a.userEmail ?? '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-200 font-medium truncate">{a.userName ?? '—'}</p>
+                      <p className="text-xs text-gray-500 truncate">{a.userEmail}</p>
+                    </div>
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full flex-shrink-0 ${platformColor[a.platform] ?? 'bg-slate-700 text-gray-400'}`}>
+                      {platformLabel[a.platform] ?? a.platform ?? 'Unknown'}
+                    </span>
+                    <span className="text-xs text-gray-500 flex-shrink-0 w-24 text-right">{timeAgo}</span>
+                  </div>
+                )
+              })}
+              {(!recentActivity || recentActivity.length === 0) && (
+                <div className="text-center py-12 text-gray-600">Belum ada aktivitas</div>
+              )}
             </div>
           </div>
         )}
