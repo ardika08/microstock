@@ -61,6 +61,8 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [deletingUser, setDeletingUser] = useState<any>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set())
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false)
   const PAGE_SIZE = 10
 
   useEffect(() => {
@@ -92,12 +94,57 @@ export default function AdminPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Gagal menghapus user')
       setDeletingUser(null)
+      setSelectedUsers(prev => { const next = new Set(prev); next.delete(userId); return next })
       fetchData() // Refresh data
     } catch (e: any) {
       alert(e.message)
     } finally {
       setDeleteLoading(false)
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedUsers.size === 0) return
+    setDeleteLoading(true)
+    try {
+      const results = await Promise.allSettled(
+        Array.from(selectedUsers).map(id =>
+          fetch(`/api/admin/users/${id}`, { method: 'DELETE' }).then(r => r.json())
+        )
+      )
+      const failed = results.filter(r => r.status === 'rejected').length
+      setBulkDeleteModal(false)
+      setSelectedUsers(new Set())
+      fetchData()
+      if (failed > 0) alert(`${failed} user gagal dihapus`)
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const toggleSelectUser = (id: string) => {
+    setSelectedUsers(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    const pageUserIds = pagedUsers.map((u: any) => u.id)
+    const allSelected = pageUserIds.every((id: string) => selectedUsers.has(id))
+    setSelectedUsers(prev => {
+      const next = new Set(prev)
+      if (allSelected) {
+        pageUserIds.forEach((id: string) => next.delete(id))
+      } else {
+        pageUserIds.forEach((id: string) => next.add(id))
+      }
+      return next
+    })
   }
 
   if (status === 'loading' || loading) {
@@ -264,10 +311,33 @@ export default function AdminPage() {
         {/* Users Table */}
         {activeTab === 'users' && (
           <div className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
+            {/* Bulk Actions Bar */}
+            {selectedUsers.size > 0 && (
+              <div className="flex items-center justify-between px-4 py-3 bg-red-500/10 border-b border-red-500/20">
+                <span className="text-sm text-red-400">
+                  {selectedUsers.size} user dipilih
+                </span>
+                <button
+                  onClick={() => setBulkDeleteModal(true)}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Hapus Terpilih
+                </button>
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-xs text-gray-500 uppercase tracking-wide">
+                    <th className="px-4 py-3 text-left w-10">
+                      <input
+                        type="checkbox"
+                        checked={pagedUsers.length > 0 && pagedUsers.every((u: any) => selectedUsers.has(u.id))}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 rounded border-gray-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left">User</th>
                     <th className="px-4 py-3 text-left">Plan</th>
                     <th className="px-4 py-3 text-right">Kredit</th>
@@ -278,7 +348,15 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {pagedUsers.map((u: any) => (
-                    <tr key={u.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
+                    <tr key={u.id} className={`border-b border-white/5 hover:bg-white/2 transition-colors ${selectedUsers.has(u.id) ? 'bg-blue-500/5' : ''}`}>
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.has(u.id)}
+                          onChange={() => toggleSelectUser(u.id)}
+                          className="w-4 h-4 rounded border-gray-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <p className="text-gray-100 font-medium">{u.name ?? '—'}</p>
                         <p className="text-gray-500 text-xs">{u.email}</p>
@@ -542,6 +620,85 @@ export default function AdminPage() {
                     <>
                       <Trash2 className="w-4 h-4" />
                       Hapus Permanen
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Delete Confirmation Modal */}
+      <AnimatePresence>
+        {bulkDeleteModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.7)' }}
+            onClick={() => !deleteLoading && setBulkDeleteModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.2 }}
+              className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-400" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-100">Hapus {selectedUsers.size} User?</h2>
+              </div>
+
+              <div className="bg-slate-800/50 rounded-xl p-4 mb-4 max-h-48 overflow-y-auto">
+                {Array.from(selectedUsers).map(id => {
+                  const u = (users ?? []).find((user: any) => user.id === id)
+                  if (!u) return null
+                  return (
+                    <div key={id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                      <div>
+                        <p className="text-gray-200 text-sm font-medium">{u.name ?? '—'}</p>
+                        <p className="text-gray-500 text-xs">{u.email}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${PLAN_COLOR[u.planType ?? 'free']}`}>
+                        {PLAN_LABEL[u.planType ?? 'free']}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <p className="text-sm text-gray-400 mb-5">
+                Semua data {selectedUsers.size} user akan dihapus permanen. Aksi ini tidak bisa dibatalkan.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setBulkDeleteModal(false)}
+                  disabled={deleteLoading}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-gray-300 border border-white/10 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={deleteLoading}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {deleteLoading ? (
+                    <>
+                      <div className="animate-spin w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full" />
+                      Menghapus...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Hapus {selectedUsers.size} User
                     </>
                   )}
                 </button>
