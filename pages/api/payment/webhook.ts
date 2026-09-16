@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from '~/server/db/schema-pg'
 import { eq } from 'drizzle-orm'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import crypto from 'crypto'
+import { resolveAutofillstockProduct } from '~/lib/mayar-payment'
 
 // Disable body parser so we can read the raw body
 export const config = { api: { bodyParser: false } }
@@ -82,6 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     payload?.productName ||
     ''
   ).toLowerCase()
+  const rawAmount = payload?.data?.amount ?? payload?.amount
 
   // Only act on successful payments — ignore reminders and other non-payment events
   // Mayar sends: event='payment.received', status='SUCCESS' OR event='payment.success', status='paid'
@@ -107,35 +108,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ received: true })
   }
 
-  // Resolve product type from product name
-  let productType = ''
-  let creditsToAdd = 0
-  let planType = ''
-
-  if (productName.includes('intro') || productName.includes('9.900') || productName.includes('9900')) {
-    productType = 'intro'
-    creditsToAdd = 150
-    planType = 'topup'
-  } else if (productName.includes('basic') || productName.includes('25.000') || productName.includes('25000')) {
-    productType = 'basic'
-    creditsToAdd = 450
-    planType = 'topup'
-  } else if (productName.includes('value') || productName.includes('50.000') || productName.includes('50000') || productName.includes('top up') || productName.includes('kredit')) {
-    productType = 'value'
-    creditsToAdd = 1200
-    planType = 'topup'
-  } else if (
-    productName.includes('one-time') ||
-    productName.includes('lifetime') ||
-    productName.includes('selamanya')
-  ) {
-    productType = 'lifetime'
-    creditsToAdd = 0
-    planType = 'lifetime'
-  } else {
-    console.log('[webhook] Unknown product name:', productName)
-    return res.status(200).json({ received: true })
+  // Product isolation: akun Mayar bisa dipakai beberapa website. Hanya proses
+  // nama paket Autofillstock EXACT dengan nominal EXACT. Jangan pernah pakai
+  // keyword umum (basic/value/kredit/lifetime) atau nominal sebagai fallback.
+  const resolvedProduct = resolveAutofillstockProduct(productName, rawAmount)
+  if (!resolvedProduct) {
+    console.log('[webhook] Ignoring payment not owned by Autofillstock | orderId:', orderId)
+    return res.status(200).json({ received: true, ignored: true })
   }
+  const { productType, creditsToAdd, planType, amount } = resolvedProduct
 
   try {
     const db = getDb()
@@ -201,7 +182,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userId,
       mayarOrderId: orderId ?? null,
       productType,
-      amount: payload?.data?.amount ?? payload?.amount ?? 0,
+      amount,
       status: 'success',
       paidAt: new Date(),
     } as any)
