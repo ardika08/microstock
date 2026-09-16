@@ -5,7 +5,7 @@ import { useRouter } from 'next/router'
 import DashboardLayout from '~/components/dashboard/DashboardLayout'
 import {
   Users, CreditCard, TrendingUp, DollarSign,
-  Crown, Zap, RefreshCw, Shield, X, Eye,
+  Crown, Zap, RefreshCw, Shield, X, Eye, Trash2,
   Calendar, Activity, CheckCircle2, XCircle
 } from 'lucide-react'
 
@@ -59,6 +59,8 @@ export default function AdminPage() {
   const [userPage, setUserPage] = useState(1)
   const [paymentPage, setPaymentPage] = useState(1)
   const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [deletingUser, setDeletingUser] = useState<any>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const PAGE_SIZE = 10
 
   useEffect(() => {
@@ -80,6 +82,21 @@ export default function AdminPage() {
       setError(e.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeleteLoading(true)
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Gagal menghapus user')
+      setDeletingUser(null)
+      fetchData() // Refresh data
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -277,13 +294,22 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-right text-gray-500">{u.creditsUsed ?? 0}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(u.createdAt)}</td>
                       <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => setSelectedUser(u)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
-                        >
-                          <Eye className="w-3 h-3" />
-                          Detail
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => setSelectedUser(u)}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+                          >
+                            <Eye className="w-3 h-3" />
+                            Detail
+                          </button>
+                          <button
+                            onClick={() => setDeletingUser(u)}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Hapus
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -450,6 +476,79 @@ export default function AdminPage() {
             </motion.div>
           )
         })()}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.7)' }}
+            onClick={() => !deleteLoading && setDeletingUser(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.2 }}
+              className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-400" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-100">Hapus User?</h2>
+              </div>
+              
+              <div className="bg-slate-800/50 rounded-xl p-4 mb-4">
+                <p className="text-gray-100 font-medium">{deletingUser.name ?? '—'}</p>
+                <p className="text-gray-400 text-sm">{deletingUser.email}</p>
+                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                  <span>Plan: {PLAN_LABEL[deletingUser.planType ?? 'free']}</span>
+                  <span>•</span>
+                  <span>Kredit: {deletingUser.credits ?? 0}</span>
+                  <span>•</span>
+                  <span>Digunakan: {deletingUser.creditsUsed ?? 0}</span>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-400 mb-5">
+                Semua data user akan dihapus permanen termasuk riwayat generate dan transaksi. Aksi ini tidak bisa dibatalkan.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeletingUser(null)}
+                  disabled={deleteLoading}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-800 text-gray-300 border border-white/10 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => handleDeleteUser(deletingUser.id)}
+                  disabled={deleteLoading}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {deleteLoading ? (
+                    <>
+                      <div className="animate-spin w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full" />
+                      Menghapus...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Hapus Permanen
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
     </DashboardLayout>
