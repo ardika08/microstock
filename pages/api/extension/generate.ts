@@ -25,7 +25,14 @@ async function generateOpenAIPrompt(contentType: string, platformHint: string, r
       : `{"title":"...","description":"...","keywords":[...],"category":"..."}`
 
   const vecteezyExtras = isVecteezy ? [
-    `- title: MUST be exactly 12-15 words (MANDATORY — titles under 12 words will be REJECTED). Include ALL of these: (1) specific color names like "cyan", "turquoise", "navy", "coral", "magenta" — NEVER generic "blue" or "colorful", (2) exact visual elements with quantities, (3) direction/motion words like "diagonal", "upward", "spiraling", "horizontal", (4) background/foreground description, (5) style/mood words. Example: "Vibrant Cyan and Deep Navy Fluid Waves Flowing Diagonally Across Smooth Dark Gradient Background" (13 words). Count your words before responding.`,
+    `- title: Write a NATURAL, VARIED title (8-15 words). Focus on SEARCHABILITY and VARIETY:
+      * Start with DIFFERENT opening words — rotate between: "Abstract", "Vibrant", "Soft", "Dynamic", "Rich", "Deep", "Smooth", "Elegant", "Bold", "Subtle", "Flowing", "Gentle"
+      * Include the USE CASE: "background", "texture", "pattern", "wallpaper", "backdrop"
+      * Use VARIED adjectives: dynamic, soft, smooth, gentle, subtle, flowing, blurred, gradient, wavy, fluid
+      * Mention dominant color naturally (e.g. "blue", "dark blue", "deep blue") — don't force specific color names
+      * GOOD examples: "Abstract dark blue background with dynamic blurred diagonal waves", "Vibrant blue abstract background with soft flowing wave patterns", "Rich blue abstract background with gentle undulating gradients", "Deep blue abstract background with soft subtle diagonal motion"
+      * BAD (too rigid/repetitive): "Navy and Royal Blue Waves Flowing Horizontally on Dark Gradient Background"
+      * Each title in a batch MUST start with a DIFFERENT word and use DIFFERENT structure`,
     `- keywords: 25-45 unique terms. STRICT RULES: no dashes, periods, or parentheses (use spaces instead, e.g. "snow like" not "snow-like"). FORBIDDEN generic terms: "photo", "photos", "video", "videos", "vector", "vectors", "png", "psd", "ai generated", "generative ai" — the site rejects these.`,
     `- description: optional short summary (used only for Bundle assets).`,
   ] : []
