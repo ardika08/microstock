@@ -482,7 +482,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h2 className="text-lg font-semibold text-gray-100">Download Extension</h2>
-                    <p className="text-sm text-gray-400">Autofillstock Chrome Extension v0.1.0</p>
+                    <p className="text-sm text-gray-400">Autofillstock Chrome Extension v0.2.0</p>
                   </div>
                 </div>
                 <a
