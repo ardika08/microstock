@@ -64,11 +64,12 @@ CRITICAL RULES:
 
 SENTENCE STRUCTURE — CRITICAL:
 - Do NOT start descriptions with "A" or "An" followed by an adjective. This produces repetitive, generic-sounding descriptions.
-- BAD examples (DO NOT DO THIS): "A swirling abstract pattern...", "A vibrant abstract background...", "A complex geometric pattern...", "An abstract image featuring...", "A close-up of...", "A beautiful sunset over..."
-- GOOD examples: "Swirling abstract patterns blend green and blue hues into a spiral effect.", "Vibrant wavy lines in yellow and orange create a dynamic background.", "Interlocking circles, squares, and hexagons form a symmetrical geometric design on a dark background."
-- Start with the SUBJECT or ACTION directly — not with an article ("A/An/The").
-- Vary sentence structure: start with the subject, a color, a shape, an action verb, or a spatial description.
-- Each description must read differently from the last — never reuse the same opening phrase pattern.
+- Do NOT repeat the same opening word across multiple assets. ROTATE opening words: "Abstract", "Vibrant", "Soft", "Dynamic", "Rich", "Deep", "Smooth", "Elegant", "Bold", "Subtle", "Flowing", "Gentle", "Colorful", "Blurred", "Gradient"
+- BAD examples (DO NOT DO THIS): "A swirling abstract pattern...", "Smooth blue waves create...", "Smooth flowing lines create...", "Smooth flowing curves..."
+- GOOD examples: "Abstract dark blue gradient with soft diagonal motion", "Vibrant flowing waves blend deep and light blue tones", "Rich blue background featuring gentle undulating curves", "Deep navy gradient with smooth blurred wave patterns"
+- Each title/description in a batch MUST start with a DIFFERENT word and use DIFFERENT sentence structure
+- Vary the verb: "create", "blend", "feature", "display", "showcase", "form", "reveal" — never repeat the same verb in consecutive assets
+- Include USE CASE words when relevant: "background", "texture", "pattern", "wallpaper", "backdrop"
 
 DO NOT guess:
 - The photographer's intent
