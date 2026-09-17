@@ -74,6 +74,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments' | 'activity'>('overview')
   const [userPage, setUserPage] = useState(1)
   const [paymentPage, setPaymentPage] = useState(1)
+  const [activityPage, setActivityPage] = useState(1)
   const [selectedUser, setSelectedUser] = useState<any>(null)
   const [deletingUser, setDeletingUser] = useState<any>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -150,7 +151,7 @@ export default function AdminPage() {
   }
 
   const toggleSelectAll = () => {
-    const pageUserIds = pagedUsers.map((u: any) => u.id)
+    const pageUserIds = paginatedUsers.map((u: any) => u.id)
     const allSelected = pageUserIds.every((id: string) => selectedUsers.has(id))
     setSelectedUsers(prev => {
       const next = new Set(prev)
@@ -186,8 +187,10 @@ export default function AdminPage() {
   // Pagination helpers
   const userTotalPages = Math.ceil((users?.length ?? 0) / PAGE_SIZE)
   const paymentTotalPages = Math.ceil((payments?.length ?? 0) / PAGE_SIZE)
-  const pagedUsers = (users ?? []).slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE)
-  const pagedPayments = (payments ?? []).slice((paymentPage - 1) * PAGE_SIZE, paymentPage * PAGE_SIZE)
+  const activityTotalPages = Math.ceil((recentActivity?.length ?? 0) / 10)
+  const paginatedUsers = (users ?? []).slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE)
+  const paginatedPayments = (payments ?? []).slice((paymentPage - 1) * PAGE_SIZE, paymentPage * PAGE_SIZE)
+  const paginatedActivity = (recentActivity ?? []).slice((activityPage - 1) * 10, activityPage * 10)
 
   const Pagination = ({ page, totalPages, onPage }: { page: number; totalPages: number; onPage: (p: number) => void }) => {
     if (totalPages <= 1) return null
@@ -351,7 +354,7 @@ export default function AdminPage() {
                     <th className="px-4 py-3 text-left w-10">
                       <input
                         type="checkbox"
-                        checked={pagedUsers.length > 0 && pagedUsers.every((u: any) => selectedUsers.has(u.id))}
+                        checked={paginatedUsers.length > 0 && paginatedUsers.every((u: any) => selectedUsers.has(u.id))}
                         onChange={toggleSelectAll}
                         className="w-4 h-4 rounded border-gray-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
                       />
@@ -365,7 +368,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pagedUsers.map((u: any) => (
+                  {paginatedUsers.map((u: any) => (
                     <tr key={u.id} className={`border-b border-white/5 hover:bg-white/2 transition-colors ${selectedUsers.has(u.id) ? 'bg-blue-500/5' : ''}`}>
                       <td className="px-4 py-3">
                         <input
@@ -434,7 +437,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pagedPayments.map((p: any) => (
+                  {paginatedPayments.map((p: any) => (
                     <tr key={p.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
                       <td className="px-4 py-3">
                         <p className="text-gray-100 font-medium">{p.userName ?? '—'}</p>
@@ -470,43 +473,73 @@ export default function AdminPage() {
 
         {/* Activity Feed */}
         {activeTab === 'activity' && (
-          <div className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
-            <div className="p-4 border-b border-white/10">
-              <h3 className="text-sm font-semibold text-gray-300">Aktivitas Terbaru</h3>
-              <p className="text-xs text-gray-500 mt-1">20 generate metadata terakhir</p>
-            </div>
-            <div className="divide-y divide-white/5">
-              {(recentActivity ?? []).map((a: any) => {
-                const timeAgo = getTimeAgo(a.createdAt)
-                const platformColor: Record<string, string> = {
-                  adobe_stock: 'bg-red-500/20 text-red-400',
-                  shutterstock: 'bg-orange-500/20 text-orange-400',
-                  vecteezy: 'bg-teal-500/20 text-teal-400',
-                }
-                const platformLabel: Record<string, string> = {
-                  adobe_stock: 'Adobe Stock',
-                  shutterstock: 'Shutterstock',
-                  vecteezy: 'Vecteezy',
-                }
-                return (
-                  <div key={a.id} className="flex items-center gap-4 px-4 py-3 hover:bg-white/2 transition-colors">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                      {(a.userName ?? a.userEmail ?? '?').charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-200 font-medium truncate">{a.userName ?? '—'}</p>
-                      <p className="text-xs text-gray-500 truncate">{a.userEmail}</p>
-                    </div>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full flex-shrink-0 ${platformColor[a.platform] ?? 'bg-slate-700 text-gray-400'}`}>
-                      {platformLabel[a.platform] ?? a.platform ?? 'Unknown'}
-                    </span>
-                    <span className="text-xs text-gray-500 flex-shrink-0 w-24 text-right">{timeAgo}</span>
+          <div className="space-y-4">
+            {/* Activity Stats Cards */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-900 border border-white/10 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-500/10">
+                    <Zap className="w-5 h-5 text-green-400" />
                   </div>
-                )
-              })}
-              {(!recentActivity || recentActivity.length === 0) && (
-                <div className="text-center py-12 text-gray-600">Belum ada aktivitas</div>
-              )}
+                  <div>
+                    <p className="text-xs text-gray-500">Aktif Hari Ini</p>
+                    <p className="text-2xl font-bold text-gray-100">{stats?.activeToday ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-slate-900 border border-white/10 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-cyan-500/10">
+                    <Activity className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Aktif 7 Hari</p>
+                    <p className="text-2xl font-bold text-gray-100">{stats?.activeWeek ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Activity List */}
+            <div className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-white/10">
+                <h3 className="text-sm font-semibold text-gray-300">Aktivitas Terbaru</h3>
+                <p className="text-xs text-gray-500 mt-1">{recentActivity?.length ?? 0} generate metadata terakhir</p>
+              </div>
+              <div className="divide-y divide-white/5">
+                {paginatedActivity.map((a: any) => {
+                  const timeAgo = getTimeAgo(a.createdAt)
+                  const platformColor: Record<string, string> = {
+                    adobe_stock: 'bg-red-500/20 text-red-400',
+                    shutterstock: 'bg-orange-500/20 text-orange-400',
+                    vecteezy: 'bg-teal-500/20 text-teal-400',
+                  }
+                  const platformLabel: Record<string, string> = {
+                    adobe_stock: 'Adobe Stock',
+                    shutterstock: 'Shutterstock',
+                    vecteezy: 'Vecteezy',
+                  }
+                  return (
+                    <div key={a.id} className="flex items-center gap-4 px-4 py-3 hover:bg-white/2 transition-colors">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                        {(a.userName ?? a.userEmail ?? '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-200 font-medium truncate">{a.userName ?? '—'}</p>
+                        <p className="text-xs text-gray-500 truncate">{a.userEmail}</p>
+                      </div>
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full flex-shrink-0 ${platformColor[a.platform] ?? 'bg-slate-700 text-gray-400'}`}>
+                        {platformLabel[a.platform] ?? a.platform ?? 'Unknown'}
+                      </span>
+                      <span className="text-xs text-gray-500 flex-shrink-0 w-24 text-right">{timeAgo}</span>
+                    </div>
+                  )
+                })}
+                {(!recentActivity || recentActivity.length === 0) && (
+                  <div className="text-center py-12 text-gray-600">Belum ada aktivitas</div>
+                )}
+              </div>
+              <Pagination page={activityPage} totalPages={activityTotalPages} onPage={setActivityPage} />
             </div>
           </div>
         )}
