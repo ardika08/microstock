@@ -7,7 +7,7 @@ import { Check, CreditCard, Zap, Crown, TrendingUp, BarChart2, Loader2 } from "l
 
 function productLabel(productType: string | null | undefined): string {
   switch (productType) {
-    case "intro": return "Intro Pack 150 Kredit"
+    case "intro": return "Intro Pack 50 Kredit"
     case "basic": return "Basic Pack 450 Kredit"
     case "value": return "Value Pack 1.200 Kredit"
     case "topup_500": return "Top Up Kredit"
@@ -43,11 +43,11 @@ const PRODUCTS = [
     name: "Intro Pack",
     price: "Rp9.900",
     originalPrice: null,
-    credits: "150 kredit",
+    credits: "50 kredit",
     badge: "🔥 Terlaris",
     icon: <TrendingUp className="w-5 h-5 text-emerald-400" />,
     features: [
-      "150 kredit ditambahkan",
+      "50 kredit ditambahkan",
       "Tidak ada masa berlaku",
       "Pakai kapan saja",
     ],

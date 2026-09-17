@@ -12,8 +12,8 @@ export const AUTOFILLSTOCK_PRODUCTS: Record<AutofillstockProductType, Autofillst
   intro: {
     name: 'Autofillstock - Intro Pack 150 Kredit',
     price: 9900,
-    description: 'Intro pack 150 kredit untuk generate metadata microstock. Kredit tidak expire, pakai kapanpun.',
-    creditsToAdd: 150,
+    description: 'Intro pack 50 kredit untuk generate metadata microstock. Kredit tidak expire, pakai kapanpun.',
+    creditsToAdd: 50,
     planType: 'topup',
   },
   basic: {

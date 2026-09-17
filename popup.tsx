@@ -506,6 +506,16 @@ export default function Popup() {
                   />
                 </div>
               )}
+              {/* Badge Kredit Hampir Habis */}
+              {creditRemaining !== null && creditRemaining <= 5 && planType !== "lifetime" && (
+                <button
+                  onClick={() => openDashboard("/dashboard/billing")}
+                  className="mt-2.5 w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-colors"
+                >
+                  <span className="text-red-400 text-[11px] font-medium">⚠️ Kredit Hampir Habis!</span>
+                  <span className="text-red-300 text-[10px]">→ Top Up</span>
+                </button>
+              )}
             </div>
 
             {/* ── Open Platform grid (Automeda style) ─────────────────────────── */}

@@ -160,7 +160,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userId = existing[0].id
       if (productType === 'intro') {
         await db.update(schema.users)
-          .set({ planType: 'intro', credits: (existing[0].credits ?? 0) + 150 } as any)
+          .set({ planType: 'intro', credits: (existing[0].credits ?? 0) + 50 } as any)
           .where(eq(schema.users.id, userId))
       } else if (productType === 'basic') {
         await db.update(schema.users)

@@ -316,10 +316,11 @@ export default function DashboardPage() {
       title: "Kredit Tersisa",
       value: sessionLoading ? "..." : (planType === "lifetime" || planType === "starter") ? "Unlimited" : String(credits ?? 0),
       icon: CreditCard,
-      borderColor: "border-l-emerald-500",
-      iconBg: "bg-emerald-500/10",
-      iconColor: "text-emerald-400",
+      borderColor: credits !== null && credits <= 5 && planType !== "lifetime" && planType !== "starter" ? "border-l-red-500" : "border-l-emerald-500",
+      iconBg: credits !== null && credits <= 5 && planType !== "lifetime" && planType !== "starter" ? "bg-red-500/10" : "bg-emerald-500/10",
+      iconColor: credits !== null && credits <= 5 && planType !== "lifetime" && planType !== "starter" ? "text-red-400" : "text-emerald-400",
       extra: "creditbar",
+      lowCredit: credits !== null && credits <= 5 && planType !== "lifetime" && planType !== "starter",
     },
     {
       title: "Paket Aktif",
@@ -555,6 +556,17 @@ export default function DashboardPage() {
                         planType={planType}
                         dailyAvg={dailyAvg}
                       />
+                    )}
+
+                    {/* Badge Kredit Hampir Habis */}
+                    {(stat as any).lowCredit && (
+                      <a
+                        href="/dashboard/billing"
+                        className="mt-3 flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-colors"
+                      >
+                        <span className="text-red-400 text-xs font-medium">⚠️ Kredit Hampir Habis!</span>
+                        <span className="text-red-300 text-xs">→ Top Up</span>
+                      </a>
                     )}
                   </motion.div>
                 )

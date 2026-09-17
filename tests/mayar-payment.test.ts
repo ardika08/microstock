@@ -24,7 +24,7 @@ test('rejects exact Autofillstock name with wrong amount', () => {
 test('normalizes case and surrounding whitespace only', () => {
   assert.deepEqual(
     resolveAutofillstockProduct('  AUTOFILLSTOCK - INTRO PACK 150 KREDIT  ', 9900),
-    { productType: 'intro', creditsToAdd: 150, planType: 'topup', amount: 9900 },
+    { productType: 'intro', creditsToAdd: 50, planType: 'topup', amount: 9900 },
   )
 })
 
