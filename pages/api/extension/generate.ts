@@ -64,12 +64,21 @@ CRITICAL RULES:
 
 SENTENCE STRUCTURE — CRITICAL:
 - Do NOT start descriptions with "A" or "An" followed by an adjective. This produces repetitive, generic-sounding descriptions.
-- Do NOT repeat the same opening word across multiple assets. ROTATE opening words: "Abstract", "Vibrant", "Soft", "Dynamic", "Rich", "Deep", "Smooth", "Elegant", "Bold", "Subtle", "Flowing", "Gentle", "Colorful", "Blurred", "Gradient"
-- BAD examples (DO NOT DO THIS): "A swirling abstract pattern...", "Smooth blue waves create...", "Smooth flowing lines create...", "Smooth flowing curves..."
-- GOOD examples: "Abstract dark blue gradient with soft diagonal motion", "Vibrant flowing waves blend deep and light blue tones", "Rich blue background featuring gentle undulating curves", "Deep navy gradient with smooth blurred wave patterns"
+- Do NOT repeat the same opening word across multiple assets. ROTATE opening words AND sentence structures.
+- VARY the structure — use these patterns randomly:
+  * Pattern A (use case first): "Backgrounds, textures, or design elements. [Visual description]."
+  * Pattern B (use case last): "[Visual description] suitable for backgrounds, textiles, or digital art projects."
+  * Pattern C (use case middle): "[Subject] with [details], ideal for [use case]."
+- ROTATE opening words: "Abstract", "Vibrant", "Soft", "Dynamic", "Rich", "Deep", "Smooth", "Elegant", "Bold", "Subtle", "Flowing", "Gentle", "Colorful", "Blurred", "Dark", "Light"
+- GOOD examples:
+  * "Backgrounds, textures, or design elements. Dark blue fabric folds with a soft satin wave pattern in motion."
+  * "Dark blue smooth gradient abstract shapes pattern suitable for elegant designs like backgrounds, textiles, or digital art projects."
+  * "Vibrant flowing waves in deep blue tones, perfect for modern wallpapers and digital artwork."
+  * "Rich navy gradient with soft diagonal motion, ideal for website backgrounds and presentations."
+- BAD examples (DO NOT DO THIS): "Smooth blue waves create...", "Smooth flowing lines create...", "Smooth flowing curves..." (repetitive opening)
 - Each title/description in a batch MUST start with a DIFFERENT word and use DIFFERENT sentence structure
 - Vary the verb: "create", "blend", "feature", "display", "showcase", "form", "reveal" — never repeat the same verb in consecutive assets
-- Include USE CASE words when relevant: "background", "texture", "pattern", "wallpaper", "backdrop"
+- ALWAYS include USE CASE: "background", "wallpaper", "texture", "design", "digital art", "presentation", "website", "textile"
 
 DO NOT guess:
 - The photographer's intent
