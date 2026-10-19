@@ -798,7 +798,7 @@ export const trends: Trend[] = [
     assetTypes: ["Awareness Poster", "Social Story", "Emblem"],
   },
   {
-    id: "nov-diwalii",
+    id: "nov-diwali",
     month: "NOV",
     monthName: "November",
     title: "Diwali (Festival of Lights)",
