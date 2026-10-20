@@ -1,32 +1,15 @@
-// Trend & Event Calendar — Microstock (target pasar: US)
+// Trend & Event Calendar — DATA EVENT (SERVER ONLY)
+//
+// PENTING: file ini HANYA boleh di-import dari getServerSideProps / API route.
+// Jangan pernah import dari komponen client — tujuannya agar 35 objek event
+// tidak ikut ter-inline ke bundle JavaScript browser.
+//
 // Sumber tanggal: kalender resmi US + event global. Tanggal bertanda "≈" = estimasi
 // (lunar/religius, menunggu penetapan resmi).
-//
-// CATATAN PENTING: file ini di-import langsung oleh halaman (bukan pages/api),
-// jadi tidak ada endpoint publik. Gate admin dilakukan di level halaman.
 
-export type Demand = "Puncak" | "Tinggi" | "Sedang"
+import type { Trend } from "./trends-types"
 
-export interface Trend {
-  id: string
-  month: string // "JAN"
-  monthName: string // "Januari"
-  title: string
-  eventDate: string
-  uploadWindow: string
-  demand: Demand
-  category: string
-  region: string
-  note?: string
-  prompts: string[]
-  keywords: string[]
-  palette: string
-  styles: string[]
-  assetTypes: string[]
-}
-
-export const TREND_YEAR = 2026
-export const TREND_UPDATED = "2026-10-19"
+export type { Trend }
 
 export const trends: Trend[] = [
   {
@@ -1025,8 +1008,6 @@ export const trends: Trend[] = [
     assetTypes: ["New Year Banner", "Greeting Card", "Social Header"],
   },
 ]
-
-export const MONTHS = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"]
 
 export function monthNameOf(code: string): string {
   return trends.find((t) => t.month === code)?.monthName ?? code

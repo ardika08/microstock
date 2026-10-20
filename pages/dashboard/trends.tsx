@@ -1,4 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react"
+import type { GetServerSideProps } from "next"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "~/pages/api/auth/[...nextauth]"
 import { useRouter } from "next/router"
 import { useSession } from "next-auth/react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -20,16 +23,38 @@ import {
 } from "lucide-react"
 import DashboardLayout from "~/components/dashboard/DashboardLayout"
 import TrendCard from "~/components/dashboard/TrendCard"
-import { trends, MONTHS, TREND_YEAR, TREND_UPDATED, type Trend, type Demand } from "~/data/trends-2026"
+import { MONTHS, TREND_YEAR, TREND_UPDATED, type Trend, type Demand } from "~/data/trends-types"
+import { isAdminEmail } from "~/lib/admin"
 
-const ADMIN_EMAIL = "ardika.yudha08@gmail.com"
 const PLANNER_KEY = "asaf-trend-planner-2026"
 
 const DEMAND_ORDER: Demand[] = ["Puncak", "Tinggi", "Sedang"]
 
 type PlannerState = Record<string, boolean>
 
-export default function TrendsPage() {
+interface TrendsPageProps {
+  /** Event dikirim dari server HANYA untuk admin. Non-admin menerima array kosong. */
+  trends: Trend[]
+  /** Hasil gate dari server — dipakai untuk render awal tanpa flicker. */
+  isAdmin: boolean
+}
+
+export const getServerSideProps: GetServerSideProps<TrendsPageProps> = async (ctx) => {
+  const session = await getServerSession(ctx.req, ctx.res, authOptions)
+  const email = session?.user?.email
+
+  // Gate sebenarnya: data tidak pernah dikirim ke browser non-admin.
+  if (!isAdminEmail(email)) {
+    return { props: { trends: [], isAdmin: false } }
+  }
+
+  // Import dinamis supaya modul data hanya dimuat di server.
+  const { trends } = await import("~/data/trends-2026.server")
+
+  return { props: { trends, isAdmin: true } }
+}
+
+export default function TrendsPage({ trends, isAdmin: serverIsAdmin }: TrendsPageProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
 
@@ -41,7 +66,9 @@ export default function TrendsPage() {
   const [copied, setCopied] = useState<string | null>(null)
   const [planner, setPlanner] = useState<PlannerState>({})
 
-  const isAdmin = session?.user?.email === ADMIN_EMAIL
+  // Server adalah sumber kebenaran. Client hanya dipakai sebagai cadangan
+  // saat sesi belum termuat (status === "loading").
+  const isAdmin = serverIsAdmin || (status !== "loading" && isAdminEmail(session?.user?.email))
 
   // ── Planner persistence ───────────────────────────────────────────────────
   useEffect(() => {
@@ -101,19 +128,11 @@ export default function TrendsPage() {
   }
 
   // ── Gate admin ────────────────────────────────────────────────────────────
-  if (status === "loading") {
+  // Server sudah memutuskan (data hanya dikirim ke admin). Karena layout
+  // mendapat serverAuthenticated, panel ini tampil sejak HTML pertama.
+  if (!serverIsAdmin) {
     return (
-      <DashboardLayout title="Trend Calendar">
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500/30 border-t-blue-500" />
-        </div>
-      </DashboardLayout>
-    )
-  }
-
-  if (!isAdmin) {
-    return (
-      <DashboardLayout title="Trend Calendar">
+      <DashboardLayout title="Trend Calendar" serverAuthenticated>
         <div className="mx-auto max-w-md rounded-xl border border-amber-500/20 bg-amber-500/5 p-6 text-center">
           <ShieldAlert className="mx-auto mb-3 h-8 w-8 text-amber-400" />
           <h2 className="mb-1 text-base font-bold text-gray-100">Halaman ini belum dibuka</h2>
@@ -131,9 +150,18 @@ export default function TrendsPage() {
     )
   }
 
+  if (!isAdmin) {
+    return (
+      <DashboardLayout title="Trend Calendar" serverAuthenticated>
+        <div className="flex h-64 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500/30 border-t-blue-500" />
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
-    <DashboardLayout title="Trend Calendar">
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+    <DashboardLayout title="Trend Calendar" serverAuthenticated>
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-100">Trend Calendar {TREND_YEAR}</h1>

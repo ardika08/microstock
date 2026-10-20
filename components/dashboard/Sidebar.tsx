@@ -7,8 +7,7 @@ import { signOut, useSession } from "next-auth/react"
 import { LayoutDashboard, History, BarChart3, CreditCard, Settings2, ChevronDown, Menu, X, Sparkles, Shield, MessageCircle, ArrowUpFromLine, ScrollText, Grid2X2, ScanText, PlayCircle, CalendarDays } from "lucide-react"
 import AvatarMenu from "./AvatarMenu"
 import { changelog } from "~/data/changelog"
-
-const ADMIN_EMAIL = 'ardika.yudha08@gmail.com'
+import { isAdminEmail } from "~/lib/admin"
 
 const navItems = [
   { href: "/dashboard/generate", icon: Sparkles, label: "Generate" },
@@ -32,7 +31,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const router = useRouter()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.email === ADMIN_EMAIL
+  const isAdmin = isAdminEmail(session?.user?.email)
   const [showAvatarMenu, setShowAvatarMenu] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [hasNewChangelog, setHasNewChangelog] = useState(false)

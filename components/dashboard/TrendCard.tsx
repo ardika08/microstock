@@ -1,6 +1,6 @@
 import React from "react"
 import { Calendar, Clock, Copy, ArrowUpRight, Globe2, AlertCircle } from "lucide-react"
-import type { Trend } from "~/data/trends-2026"
+import type { Trend } from "~/data/trends-types"
 
 const DEMAND_STYLE: Record<Trend["demand"], string> = {
   Puncak: "bg-red-500/15 text-red-400 border-red-500/30",

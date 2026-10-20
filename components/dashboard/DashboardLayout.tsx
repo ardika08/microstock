@@ -13,6 +13,12 @@ interface DashboardLayoutProps {
   // kept for backward compat but session values take precedence
   userName?: string
   userEmail?: string
+  /**
+   * Diisi dari getServerSideProps: user sudah terautentikasi menurut server.
+   * Kalau true, layout langsung merender isi halaman tanpa menunggu sesi client,
+   * supaya HTML pertama sudah lengkap (tidak ada spinner kosong).
+   */
+  serverAuthenticated?: boolean
 }
 
 export default function DashboardLayout({
@@ -20,6 +26,7 @@ export default function DashboardLayout({
   title = "Dashboard",
   userName,
   userEmail,
+  serverAuthenticated = false,
 }: DashboardLayoutProps) {
   const router = useRouter()
   const { data: session, status } = useSession()
@@ -31,8 +38,11 @@ export default function DashboardLayout({
     }
   }, [status, router])
 
+  // Kalau server sudah memastikan user login, jangan tahan render.
+  const stillResolving = status === "loading" && !serverAuthenticated
+
   // Show nothing while loading or redirecting
-  if (status === "loading" || status === "unauthenticated") {
+  if (stillResolving || status === "unauthenticated") {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
