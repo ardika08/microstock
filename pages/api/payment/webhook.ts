@@ -121,7 +121,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const db = getDb()
 
-    // Idempotency check — skip if already processed
+    // ── Idempotency (lapis 1): cek cepat, hindari kerja kalau sudah pernah ──
+    // Catatan: SELECT ini TIDAK cukup sendirian — dua request bersamaan bisa
+    // sama-sama lolos. Pengaman sebenarnya ada di unique index
+    // payments.mayar_order_id (lapis 2, lihat penanganan 23505 di bawah).
     if (orderId) {
       const existing_payment = await withRetry(() => db
         .select()
@@ -132,6 +135,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (existing_payment.length > 0) {
         console.log('[webhook] Already processed orderId:', orderId)
         return res.status(200).json({ received: true, duplicate: true })
+      }
+    }
+
+    // ── Klaim order SEBELUM menambah kredit ──────────────────────────────
+    // Insert payments lebih dulu: kalau order ini sudah diklaim request lain
+    // (webhook Mayar + hub polling berbarengan), unique index menolak dan kita
+    // berhenti di sini TANPA menyentuh saldo user. Status di-set final
+    // ('success') supaya tidak ada jendela 'pending' yang bisa diproses ulang.
+    let claimed: { id: string } | null = null
+    if (orderId) {
+      try {
+        const inserted = await withRetry(() => db
+          .insert(schema.payments)
+          .values({
+            userId: null as any, // diisi setelah user diketahui
+            mayarOrderId: orderId,
+            productType,
+            amount,
+            status: 'success',
+            paidAt: new Date(),
+          } as any)
+          .returning({ id: schema.payments.id })
+        )
+        claimed = inserted[0] as any
+      } catch (err: any) {
+        // 23505 = unique_violation → request lain sudah mengklaim order ini
+        const code = err?.code || err?.cause?.code
+        const isDup = code === '23505' || /duplicate key value/i.test(err?.message || '')
+        if (isDup) {
+          console.log('[webhook] Race terdeteksi, order sudah diklaim pihak lain:', orderId)
+          return res.status(200).json({ received: true, duplicate: true })
+        }
+        throw err
       }
     }
 
@@ -177,15 +213,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Record the payment
-    await db.insert(schema.payments).values({
-      userId,
-      mayarOrderId: orderId ?? null,
-      productType,
-      amount,
-      status: 'success',
-      paidAt: new Date(),
-    } as any)
+    // Payments sudah di-insert sebagai klaim di awal. Lengkapi userId-nya
+    // (kolom user baru diketahui setelah find/create user di atas).
+    if (claimed) {
+      await withRetry(() => db
+        .update(schema.payments)
+        .set({ userId } as any)
+        .where(eq(schema.payments.id, claimed.id))
+      )
+    } else {
+      // Payload tanpa orderId — tidak bisa diklaim; catat sebagai rekaman saja.
+      await db.insert(schema.payments).values({
+        userId,
+        mayarOrderId: null,
+        productType,
+        amount,
+        status: 'success',
+        paidAt: new Date(),
+      } as any)
+    }
 
     // Generate activation code untuk semua paket berbayar
     if (['intro', 'basic', 'value', 'lifetime'].includes(productType)) {
@@ -200,13 +246,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log('[webhook] Payment processed:', customerEmail, productType)
-
-    // Forward payload ke SpecFlow webhook (fire-and-forget, tidak blokir response)
-    fetch('https://specflow.my.id/api/webhooks/mayar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).catch((err) => console.error('[webhook] Failed to forward to specflow:', err))
 
     return res.status(200).json({ success: true })
   } catch (err) {
